@@ -62,6 +62,8 @@ function onOpen() {
       .addItem("🖐️ Ordenar picking",                    "ordenarPedido")
       .addItem("🚚 Surtido Rápido (móvil)",                "generarSurtidoRapido")
       .addSeparator()
+      .addItem("🔒 Blindar Pedido y Surtido (Total)",   "protegerTodasLasHojasTiendaSeguras")
+      .addSeparator()
       .addItem("⚠️ Restablecer sistema (Destructivo)",     "setupCompleto")
       .addSeparator()
       .addSubMenu(ui.createMenu("🧪 Herramientas Experimentales")
@@ -536,150 +538,160 @@ function sincronizarEstados() {
 }
 
 function ordenarPedido() {
-  _validarYAutoRepararSyncSilencioso();
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_PEDIDO);
-  if (!sheet) return;
+  const tId = "ordenarPedido_" + Date.now();
+  MiseLogger.time(tId);
+  try {
+    _validarYAutoRepararSyncSilencioso();
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_PEDIDO);
+    if (!sheet) return;
 
-  const count  = _getProductCount();
-  if (count < 1) return;
-  const range  = sheet.getRange(DATA_START_ROW, 1, count, NUM_COLS);
-  const values = range.getValues();
+    const count  = _getProductCount();
+    if (count < 1) return;
+    const range  = sheet.getRange(DATA_START_ROW, 1, count, NUM_COLS);
+    const values = range.getValues();
 
-  const sync = ss.getSheetByName(SHEET_SYNC);
-  const syncLr = sync ? sync.getLastRow() : 3;
-  const syncCount = Math.max(syncLr - 3, 0);
-  const syncValues = (sync && syncCount > 0) ? sync.getRange(4, 1, syncCount, 12).getValues() : [];
-  const activeMap = {};
-  const pickingMap = {};
-  for (let i = 0; i < syncValues.length; i++) {
-    const prodName = String(syncValues[i][2]).trim();  // Col C = PRODUCTO (index 2)
-    const activo   = String(syncValues[i][8]).trim();  // Col I = ACTIVO (index 8)
-    const picking  = parseInt(syncValues[i][11]) || 0; // Col L = PICKING (index 11)
-    if (prodName) {
-      activeMap[prodName]  = activo;
-      pickingMap[prodName] = picking;
+    const sync = ss.getSheetByName(SHEET_SYNC);
+    const syncLr = sync ? sync.getLastRow() : 3;
+    const syncCount = Math.max(syncLr - 3, 0);
+    const syncValues = (sync && syncCount > 0) ? sync.getRange(4, 1, syncCount, 12).getValues() : [];
+    const activeMap = {};
+    const pickingMap = {};
+    for (let i = 0; i < syncValues.length; i++) {
+      const prodName = String(syncValues[i][2]).trim();  // Col C = PRODUCTO (index 2)
+      const activo   = String(syncValues[i][8]).trim();  // Col I = ACTIVO (index 8)
+      const picking  = parseInt(syncValues[i][11]) || 0; // Col L = PICKING (index 11)
+      if (prodName) {
+        activeMap[prodName]  = activo;
+        pickingMap[prodName] = picking;
+      }
     }
-  }
 
-  const items = [];
-  for (let i = 0; i < values.length; i++) {
-    items.push({
-      vals: values[i]
+    const items = [];
+    for (let i = 0; i < values.length; i++) {
+      items.push({
+        vals: values[i]
+      });
+    }
+
+    // Ordenar estrictamente según la Secuencia de Picking definida en Bodega (Col L de _SYNC)
+    items.sort((a, b) => {
+      const nameA = String(a.vals[2] || "").trim();
+      const nameB = String(b.vals[2] || "").trim();
+
+      // 1. Activos primero, Inactivos al final
+      const isInactiveA = (activeMap[nameA] === "NO") ? 1 : 0;
+      const isInactiveB = (activeMap[nameB] === "NO") ? 1 : 0;
+      if (isInactiveA !== isInactiveB) {
+        return isInactiveA - isInactiveB;
+      }
+
+      // 2. Ordenamiento Estricto por Posición de Picking de Quiosco (rankA vs rankB)
+      const rankA = pickingMap[nameA] !== undefined ? pickingMap[nameA] : 9999;
+      const rankB = pickingMap[nameB] !== undefined ? pickingMap[nameB] : 9999;
+      if (rankA !== rankB) {
+        return rankA - rankB;
+      }
+
+      // 3. Fallback secundario: Categoría alfabética y Número original
+      const catA = String(a.vals[1] || "").trim();
+      const catB = String(b.vals[1] || "").trim();
+      if (catA !== catB) {
+        return catA.localeCompare(catB);
+      }
+
+      const numA = parseInt(a.vals[0]) || 0;
+      const numB = parseInt(b.vals[0]) || 0;
+      return numA - numB;
     });
+
+    // Crear mapa de nombres de producto -> Fila en _SYNC (4-indexed)
+    const syncRowMap = {};
+    for (let i = 0; i < syncValues.length; i++) {
+      const pName = String(syncValues[i][2]).trim(); // Col C = PRODUCTO (index 2)
+      if (pName) {
+        syncRowMap[pName] = 4 + i;
+      }
+    }
+
+    const bgs = [];
+    const cleanFonts = [];
+    const outputData = [];
+
+    const sRef = "'" + SHEET_SYNC + "'";
+    for (let i = 0; i < items.length; i++) {
+      const r = DATA_START_ROW + i;
+      const prodNo = parseInt(items[i].vals[0]) || (i + 1);
+      const prodName = String(items[i].vals[2] || "").trim();
+      const sr = syncRowMap[prodName] || (prodNo + 3);
+      
+      // Generar fondos estándar
+      const bgRow = i % 2 === 0 ? COLORS.neutral_a : COLORS.neutral_b;
+      const rowBg = Array(NUM_COLS).fill(bgRow);
+      rowBg[4] = COLORS.blue;                    // Col E
+      rowBg[COL_CANT_PEDIR - 1] = COLORS.yellow; // Col F
+      bgs.push(rowBg);
+
+      // Tipografía estándar limpia
+      const rowFont = Array(NUM_COLS).fill("normal");
+      rowFont[COL_CANT_PEDIR - 1] = "bold";
+      cleanFonts.push(rowFont);
+
+      // Generar fórmulas y valores limpios (Col G es DIFERENCIA, Col K es MÍN/MÁX QUIOSCO)
+      outputData.push([
+        prodNo,                                       // Col A (No)
+        '=' + sRef + '!B' + sr,                       // Col B (CATEGORÍA)
+        '=' + sRef + '!C' + sr,                       // Col C (PRODUCTO)
+        '=' + sRef + '!D' + sr,                       // Col D (UNIDAD)
+        '=IFERROR(' + sRef + '!E' + sr + '*1, 0) & IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "", IF(' + sRef + '!E' + sr + '<' + sRef + '!J' + sr + ', " (-" & (' + sRef + '!J' + sr + '-' + sRef + '!E' + sr + ') & ")", IF(' + sRef + '!E' + sr + '>' + sRef + '!K' + sr + ', " (+" & (' + sRef + '!E' + sr + '-' + sRef + '!K' + sr + ') & ")", " (-)")))', // Col E (SALDO TEÓRICO)
+        items[i].vals[5],                             // Col F (CANT. A PEDIR)
+        '=IF(F' + r + '="", "", IFERROR(VLOOKUP(C' + r + ', \'🚚 SURTIDO RÁPIDO\'!C:E, 3, FALSE), 0) - F' + r + ')', // Col G (DIFERENCIA)
+        items[i].vals[7] === "" ? "" : items[i].vals[7], // Col H (CANT. RECIBIDA)
+        items[i].vals[8] || "",                       // Col I (ESTADO)
+        items[i].vals[9] || "",                       // Col J (ADICIÓN)
+        '=IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "—", ' + sRef + '!J' + sr + ' & "  |  " & ' + sRef + '!K' + sr + ')' // Col K (MÍN | MÁX QUIOSCO)
+      ]);
+    }
+
+    // Escribir en bloque
+    range.clearContent();
+    sheet.getRange(DATA_START_ROW, 1, count, NUM_COLS).setFormulas(outputData);
+    range.setBackgrounds(bgs);
+    range.setFontWeights(cleanFonts);
+
+    // Formatear
+    sheet.getRange(DATA_START_ROW, 1, count, NUM_COLS)
+      .setFontFamily("Calibri").setFontSize(10).setVerticalAlignment("middle");
+    sheet.getRange(DATA_START_ROW, 1, count, 1).setHorizontalAlignment("center");
+    sheet.getRange(DATA_START_ROW, 3, count, 1).setHorizontalAlignment("left");
+    sheet.getRange(DATA_START_ROW, 4, count, 1).setHorizontalAlignment("center");
+    sheet.getRange(DATA_START_ROW, 5, count, 1).setHorizontalAlignment("right");
+    sheet.getRange(DATA_START_ROW, 7, count, 1).setHorizontalAlignment("center");
+    sheet.getRange(DATA_START_ROW, 11, count, 1).setHorizontalAlignment("center");
+
+    _aplicarFormatosCondicionales(sheet);
+    _actualizarVisibilidadInactivos(sheet);
+    sheet.hideColumns(10);
+    protegerPedidoSeguro();
+
+    PropertiesService.getScriptProperties().setProperty("IS_ORDER_SORTED", "true");
+    const dur = MiseLogger.timeEnd(tId);
+    MiseLogger.info("ordenarPedido", `Pedido ordenado con éxito (${count} productos re-secuenciados).`, dur);
+    try {
+      SpreadsheetApp.getActive().toast("Pedido ordenado por secuencia de picking de quiosco ✓", "⚙️ Ordenar", 3);
+    } catch(e) {}
+
+    // Actualizar Surtido Rápido silenciosamente si existe
+    try {
+      const surtido = ss.getSheetByName("🚚 SURTIDO RÁPIDO");
+      if (surtido) {
+        generarSurtidoRapidoSilencioso();
+      }
+    } catch (err) {}
+  } catch(err) {
+    const dur = MiseLogger.timeEnd(tId);
+    MiseLogger.error("ordenarPedido", err.message, err, dur);
   }
-
-  // Ordenar estrictamente según la Secuencia de Picking definida en Bodega (Col L de _SYNC)
-  items.sort((a, b) => {
-    const nameA = String(a.vals[2] || "").trim();
-    const nameB = String(b.vals[2] || "").trim();
-
-    // 1. Activos primero, Inactivos al final
-    const isInactiveA = (activeMap[nameA] === "NO") ? 1 : 0;
-    const isInactiveB = (activeMap[nameB] === "NO") ? 1 : 0;
-    if (isInactiveA !== isInactiveB) {
-      return isInactiveA - isInactiveB;
-    }
-
-    // 2. Ordenamiento Estricto por Posición de Picking de Quiosco (rankA vs rankB)
-    const rankA = pickingMap[nameA] !== undefined ? pickingMap[nameA] : 9999;
-    const rankB = pickingMap[nameB] !== undefined ? pickingMap[nameB] : 9999;
-    if (rankA !== rankB) {
-      return rankA - rankB;
-    }
-
-    // 3. Fallback secundario: Categoría alfabética y Número original
-    const catA = String(a.vals[1] || "").trim();
-    const catB = String(b.vals[1] || "").trim();
-    if (catA !== catB) {
-      return catA.localeCompare(catB);
-    }
-
-    const numA = parseInt(a.vals[0]) || 0;
-    const numB = parseInt(b.vals[0]) || 0;
-    return numA - numB;
-  });
-
-  // Crear mapa de nombres de producto -> Fila en _SYNC (4-indexed)
-  const syncRowMap = {};
-  for (let i = 0; i < syncValues.length; i++) {
-    const pName = String(syncValues[i][2]).trim(); // Col C = PRODUCTO (index 2)
-    if (pName) {
-      syncRowMap[pName] = 4 + i;
-    }
-  }
-
-  const bgs = [];
-  const cleanFonts = [];
-  const outputData = [];
-
-  const sRef = "'" + SHEET_SYNC + "'";
-  for (let i = 0; i < items.length; i++) {
-    const r = DATA_START_ROW + i;
-    const prodNo = parseInt(items[i].vals[0]) || (i + 1);
-    const prodName = String(items[i].vals[2] || "").trim();
-    const sr = syncRowMap[prodName] || (prodNo + 3);
-    
-    // Generar fondos estándar
-    const bgRow = i % 2 === 0 ? COLORS.neutral_a : COLORS.neutral_b;
-    const rowBg = Array(NUM_COLS).fill(bgRow);
-    rowBg[4] = COLORS.blue;                    // Col E
-    rowBg[COL_CANT_PEDIR - 1] = COLORS.yellow; // Col F
-    bgs.push(rowBg);
-
-    // Tipografía estándar limpia
-    const rowFont = Array(NUM_COLS).fill("normal");
-    rowFont[COL_CANT_PEDIR - 1] = "bold";
-    cleanFonts.push(rowFont);
-
-    // Generar fórmulas y valores limpios (Col G es DIFERENCIA, Col K es MÍN/MÁX QUIOSCO)
-    outputData.push([
-      prodNo,                                       // Col A (No)
-      '=' + sRef + '!B' + sr,                       // Col B (CATEGORÍA)
-      '=' + sRef + '!C' + sr,                       // Col C (PRODUCTO)
-      '=' + sRef + '!D' + sr,                       // Col D (UNIDAD)
-      '=IFERROR(' + sRef + '!E' + sr + '*1, 0) & IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "", IF(' + sRef + '!E' + sr + '<' + sRef + '!J' + sr + ', " (-" & (' + sRef + '!J' + sr + '-' + sRef + '!E' + sr + ') & ")", IF(' + sRef + '!E' + sr + '>' + sRef + '!K' + sr + ', " (+" & (' + sRef + '!E' + sr + '-' + sRef + '!K' + sr + ') & ")", " (-)")))', // Col E (SALDO TEÓRICO)
-      items[i].vals[5],                             // Col F (CANT. A PEDIR)
-      '=IF(F' + r + '="", "", IFERROR(VLOOKUP(C' + r + ', \'🚚 SURTIDO RÁPIDO\'!C:E, 3, FALSE), 0) - F' + r + ')', // Col G (DIFERENCIA)
-      items[i].vals[7] === "" ? "" : items[i].vals[7], // Col H (CANT. RECIBIDA)
-      items[i].vals[8] || "",                       // Col I (ESTADO)
-      items[i].vals[9] || "",                       // Col J (ADICIÓN)
-      '=IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "—", ' + sRef + '!J' + sr + ' & "  |  " & ' + sRef + '!K' + sr + ')' // Col K (MÍN | MÁX QUIOSCO)
-    ]);
-  }
-
-  // Escribir en bloque
-  range.clearContent();
-  sheet.getRange(DATA_START_ROW, 1, count, NUM_COLS).setFormulas(outputData);
-  range.setBackgrounds(bgs);
-  range.setFontWeights(cleanFonts);
-
-  // Formatear
-  sheet.getRange(DATA_START_ROW, 1, count, NUM_COLS)
-    .setFontFamily("Calibri").setFontSize(10).setVerticalAlignment("middle");
-  sheet.getRange(DATA_START_ROW, 1, count, 1).setHorizontalAlignment("center");
-  sheet.getRange(DATA_START_ROW, 3, count, 1).setHorizontalAlignment("left");
-  sheet.getRange(DATA_START_ROW, 4, count, 1).setHorizontalAlignment("center");
-  sheet.getRange(DATA_START_ROW, 5, count, 1).setHorizontalAlignment("right");
-  sheet.getRange(DATA_START_ROW, 7, count, 1).setHorizontalAlignment("center");
-  sheet.getRange(DATA_START_ROW, 11, count, 1).setHorizontalAlignment("center");
-
-  _aplicarFormatosCondicionales(sheet);
-  _actualizarVisibilidadInactivos(sheet);
-  sheet.hideColumns(10);
-
-  PropertiesService.getScriptProperties().setProperty("IS_ORDER_SORTED", "true");
-  try {
-    SpreadsheetApp.getActive().toast("Pedido ordenado por secuencia de picking de quiosco ✓", "⚙️ Ordenar", 3);
-  } catch(e) {}
-
-  // Actualizar Surtido Rápido silenciosamente si existe
-  try {
-    const surtido = ss.getSheetByName("🚚 SURTIDO RÁPIDO");
-    if (surtido) {
-      generarSurtidoRapidoSilencioso();
-    }
-  } catch (err) {}
 }
 
 function configurarBodega() {
@@ -754,6 +766,8 @@ function resetearPedidoManualmente() {
 }
 
 function _resetearPedidoSilencioso() {
+  const tId = "_resetearPedidoSilencioso_" + Date.now();
+  MiseLogger.time(tId);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_PEDIDO);
   if (!sheet) return;
@@ -800,6 +814,9 @@ function _resetearPedidoSilencioso() {
   // Resetear los flags de ordenamiento y surtido activo
   PropertiesService.getScriptProperties().setProperty("IS_ORDER_SORTED", "false");
   PropertiesService.getScriptProperties().setProperty("IS_SURTIDO_ACTIVE", "false");
+  
+  const dur = MiseLogger.timeEnd(tId);
+  MiseLogger.info("_resetearPedidoSilencioso", `Pedido diario reseteado (${count} productos limpiados).`, dur);
 }
 
 /**
@@ -875,6 +892,8 @@ function avanzarSemanaInfo() {
 }
 
 function repararSistemaTienda() {
+  const tId = "repararSistemaTienda_" + Date.now();
+  MiseLogger.time(tId);
   const ui = SpreadsheetApp.getUi();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const pedido = ss.getSheetByName(SHEET_PEDIDO);
@@ -989,11 +1008,13 @@ function repararSistemaTienda() {
     _protegerPedidoDiario(pedido, syncCount);
 
     SpreadsheetApp.flush();
-    registrarLog("repararSistemaTienda", "SUCCESS", "Reconstrucción limpia completada y fórmulas reestablecidas.");
+    const dur = MiseLogger.timeEnd(tId);
+    MiseLogger.info("repararSistemaTienda", `Reconstrucción limpia completada: ${syncCount} productos sincronizados y fórmulas reestablecidas.`, dur);
     SpreadsheetApp.getActive().toast("✅ Reconstrucción Limpia Completada", "🔧 Reparar Sistema", 4);
     ui.alert("✅ Sistema Reconstruido y Sanitizado", "Se guardaron tus cantidades de pedido, se reconstruyó la plantilla desde cero eliminando formatos corruptos y se blindaron las celdas.", ui.ButtonSet.OK);
   } catch (err) {
-    registrarLog("repararSistemaTienda", "ERROR", err.message);
+    const dur = MiseLogger.timeEnd(tId);
+    MiseLogger.error("repararSistemaTienda", err.message, err, dur);
     SpreadsheetApp.getActive().toast("❌ Error en reparación: " + err.message, "🔧 Reparar Sistema", 5);
   } finally {
     lock.releaseLock();
@@ -1439,12 +1460,27 @@ function _generarSurtidoRapidoInternal(activateSheet) {
       .build();
     sSheet.getRange(4, 5, rows, 1).setDataValidation(valRule);
 
-    // Proteger columnas A, B, C y D
+    // Blindaje de Seguridad Nivel 1 en SURTIDO RÁPIDO:
+    // Bloquea toda la hoja y desprotege ÚNICAMENTE Cant. Recibida (Col E / 5) y Checkboxes (Cols F y G / 6 y 7)
     try {
-      const prot = sSheet.getRange(4, 1, rows, 4).protect()
-        .setDescription("No modificar datos base del producto.");
-      prot.removeEditors(prot.getEditors());
+      const sProtections = sSheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
+      sProtections.forEach(p => { try { p.remove(); } catch(e) {} });
+
+      const sRangeProtections = sSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
+      sRangeProtections.forEach(p => { try { p.remove(); } catch(e) {} });
+
+      const prot = sSheet.protect().setDescription(`Blindaje Total — ${sheetName}`);
+      prot.setWarningOnly(false);
+
       if (prot.canDomainEdit()) prot.setDomainEdit(false);
+      const me = Session.getEffectiveUser();
+      prot.removeEditors(prot.getEditors());
+      prot.addEditor(me);
+
+      // Desproteger únicamente Col E (Cant. Recibida) y Cols F-G (Checkboxes)
+      const unprotRecibida = sSheet.getRange(4, 5, rows, 1);
+      const unprotChecks = sSheet.getRange(4, 6, rows, 2);
+      prot.setUnprotectedRanges([unprotRecibida, unprotChecks]);
     } catch(e) {}
 
     // Aplicar Reglas de Formato Condicional para coloreado de filas
@@ -1514,11 +1550,16 @@ function _generarSurtidoRapidoInternal(activateSheet) {
 function generarSurtidoRapido() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(15000)) return;
+  const tId = "generarSurtidoRapido_" + Date.now();
+  MiseLogger.time(tId);
   try {
     PropertiesService.getScriptProperties().setProperty("IS_SURTIDO_ACTIVE", "true");
     _generarSurtidoRapidoInternal(true);
+    const dur = MiseLogger.timeEnd(tId);
+    MiseLogger.info("generarSurtidoRapido", "Hoja de Surtido Rápido generada con éxito.", dur);
   } catch(err) {
-    registrarLog("generarSurtidoRapido", "ERROR", err.message);
+    const dur = MiseLogger.timeEnd(tId);
+    MiseLogger.error("generarSurtidoRapido", err.message, err, dur);
   } finally {
     lock.releaseLock();
   }
@@ -1582,35 +1623,136 @@ function probadorForzarLogSurtido() {
   SpreadsheetApp.getActive().toast("Evidencias guardadas en 🗒 LOG_SURTIDO ✓", "🧪 Prueba", 4);
 }
 
-// ── SISTEMA DE REGISTRO TRANSACCIONAL Y AUDITORÍA DE LOGS ─────────────────────
-function registrarLog(accion, estado, detalle) {
+// ── BLINDAJE DE SEGURIDAD Y PROTECCIONES (ANTI-MANIPULACIÓN) ─────────────────
+function protegerPedidoSeguro() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_PEDIDO);
+  if (!sheet) return;
+
+  // 1. Remover protecciones previas
+  const sheetProtections = sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
+  sheetProtections.forEach(p => { try { p.remove(); } catch(e) {} });
+
+  const rangeProtections = sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
+  rangeProtections.forEach(p => { try { p.remove(); } catch(e) {} });
+
+  // 2. Crear protección total de la hoja
+  const prot = sheet.protect().setDescription(`Blindaje Total — ${SHEET_PEDIDO}`);
+  prot.setWarningOnly(false);
+
+  // 2.1. Apagar edición por enlace público / dominio
+  try {
+    if (prot.canDomainEdit()) prot.setDomainEdit(false);
+  } catch(e) {}
+
+  // 2.2. Restringir editores
+  try {
+    const me = Session.getEffectiveUser();
+    prot.removeEditors(prot.getEditors());
+    prot.addEditor(me);
+  } catch(e) {}
+
+  // 3. DESPROTEGER ÚNICAMENTE:
+  // a) Casilla táctil de Fila 2 (F2 = Surtido Rápido)
+  // b) Columna F (CANT. A PEDIR) desde fila 4 en adelante
+  const count = Math.max(1, _getProductCount());
+  const unprotCheckboxFila2 = sheet.getRange("F2");
+  const unprotCantPedir = sheet.getRange(DATA_START_ROW, COL_CANT_PEDIR, count, 1);
+
+  prot.setUnprotectedRanges([unprotCheckboxFila2, unprotCantPedir]);
+  MiseLogger.info("protegerPedidoSeguro", `${SHEET_PEDIDO} blindado: Únicamente F2 (Surtido Rápido) y Col F (CANT. A PEDIR) quedan editables.`);
+}
+
+function protegerTodasLasHojasTiendaSeguras() {
+  protegerPedidoSeguro();
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let logSheet = ss.getSheetByName("_LOGS");
-    
-    if (!logSheet) {
-      logSheet = ss.insertSheet("_LOGS");
-      try { logSheet.hideSheet(); } catch(e) {}
-      logSheet.getRange("A1:E1").merge().setBackground("#3D5A47")
-        .setValue(`MISE — REGISTRO DE AUDITORÍA Y LOGS (${BODEGA_NOMBRE})`)
-        .setFontColor("#FFFFFF").setFontWeight("bold").setFontSize(10).setHorizontalAlignment("center");
-      logSheet.getRange(2, 1, 1, 5).setValues([["FECHA / HORA", "USUARIO", "ACCIÓN", "ESTADO", "DETALLE / MENSAJE"]])
-        .setBackground("#7A9E8A").setFontColor("#FFFFFF").setFontWeight("bold").setFontSize(9);
-      logSheet.setFrozenRows(2);
-    }
-    
-    const user = Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail() || "Usuario Móvil";
-    const fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || "GMT-6", "yyyy-MM-dd HH:mm:ss");
-    
-    logSheet.appendRow([fecha, user, accion, estado, String(detalle || "")]);
-    
-    // Auto-limpieza si sobrepasa los 500 registros para proteger rendimiento
-    const maxLogs = 500;
-    const currentRows = logSheet.getLastRow();
-    if (currentRows > maxLogs + 2) {
-      logSheet.deleteRows(3, currentRows - maxLogs - 2);
+    const surtido = ss.getSheetByName("🚚 SURTIDO RÁPIDO");
+    if (surtido) {
+      generarSurtidoRapidoSilencioso();
     }
   } catch(e) {}
+  SpreadsheetApp.getActive().toast("🔒 Pedido Diario y Surtido Rápido blindados con éxito ✓", "⚙️ Mise", 4);
+}
+
+// ── SISTEMA DE TELEMETRÍA Y LOGGING ESTRUCTURADO (MISE LOGGER) ────────────────
+const MiseLogger = {
+  _timers: {},
+
+  time(label) {
+    this._timers[label] = Date.now();
+  },
+
+  timeEnd(label) {
+    const start = this._timers[label] || Date.now();
+    delete this._timers[label];
+    return Date.now() - start;
+  },
+
+  log(level, fnName, message, durationMs = null, errorObj = null) {
+    const timestamp = new Date();
+    let email = "—";
+    try {
+      email = Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail() || "Usuario Móvil";
+    } catch(e) {
+      email = "Usuario Móvil";
+    }
+
+    const stackTrace = errorObj && errorObj.stack ? String(errorObj.stack) : "";
+    const msFormatted = durationMs !== null ? `${durationMs} ms` : "—";
+
+    // 1. Emisión a consola V8
+    const consoleMsg = `[${level}] [${fnName}] (${msFormatted}) ${message}`;
+    if (level === "ERROR" || level === "FATAL") {
+      console.error(consoleMsg, { user: email, durationMs, stack: stackTrace });
+    } else if (level === "WARN") {
+      console.warn(consoleMsg, { user: email, durationMs });
+    } else {
+      console.log(consoleMsg, { user: email, durationMs });
+    }
+
+    // 2. Persistencia en hoja de cálculo _LOGS (Orden Descendente: más nuevo arriba)
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      let logSheet = ss.getSheetByName("_LOGS");
+      
+      if (!logSheet) {
+        logSheet = ss.insertSheet("_LOGS");
+        try { logSheet.hideSheet(); } catch(e) {}
+        logSheet.getRange("A1:G1").merge().setBackground("#3D5A47")
+          .setValue(`MISE — REGISTRO DE AUDITORÍA Y TELEMETRÍA (${BODEGA_NOMBRE})`)
+          .setFontColor("#FFFFFF").setFontWeight("bold").setFontSize(10).setHorizontalAlignment("center");
+        logSheet.getRange(2, 1, 1, 7).setValues([["TIMESTAMP", "USUARIO", "FUNCIÓN", "NIVEL", "DURACIÓN (ms)", "DETALLE", "STACK TRACE"]])
+          .setBackground("#7A9E8A").setFontColor("#FFFFFF").setFontWeight("bold").setFontSize(9);
+        logSheet.setFrozenRows(2);
+      }
+      
+      const fecha = Utilities.formatDate(timestamp, Session.getScriptTimeZone() || "GMT-6", "yyyy-MM-dd HH:mm:ss");
+      logSheet.insertRowBefore(3);
+      logSheet.getRange(3, 1, 1, 7).setValues([[fecha, email, fnName, level, durationMs !== null ? durationMs : 0, String(message || ""), stackTrace]]);
+      
+      // Auto-limpieza si sobrepasa los 500 registros para proteger rendimiento
+      const maxLogs = 500;
+      const currentRows = logSheet.getLastRow();
+      if (currentRows > maxLogs + 2) {
+        logSheet.deleteRows(maxLogs + 3, currentRows - (maxLogs + 2));
+      }
+    } catch(e) {
+      console.error("Fallo al escribir en _LOGS: " + e.toString());
+    }
+  },
+
+  debug(fn, msg, ms = null) { this.log("DEBUG", fn, msg, ms); },
+  info(fn, msg, ms = null) { this.log("INFO", fn, msg, ms); },
+  warn(fn, msg, ms = null) { this.log("WARN", fn, msg, ms); },
+  error(fn, msg, err = null, ms = null) { this.log("ERROR", fn, msg, ms, err); },
+  perf(fn, msg, ms) { this.log("PERF", fn, msg, ms); }
+};
+
+// ── SISTEMA DE REGISTRO TRANSACCIONAL Y AUDITORÍA DE LOGS ─────────────────────
+function registrarLog(accion, estado, detalle) {
+  const level = estado === "ERROR" ? "ERROR" : "INFO";
+  MiseLogger.log(level, accion, detalle);
 }
 
 /**

@@ -1,0 +1,14 @@
+{
+  "name": "mise-work",
+  "version": "1.8.0",
+  "description": "Suite de automatización y telemetría de tiendas y bodegas para La Crêpe Parisienne",
+  "main": "tests/run_all.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node tests/run_all.js",
+    "check:syntax": "node tests/check_syntax.js"
+  },
+  "keywords": ["google-apps-script", "inventory", "telemetry", "suite-atelier"],
+  "author": "Ibrahim García <ultima.ibrahim@proton.me>",
+  "license": "UNLICENSED"
+}

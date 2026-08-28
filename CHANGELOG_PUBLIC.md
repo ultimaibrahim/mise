@@ -5,7 +5,25 @@ Este documento contiene el historial de actualizaciones de Suite MISE redactado 
 
 ---
 
-## Versión 1.7.3 Altair - Guardado Multi-Hilo Concurrente (Agosto 2026) [ACTUAL]
+## Versión 1.8.0 Altair - Blindaje de Seguridad Integral, Motor Matemático de Alias & Reconstrucción Resiliente (Agosto 2026) [ACTUAL]
+* 🔒 **Blindaje de Seguridad Integral y Bloqueo Anti-Manipulación**:
+  * **Bodega General**: Las hojas `MAESTRO`, `KARDEX_BA` y `KARDEX_BM` quedan 100% blindadas contra modificaciones accidentales, alteraciones de nombres o borrado de fórmulas de inventario (`SLD`). Los encargados pueden interactuar fluidamente con los checkboxes y capturar en Entrada (`ENT`) y Salida (`SAL`).
+  * **Tiendas Andares & Mercado (`PDA` / `PDM`)**:
+    * En `📋 PEDIDO DIARIO`, la cuadrícula completa está bloqueada a prueba de fallos táctiles: **únicamente quedan editables la casilla táctil `F2` (Surtido Rápido) y la columna `CANT. A PEDIR` (Col F)**.
+    * En `🚚 SURTIDO RÁPIDO`, las descripciones y cantidades pedidas están blindadas: **únicamente se permite capturar en `CANT. RECIBIDA` (Col E) y marcar las casillas `✅ COMPLETO` / `❌ INEXISTENTE` (Cols F y G)**.
+* 🧠 **Motor Inteligente de Reconciliación & Diccionario de Aprendizaje (`MiseMatchingEngine`)**:
+  * Reconocimiento automático de variaciones de insumos con empaques, abreviaciones y gramajes (`Jam. Pavo Lala .450`, `Pepperoni 1 kg`, `Fresa .454`), fusionándolos de forma transparente con el producto oficial en el catálogo sin requerir listas fijas ni diccionarios manuales.
+  * Los casos ambiguos o insumos desconocidos se desvían de manera segura a la hoja `⚠️ REVISIÓN_HUÉRFANOS` sin alterar saldos ni inventarios.
+* 🖥️ **Reconciliador Asistido Visual (Modal HTML)**:
+  * Nueva ventana interactiva (`⚙️ Mise > 📊 Mantenimiento y Blindaje > 🧠 Reconciliador Inteligente de Huérfanos`) para que el administrador revise insumos dudosos con su porcentaje de similitud y los vincule al producto oficial en un solo clic, guardándolos en el diccionario permanente de por vida.
+* 🏗️ **Reconstructores Resilientes con Respaldo en Memoria RAM**:
+  * Funciones de auto-recuperación (`🏗️ Reconstruir KARDEX Andares/Mercado` y `🏗️ Reconstruir MAESTRO`) que respaldan todos los movimientos y saldos en la memoria interna, eliminan columnas corruptas o duplicadas y redibujan la cuadrícula limpia restaurando todos los datos intactos.
+* 🌙 **Idempotencia y Sincronización Nocturna Segura (SmartSync)**:
+  * Descuento nocturno autónomo protegido contra dobles cobros mediante registro transaccional único y corrección del desfase de medianoche (a la 01:00 AM procesa de forma exacta las entregas del día anterior).
+
+---
+
+## Versión 1.7.3 Altair - Guardado Multi-Hilo Concurrente (Agosto 2026)
 * ⚡ **Procesamiento Multi-Hilo en Paralelo**: El Powerhouse ahora distribuye el guardado entre múltiples procesos independientes de forma simultánea (guardado de catálogo, sincronización de inventarios y actualización de tiendas en paralelo), reduciendo drásticamente el tiempo de espera a solo unos segundos.
 * 🛡️ **Protección y Estabilidad Mejoradas**: Bloqueos de datos ultra-cortos para evitar pantallas congeladas o colisiones cuando varios administradores usan el sistema.
 
