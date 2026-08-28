@@ -5,7 +5,36 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
-## ⚡ v1.7.3 Altair (Arquitectura Concurrente Multi-Worker & Paralelización con Promise.all) — 2026-08-17 [ACTUAL]
+## ⚡ v1.8.0 Altair (Motor Matemático N-Gram/Token-Sort, Reconstructores en RAM & Blindaje Anti-Manipulación) — 2026-08-27 [ACTUAL]
+
+### 🏬 Bodega General (BDG)
+* **Motor Matemático de Reconciliación Inteligente (`MiseMatchingEngine` en `miseKardexEngine.gs`)**:
+  * Implementación de algoritmos de coincidencia morfológica basados en **N-Grams Q-Grams (bigramas/trigramas con similitud Jaccard)**, **Token Sort Ratio** y **Token Overlap Ratio**.
+  * Sanitizador universal de ruido que remueve automáticamente puntuación, acentos, abreviaciones y expresiones de empaque/peso (`450 g`, `1 kg`, `.450`, `bot`, `man`, `dom`, `pz`).
+  * Evaluación de **Margen de Victoria (Delta Ratio)**: Si $\text{Score}_1 \ge 0.55$ y $\Delta \ge 0.10$ (o $\text{Score}_1 \ge 0.75$), se califica como `MATCH` directo. Si hay ambigüedad o empate de candidatos, se desvía a cuarentena como `AMBIGUO`.
+  * **Caché L1 en Hoja Oculta `_DICCIONARIO_ALIAS`**: Almacén transparente de capacidad ilimitada que indexa los alias aprobados para resolución instantánea $O(1)$.
+* **Reconciliador Asistido Visual (Modal HTML Human-in-the-Loop)**:
+  * Diálogo modal interactivo (`abrirReconciliadorInteligenteHTML`) servido mediante `HtmlService`.
+  * Permite al administrador revisar insumos en `⚠️ REVISIÓN_HUÉRFANOS`, ver el porcentaje de similitud calculado y aprobar su vinculación con 1 clic (`aprobarVinculacionAlias`).
+  * Auto-cierre de filas en cuarentena: actualiza el estado a `RESUELTO` y filtra en segundo plano insumos previamente aprendidos.
+* **Reconstructores Resilientes con Respaldo en Memoria RAM**:
+  * `reconstruirKardexBAConRespaldo()` y `reconstruirKardexBMConRespaldo()`: Respaldo en memoria JS de saldos anteriores, caducidades, lotes y movimientos de 7 días, destrucción de la cuadrícula corrupta (eliminando columnas duplicadas como $O$) y reconstrucción de 30 columnas simétricas mapeando alias al producto oficial.
+  * `reconstruirMaestroConRespaldo()`: Reconstrucción de la cuadrícula de 13 columnas preservando mínimos, máximos y estados.
+* **Blindaje de Seguridad y Bloqueo Anti-Manipulación (`setDomainEdit(false)`)**:
+  * **Bodega General (BDG)**: `protegerMaestroSeguro()` y `protegerKardexSeguro()` con desactivación estricta de edición por enlaces públicos (`canDomainEdit() = false`). Desprotección quirúrgica de columnas `ENT` y `SAL` de Lunes a Domingo, selectores de fecha (`G4`) y casillas interactivas de la barra de herramientas (`N4, Q4, T4, W4` en Kardex; `D2, F2, H2, J2` y col 13 en Maestro).
+  * **Tiendas Andares & Mercado (`PDA` / `PDM`)**:
+    * `protegerPedidoSeguro()`: Blindaje total de `📋 PEDIDO DIARIO` dejando **únicamente editables la casilla táctil `F2` (Surtido Rápido) y la columna `CANT. A PEDIR` (Col F)**.
+    * `_generarSurtidoRapidoInternal()`: Blindaje estricto de `🚚 SURTIDO RÁPIDO` bloqueando encabezados, fórmulas de diferencia y nombres de productos, permitiendo **únicamente la captura numérica en `CANT. RECIBIDA` (Col E) y los checkboxes interactivos de `✅ COMPLETO` (Col F) y `❌ INEXISTENTE` (Col G)**.
+    * Menú dedicado: `⚙️ Mise > 🔒 Blindar Pedido y Surtido (Total)`.
+* **Fórmula de Saldo Encadenada (`prevCol`)**:
+  * Corrección estructural en `_ordenarYRenumerarTodo()` y `_poblarKardex()`: Lunes toma Col I ($9$), mientras Martes a Domingo encadenan estrictamente el `SLD` del día anterior (Cols $12, 15, 18, 21, 24, 27$).
+* **Idempotencia Transaccional y Corrección Nocturna (SmartSync)**:
+  * Idempotency Ledger en `_LOGS` / `🗒 LOG` para evitar dobles cobros de inventario.
+  * Corrección del desfase de medianoche: a la 01:00 AM procesa de forma exacta el día anterior.
+
+---
+
+## ⚡ v1.7.3 Altair (Arquitectura Concurrente Multi-Worker & Paralelización con Promise.all) — 2026-08-17
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
 * **Arquitectura de Micro-Workers Paralelos Concurrente**:

@@ -122,15 +122,22 @@ function onOpen() {
         .addItem("🗑 Eliminar productos seleccionados",    "eliminarSeleccionadosMaestro")
         .addItem("🧹 Eliminar productos duplicados",      "eliminarDuplicadosCatalogo"))
       .addSeparator()
-      .addSubMenu(ui.createMenu("📊 Mantenimiento de Vistas")
-        .addItem("📊 Recrear VISTA_MOVIL_BA",             "crearVistaMóvilBA")
-        .addItem("📊 Recrear VISTA_MOVIL_BM",             "crearVistaMóvilBM")
+      .addSubMenu(ui.createMenu("📊 Mantenimiento y Blindaje")
+        .addItem("🔒 Blindar catálogo y Kardex (Total)",   "protegerTodasLasHojasSeguras")
+        .addItem("🛡️ Ejecutar mantenimiento semanal (Manual)", "ejecutarMantenimientoSemanalBDG")
         .addSeparator()
-        .addItem("🔒 Proteger catálogo anti-dummies",      "protegerMaestroSeguro"))
+        .addItem("🏗️ Reconstruir KARDEX Andares (con respaldo en RAM)", "reconstruirKardexBAConRespaldo")
+        .addItem("🏗️ Reconstruir KARDEX Mercado (con respaldo en RAM)", "reconstruirKardexBMConRespaldo")
+        .addItem("🏗️ Reconstruir MAESTRO (con respaldo en RAM)",       "reconstruirMaestroConRespaldo")
+        .addSeparator()
+        .addItem("🧠 Reconciliador Inteligente de Huérfanos (Modal)", "abrirReconciliadorInteligenteHTML")
+        .addSeparator()
+        .addItem("📊 Recrear VISTA_MOVIL_BA",             "crearVistaMóvilBA")
+        .addItem("📊 Recrear VISTA_MOVIL_BM",             "crearVistaMóvilBM"))
       .addSeparator()
-      .addSubMenu(ui.createMenu("🧪 Herramientas Experimentales")
-        .addItem("⏰ Activar descuento automático nocturno (01:00 AM)", "instalarActivadoresNocturnosBDG")
-        .addItem("🚚 Surtir y descontar inventario (Auto)", "descontarSurtidoAutomaticoManualmente")
+      .addSubMenu(ui.createMenu("🧪 Automatizaciones Autónomas")
+        .addItem("⏰ Configurar activadores automáticos (Descuento 1AM + Mantenimiento Dom 11PM)", "instalarActivadoresNocturnosBDG")
+        .addItem("🚚 Descontar inventario surtido (Manual)", "descontarSurtidoAutomaticoManualmente")
         .addItem("🔗 Configurar conexión con Logs (IMPORTRANGE)", "configurarConexionLogTiendas"))
       .addSeparator()
       .addItem("⚠️ Restablecer sistema (Destructivo)",     "setupCompleto")
@@ -829,7 +836,7 @@ function _poblarKardex(sheet) {
   // Fórmulas SLD para cada día: SLD = SLDprev + ENT - SAL
   for (let d = 0; d < KARDEX_DAYS; d++) {
     const sldCol  = 12 + d * 3;
-    const prevCol = 9  + d * 3;
+    const prevCol = (d === 0) ? 9 : (12 + (d - 1) * 3);
     const entCol  = 10 + d * 3;
     const salCol  = 11 + d * 3;
     const formulas = [];
@@ -1884,20 +1891,90 @@ function _fmt(date) {
   return `${String(date.getDate()).padStart(2,"0")}/${String(date.getMonth()+1).padStart(2,"0")}/${date.getFullYear()}`;
 }
 
-// ── LOG ───────────────────────────────────────────────────────────────────────
-function _log(fn, msg) {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let log  = ss.getSheetByName(SHEET_LOG);
-    if (!log) {
-      log = ss.insertSheet(SHEET_LOG);
-      log.appendRow(["TIMESTAMP","FUNCIÓN","DETALLE","USUARIO"]);
-      log.getRange(1, 1, 1, 4).setFontWeight("bold").setFontColor("#FFFFFF").setBackground(C.dark);
-      log.setFrozenRows(1);
-      log.setColumnWidth(1, 155); log.setColumnWidth(2, 150); log.setColumnWidth(3, 400);
+// ── SISTEMA DE TELEMETRÍA Y LOGGING ESTRUCTURADO (MISE LOGGER) ────────────────
+const MiseLogger = {
+  _timers: {},
+
+  time(label) {
+    this._timers[label] = Date.now();
+    return label;
+  },
+
+  timeStart(label) {
+    this._timers[label] = Date.now();
+    return label;
+  },
+
+  timeEnd(label) {
+    const start = this._timers[label] || Date.now();
+    delete this._timers[label];
+    return Date.now() - start;
+  },
+
+  log(level, fnName, message, durationMs = null, errorObj = null) {
+    const timestamp = new Date();
+    let email = "—";
+    try {
+      email = Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail() || "[CRON/SYSTEM]";
+    } catch(e) {
+      email = "[CRON/SYSTEM]";
     }
-    log.appendRow([new Date(), fn, msg, Session.getActiveUser().getEmail() || "—"]);
-  } catch(e) {}
+
+    const stackTrace = errorObj && errorObj.stack ? String(errorObj.stack) : "";
+    const msFormatted = durationMs !== null ? `${durationMs} ms` : "—";
+
+    // 1. Emisión a consola V8 / Google Cloud Logging
+    const consoleMsg = `[${level}] [${fnName}] (${msFormatted}) ${message}`;
+    if (level === "ERROR" || level === "FATAL") {
+      console.error(consoleMsg, { user: email, durationMs, stack: stackTrace });
+    } else if (level === "WARN") {
+      console.warn(consoleMsg, { user: email, durationMs });
+    } else {
+      console.log(consoleMsg, { user: email, durationMs });
+    }
+
+    // 2. Persistencia en hoja de cálculo 🗒 LOG (Orden Descendente: más nuevo arriba)
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      let sheetLog = ss.getSheetByName(SHEET_LOG);
+      if (!sheetLog) {
+        sheetLog = ss.insertSheet(SHEET_LOG);
+        sheetLog.appendRow(["TIMESTAMP", "NIVEL", "FUNCIÓN", "DURACIÓN (ms)", "DETALLE", "USUARIO", "STACK TRACE"]);
+        sheetLog.getRange(1, 1, 1, 7).setFontWeight("bold").setFontColor("#FFFFFF").setBackground(C.dark);
+        sheetLog.setFrozenRows(1);
+        sheetLog.setColumnWidth(1, 160);
+        sheetLog.setColumnWidth(2, 80);
+        sheetLog.setColumnWidth(3, 160);
+        sheetLog.setColumnWidth(4, 100);
+        sheetLog.setColumnWidth(5, 350);
+        sheetLog.setColumnWidth(6, 160);
+        sheetLog.setColumnWidth(7, 300);
+      }
+      
+      sheetLog.insertRowBefore(2);
+      sheetLog.getRange(2, 1, 1, 7).setValues([[timestamp, level, fnName, durationMs !== null ? durationMs : 0, String(message || ""), email, stackTrace]]);
+      
+      // Auto-limpieza de histórico (mantiene los 500 más recientes)
+      const maxLogs = 500;
+      const currentRows = sheetLog.getLastRow();
+      if (currentRows > maxLogs + 1) {
+        sheetLog.deleteRows(maxLogs + 2, currentRows - (maxLogs + 1));
+      }
+    } catch(e) {
+      console.error("Fallo al escribir en la hoja 🗒 LOG: " + e.toString());
+    }
+  },
+
+  debug(fn, msg, ms = null) { this.log("DEBUG", fn, msg, ms); },
+  info(fn, msg, ms = null) { this.log("INFO", fn, msg, ms); },
+  warn(fn, msg, ms = null) { this.log("WARN", fn, msg, ms); },
+  error(fn, msg, err = null, ms = null) { this.log("ERROR", fn, msg, ms, err); },
+  perf(fn, msg, ms) { this.log("PERF", fn, msg, ms); }
+};
+
+// Wrapper para retrocompatibilidad total con código existente
+function _log(fn, msg) {
+  MiseLogger.info(fn, msg);
 }
 
 // ── CATÁLOGO ──────────────────────────────────────────────────────────────────
@@ -2357,10 +2434,52 @@ function _ordenarYRenumerarTodo() {
   const idxMinBM = map["MÍN_BM"] && map["PRODUCTO"] ? (map["MÍN_BM"].col - map["PRODUCTO"].col + 1) : 8;
   const idxMaxBM = map["MÁX_BM"] && map["PRODUCTO"] ? (map["MÁX_BM"].col - map["PRODUCTO"].col + 1) : 9;
   
-  // 1. Leer datos de MAESTRO y desarmar validaciones previas para evitar bloqueos
-  const range = maestro.getRange(MAESTRO_START, 1, count, maestro.getLastColumn());
-  try { range.clearDataValidations(); } catch(e) {}
-  const data = range.getValues();
+  // 1. Leer datos de MAESTRO y filtrar estrictamente solo productos con CATEGORÍA y NOMBRE válidos
+  const rawRange = maestro.getRange(MAESTRO_START, 1, count, maestro.getLastColumn());
+  try { rawRange.clearDataValidations(); } catch(e) {}
+  const rawData = rawRange.getValues();
+  
+  // Auditar y enviar huérfanos a Cuarentena antes de purgar
+  const ssCuarentena = SpreadsheetApp.getActiveSpreadsheet();
+  let qSheet = ssCuarentena.getSheetByName("⚠️ REVISIÓN_HUÉRFANOS");
+  if (!qSheet) {
+    qSheet = ssCuarentena.insertSheet("⚠️ REVISIÓN_HUÉRFANOS");
+    qSheet.appendRow(["FECHA_DETECCIÓN", "ORIGEN", "FILA_ORIGINAL", "TEXTO_INGRESADO", "VALORES_DETECTADOS", "ESTADO_RESOLUCIÓN", "NOTAS"]);
+    qSheet.getRange(1, 1, 1, 7).setBackground("#78281F").setFontColor("#FFFFFF").setFontWeight("bold");
+    qSheet.setFrozenRows(1);
+  }
+
+  const data = [];
+  const purgados = [];
+  for (let i = 0; i < rawData.length; i++) {
+    const row = rawData[i];
+    const cat = String(row[cCat] || '').trim();
+    const prod = String(row[cProd] || '').trim();
+    const num = row[0];
+
+    // Criterio estricto de catálogo oficial: Debe tener Nombre y Categoría no vacíos
+    if (prod !== "" && cat !== "") {
+      data.push(row);
+    } else if (prod !== "" || cat !== "") {
+      purgados.push(prod || `Fila ${MAESTRO_START + i}`);
+      qSheet.appendRow([
+        new Date(),
+        "MAESTRO",
+        MAESTRO_START + i,
+        prod || "[Sin Nombre]",
+        JSON.stringify(row.filter(c => c !== "")),
+        "PURGADO",
+        "Insumo huérfano purgado automáticamente del catálogo."
+      ]);
+    }
+  }
+
+  if (purgados.length > 0) {
+    MiseLogger.warn("_ordenarYRenumerarTodo", `Purga: Se eliminaron ${purgados.length} filas huérfanas: [${purgados.join(", ")}]`);
+  }
+
+  // Si no hay datos válidos, retornar
+  if (data.length === 0) return;
   
   // 2. Ordenar por CATEGORÍA (priorizando CATEGORIAS_LISTA y luego alfabéticamente) y PRODUCTO
   data.sort((a, b) => {
@@ -2390,7 +2509,9 @@ function _ordenarYRenumerarTodo() {
     data[i][cSel] = false;
   }
   
-  // 4. Escribir datos ordenados
+  // 4. Limpiar todo el rango original de MAESTRO y reescribir únicamente las filas oficiales válidas
+  rawRange.clearContent().clearFormat();
+  const range = maestro.getRange(MAESTRO_START, 1, data.length, maestro.getLastColumn());
   range.setValues(data);
   
   // 5. Inyectar fórmulas dinámicas de stock en MAESTRO (Batch Único)
@@ -2411,7 +2532,7 @@ function _ordenarYRenumerarTodo() {
   range.setBackgrounds(bgs);
   _aplicarReglasMaestro(maestro);
   
-  // 6. Reconstruir KARDEX con los datos re-ordenados en 1 Sola llamada Batch I/O por bodega
+  // 6. Reconstruir KARDEX con los datos re-ordenados y LIMPIAR filas sobrantes en KARDEX
   Object.values(BODEGAS).forEach(b => {
     const kSheet = ss.getSheetByName(b.kardex);
     if (!kSheet) return;
@@ -2419,19 +2540,55 @@ function _ordenarYRenumerarTodo() {
     if (klr < KARDEX_START) return;
     const kCount = klr - KARDEX_START + 1;
     
-    // Leer datos existentes del Kardex (preservar CADUCIDAD, LOTE, ENT, SAL)
-    const kData = kSheet.getRange(KARDEX_START, 1, kCount, KARDEX_TOTAL_COLS).getValues();
+    // Leer datos existentes del Kardex (preservar CADUCIDAD, LOTE, SALDO ANT, ENT, SAL)
+    const kRange = kSheet.getRange(KARDEX_START, 1, kCount, KARDEX_TOTAL_COLS);
+    const kData = kRange.getValues();
     
     const kMap = {};
+    const listaOficiales = data.map(d => String(d[cProd] || "").trim()).filter(n => n !== "");
+    const aliasDict = (typeof MiseMatchingEngine !== "undefined") ? MiseMatchingEngine.obtenerDiccionarioAlias(ss) : {};
+
     for (let i = 0; i < kCount; i++) {
-      const nombre = String(kData[i][2]).trim();
-      if (nombre) kMap[nombre] = kData[i];
+      const rowK = kData[i];
+      const nombre = String(rowK[2] || "").trim();
+      if (nombre) {
+        let matchOficial = null;
+
+        if (typeof MiseMatchingEngine !== "undefined") {
+          const res = MiseMatchingEngine.evaluarMatch(nombre, listaOficiales, aliasDict);
+          if (res.estado === "MATCH" && res.match) {
+            matchOficial = res.match;
+            // Si es un alias nuevo con alta certeza, registrarlo en el diccionario de aprendizaje
+            if (res.score < 1.0) {
+              MiseMatchingEngine.registrarAlias(ss, nombre, matchOficial, res.score, "AUTÓNOMO");
+            }
+          }
+        } else {
+          const matchDirecto = listaOficiales.find(o => o.toLowerCase() === nombre.toLowerCase());
+          if (matchDirecto) matchOficial = matchDirecto;
+        }
+
+        if (matchOficial) {
+          kMap[matchOficial.toLowerCase()] = rowK;
+        } else {
+          // Si el producto en Kardex no es oficial ni coincide con margen seguro, mandarlo a cuarentena
+          qSheet.appendRow([
+            new Date(),
+            b.kardex,
+            KARDEX_START + i,
+            nombre,
+            JSON.stringify(rowK.filter(c => c !== "")),
+            "PURGADO",
+            "Insumo huérfano detectado en Kardex y derivado a cuarentena."
+          ]);
+        }
+      }
     }
     
     const newKData = [];
     for (let i = 0; i < data.length; i++) {
-      const prodName = String(data[i][cProd]).trim();
-      const existing = kMap[prodName];
+      const prodName = String(data[i][cProd] || "").trim();
+      const existing = kMap[prodName.toLowerCase()];
       if (existing) {
         existing[0] = data[i][0];     // No
         existing[1] = data[i][cCat];  // CATEGORÍA
@@ -2449,6 +2606,24 @@ function _ordenarYRenumerarTodo() {
         newKData.push(row);
       }
     }
+
+    // 1. Limpiar físicamente todo el rango anterior del Kardex para erradicar filas huérfanas
+    kRange.clearContent().clearFormat();
+
+    // 2. Auto-Reparación de Encabezados en Fila 5 y 6 (Seguro: des-combina antes para evitar error de intervalos combinados)
+    try {
+      kSheet.getRange(5, 10, 1, 21).breakApart(); // Des-combinar columnas J a AD en fila 5
+      DIAS.forEach((dia, idx) => {
+        const sc = 10 + idx * 3;
+        const rDay = kSheet.getRange(5, sc, 1, 3);
+        rDay.merge().setValue(dia)
+          .setBackground(idx % 2 === 0 ? C.mdGreen : C.ltGreen)
+          .setFontColor("#FFFFFF").setFontWeight("bold").setFontSize(9).setHorizontalAlignment("center");
+        kSheet.getRange(6, sc).setValue("ENT").setBackground(C.entBg).setFontColor(C.dkGreen).setFontWeight("bold").setFontSize(8).setHorizontalAlignment("center");
+        kSheet.getRange(6, sc + 1).setValue("SAL").setBackground(C.salBg).setFontColor("#C62828").setFontWeight("bold").setFontSize(8).setHorizontalAlignment("center");
+        kSheet.getRange(6, sc + 2).setValue("SLD").setBackground(C.dkGreen).setFontColor("#FFFFFF").setFontWeight("bold").setFontSize(8).setHorizontalAlignment("center");
+      });
+    } catch(e) {}
 
     // CONSOLIDACIÓN BATCH I/O DE 1-SOLA INVOCACIÓN EN KARDEX
     const kLen = newKData.length;
@@ -2480,7 +2655,9 @@ function _ordenarYRenumerarTodo() {
       for (let d = 0; d < KARDEX_DAYS; d++) {
         valRow[9 + d * 3]  = rowData[9 + d * 3];  // ENT
         valRow[10 + d * 3] = rowData[10 + d * 3]; // SAL
-        const prevCol = 9  + d * 3;
+        // Para d=0 (Lunes), el saldo previo es Col I (Saldo Anterior = col 9).
+        // Para d>0, el saldo previo es el SLD del día anterior: Col L (12), Col O (15), Col R (18), etc.
+        const prevCol = (d === 0) ? 9 : (12 + (d - 1) * 3);
         const entCol  = 10 + d * 3;
         const salCol  = 11 + d * 3;
         valRow[11 + d * 3] = '=' + _col(prevCol) + rn + '+IFERROR(' + _col(entCol) + rn + ',0)-IFERROR(' + _col(salCol) + rn + ',0)'; // SLD
@@ -2497,60 +2674,610 @@ function _ordenarYRenumerarTodo() {
       fullKBgs[r] = bgRow;
     }
 
-    // 1. Inyección ultrarrápida en 1 sola llamada I/O de valores, fórmulas y fondos
+    // Inyección de valores limpios oficiales
     const kRangeBatch = kSheet.getRange(KARDEX_START, 1, kLen, KARDEX_TOTAL_COLS);
     kRangeBatch.setValues(fullKValues);
     kRangeBatch.setBackgrounds(fullKBgs);
 
-    if (!kSheet.getFilter()) {
-      try { kSheet.getRange(6, 1, kLen + 1, KARDEX_TOTAL_COLS).createFilter(); } catch(e) {}
-    }
+    // Asegurar que las filas no queden ocultas por accidente
+    try {
+      kSheet.showRows(KARDEX_START, kLen);
+    } catch(e) {}
+
+    // Recrear filtro de forma segura
+    try {
+      if (kSheet.getFilter()) {
+        kSheet.getFilter().remove();
+      }
+      kSheet.getRange(6, 1, kLen + 1, KARDEX_TOTAL_COLS).createFilter();
+    } catch(e) {}
   });
 
-  if (!maestro.getFilter()) {
-    try { maestro.getRange(3, 1, data.length + 1, MAESTRO_COLS).createFilter(); } catch(e) {}
-  }
+  try {
+    if (maestro.getFilter()) {
+      maestro.getFilter().remove();
+    }
+    maestro.getRange(3, 1, data.length + 1, MAESTRO_COLS).createFilter();
+  } catch(e) {}
   
   _log("_ordenarYRenumerarTodo", `Re-ordenado y re-numerado: ${data.length} productos`);
 }
 
+// ── RECONSTRUCTORES DE HOJAS CON RESPALDO EN MEMORIA (IN-RAM RESILIENT HEALING) ──
+function reconstruirKardexBAConRespaldo() {
+  _reconstruirKardexConRespaldo("BA");
+}
+
+function reconstruirKardexBMConRespaldo() {
+  _reconstruirKardexConRespaldo("BM");
+}
+
+function _reconstruirKardexConRespaldo(key) {
+  const tId = MiseLogger.timeStart(`_reconstruirKardexConRespaldo_${key}`);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const bodega = BODEGAS[key];
+  const kSheet = ss.getSheetByName(bodega.kardex);
+  if (!kSheet) return;
+
+  const ui = SpreadsheetApp.getUi();
+  const confirm = ui.alert(
+    `🏗️ Reconstruir ${bodega.kardex}`,
+    `Esta acción respaldará todos los saldos y movimientos en memoria RAM, limpiará la estructura completa de la hoja (eliminando celdas rotas o columnas desfasadas) y reconstruirá la cuadrícula con formato perfecto.\n\n¿Deseas continuar?`,
+    ui.ButtonSet.YES_NO
+  );
+  if (confirm !== ui.Button.YES) return;
+
+  try {
+    SpreadsheetApp.getActive().toast(`Respaldando datos de ${bodega.kardex} en memoria...`, "🏗️ Reconstructor", 5);
+
+    // 1. RESPALDO TEMPORAL EN MEMORIA RAM
+    const klr = kSheet.getLastRow();
+    const snapMovimientos = {};
+    let fechaIniGuardada = kSheet.getRange("G4").getValue();
+
+    if (klr >= KARDEX_START) {
+      const kRange = kSheet.getRange(KARDEX_START, 1, klr - KARDEX_START + 1, kSheet.getLastColumn());
+      const kData = kRange.getValues();
+
+      kData.forEach(row => {
+        const prod = String(row[2] || "").trim().toLowerCase();
+        if (prod) {
+          // Guardar Saldo Anterior (Col I = index 8) y los 7 días (ENT, SAL)
+          const movs = [];
+          for (let d = 0; d < 7; d++) {
+            movs.push({
+              ent: row[9 + d * 3] !== "" ? row[9 + d * 3] : "",
+              sal: row[10 + d * 3] !== "" ? row[10 + d * 3] : ""
+            });
+          }
+          snapMovimientos[prod] = {
+            caducidad: row[5] || "",
+            lote: row[6] || "",
+            saldoAnt: row[8] !== "" ? row[8] : "",
+            movs: movs
+          };
+        }
+      });
+    }
+
+    // 2. LIMPIEZA TOTAL Y RECONSTRUCCIÓN ESTRUCTURAL DE LA HOJA
+    SpreadsheetApp.getActive().toast(`Reconstruyendo cuadrícula y fórmulas de ${bodega.kardex}...`, "🏗️ Reconstructor", 5);
+    kSheet.clear();
+    kSheet.clearConditionalFormatRules();
+    kSheet.setHiddenGridlines(false);
+    kSheet.setFrozenRows(0);
+    kSheet.setFrozenColumns(0);
+
+    // Re-crear estructura nativa (Filas 1-6 y columnas A-AD)
+    _buildKardex(kSheet, bodega.nombre);
+    if (fechaIniGuardada && !isNaN(new Date(fechaIniGuardada).getTime())) {
+      kSheet.getRange("G4").setValue(fechaIniGuardada);
+    } else {
+      kSheet.getRange("G4").setValue(new Date());
+    }
+
+    // 3. POBLAR DESDE MAESTRO OFICIAL
+    _poblarKardex(kSheet);
+
+    // 4. RESTAURAR MOVIMIENTOS DESDE EL RESPALDO EN MEMORIA (CON RECONCILIADOR MATEMÁTICO)
+    const newKlr = kSheet.getLastRow();
+    if (newKlr >= KARDEX_START) {
+      const newCount = newKlr - KARDEX_START + 1;
+      const readRange = kSheet.getRange(KARDEX_START, 1, newCount, KARDEX_TOTAL_COLS);
+      const readData = readRange.getValues();
+      const listaOficiales = readData.map(r => String(r[2] || "").trim()).filter(n => n !== "");
+      const aliasDict = (typeof MiseMatchingEngine !== "undefined") ? MiseMatchingEngine.obtenerDiccionarioAlias(ss) : {};
+
+      // Mapear cada elemento del snap a su producto oficial y enviar a cuarentena los no reconocidos
+      const snapOficializado = {};
+      const noMapeados = [];
+
+      Object.keys(snapMovimientos).forEach(rawProdName => {
+        const snap = snapMovimientos[rawProdName];
+        let targetOficial = null;
+
+        if (typeof MiseMatchingEngine !== "undefined") {
+          const res = MiseMatchingEngine.evaluarMatch(rawProdName, listaOficiales, aliasDict);
+          if (res.estado === "MATCH" && res.match) {
+            targetOficial = res.match.toLowerCase();
+            if (res.score < 1.0) {
+              MiseMatchingEngine.registrarAlias(ss, rawProdName, res.match, res.score, "AUTÓNOMO");
+            }
+          }
+        } else {
+          const matchDirecto = listaOficiales.find(o => o.toLowerCase() === rawProdName.toLowerCase());
+          if (matchDirecto) targetOficial = matchDirecto.toLowerCase();
+        }
+
+        if (targetOficial) {
+          snapOficializado[targetOficial] = snap;
+        } else {
+          noMapeados.push({ nombre: rawProdName, snap: snap });
+        }
+      });
+
+      // Si hubo insumos que no hicieron match con ningún producto oficial, registrarlos en Cuarentena
+      if (noMapeados.length > 0) {
+        let qSheet = ss.getSheetByName("⚠️ REVISIÓN_HUÉRFANOS");
+        if (!qSheet) {
+          qSheet = ss.insertSheet("⚠️ REVISIÓN_HUÉRFANOS");
+          qSheet.appendRow(["FECHA_DETECCIÓN", "ORIGEN", "FILA_ORIGINAL", "TEXTO_INGRESADO", "VALORES_DETECTADOS", "ESTADO_RESOLUCIÓN", "NOTAS"]);
+          qSheet.getRange(1, 1, 1, 7).setBackground("#78281F").setFontColor("#FFFFFF").setFontWeight("bold");
+          qSheet.setFrozenRows(1);
+        }
+        noMapeados.forEach(item => {
+          qSheet.appendRow([
+            new Date(),
+            bodega.kardex,
+            "—",
+            item.nombre,
+            JSON.stringify(item.snap),
+            "PURGADO",
+            "Insumo huérfano purgado durante la reconstrucción de la hoja."
+          ]);
+        });
+      }
+
+      for (let i = 0; i < newCount; i++) {
+        const prod = String(readData[i][2] || "").trim().toLowerCase();
+        const snap = snapOficializado[prod];
+        if (snap) {
+          readData[i][5] = snap.caducidad;
+          readData[i][6] = snap.lote;
+          readData[i][8] = snap.saldoAnt;
+          for (let d = 0; d < 7; d++) {
+            readData[i][9 + d * 3]  = snap.movs[d].ent;
+            readData[i][10 + d * 3] = snap.movs[d].sal;
+          }
+        }
+      }
+
+      readRange.setValues(readData);
+    }
+
+    // 5. RECONSTRUIR VISTA MÓVIL Y BLINDAJE
+    _buildVista(key);
+    protegerKardexSeguro(kSheet);
+
+    const dur = MiseLogger.timeEnd(tId);
+    MiseLogger.info("_reconstruirKardexConRespaldo", `Hoja ${bodega.kardex} reconstruida con éxito y datos restaurados.`, dur);
+    ui.alert("✅ Reconstrucción Exitosa", `La hoja ${bodega.kardex} ha sido limpiada y reconstruida desde cero.\n\nTodos los movimientos, fechas y saldos fueron restaurados con éxito desde la memoria RAM.`, ui.ButtonSet.OK);
+
+  } catch(err) {
+    const dur = MiseLogger.timeEnd(tId);
+    MiseLogger.error("_reconstruirKardexConRespaldo", `Error reconstruyendo ${bodega.kardex}: ${err.message}`, err, dur);
+    ui.alert("❌ Error en Reconstrucción", err.message, ui.ButtonSet.OK);
+  }
+}
+
+function reconstruirMaestroConRespaldo() {
+  const tId = MiseLogger.timeStart("reconstruirMaestroConRespaldo");
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  if (!maestro) return;
+
+  const ui = SpreadsheetApp.getUi();
+  const confirm = ui.alert(
+    "🏗️ Reconstruir MAESTRO",
+    "Esta acción respaldará todos los mínimos, máximos y estados en memoria RAM, limpiará la estructura completa de MAESTRO y la reconstruirá con formato y validaciones perfectas.\n\n¿Deseas continuar?",
+    ui.ButtonSet.YES_NO
+  );
+  if (confirm !== ui.Button.YES) return;
+
+  try {
+    SpreadsheetApp.getActive().toast("Respaldando catálogo en memoria...", "🏗️ Reconstructor", 5);
+
+    // 1. RESPALDO EN MEMORIA RAM
+    const lr = maestro.getLastRow();
+    const map = _getMaestroHeaderMap(maestro);
+    const snapMaestro = {};
+
+    if (lr >= MAESTRO_START) {
+      const rawData = maestro.getRange(MAESTRO_START, 1, lr - MAESTRO_START + 1, maestro.getLastColumn()).getValues();
+      const cProd = map["PRODUCTO"] ? map["PRODUCTO"].index : 2;
+      const cCat  = map["CATEGORÍA"] ? map["CATEGORÍA"].index : 1;
+      const cPres = map["PRESENTACION"] ? map["PRESENTACION"].index : 3;
+      const cUni  = map["UNIDAD"] ? map["UNIDAD"].index : 4;
+      const cAct  = map["ACTIVO"] ? map["ACTIVO"].index : 5;
+      const cMinBA = map["MÍN_BA"] ? map["MÍN_BA"].index : 6;
+      const cMaxBA = map["MÁX_BA"] ? map["MÁX_BA"].index : 7;
+      const cMinBM = map["MÍN_BM"] ? map["MÍN_BM"].index : 9;
+      const cMaxBM = map["MÁX_BM"] ? map["MÁX_BM"].index : 10;
+
+      rawData.forEach(row => {
+        const prod = String(row[cProd] || "").trim().toLowerCase();
+        if (prod) {
+          snapMaestro[prod] = {
+            cat: row[cCat] || "",
+            prodOriginal: row[cProd] || "",
+            pres: row[cPres] || "",
+            uni: row[cUni] || "",
+            activo: row[cAct] || "SÍ",
+            minBA: row[cMinBA] !== "" ? row[cMinBA] : 0,
+            maxBA: row[cMaxBA] !== "" ? row[cMaxBA] : 0,
+            minBM: row[cMinBM] !== "" ? row[cMinBM] : 0,
+            maxBM: row[cMaxBM] !== "" ? row[cMaxBM] : 0
+          };
+        }
+      });
+    }
+
+    // 2. LIMPIEZA TOTAL Y RECONSTRUCCIÓN
+    SpreadsheetApp.getActive().toast("Reconstruyendo MAESTRO...", "🏗️ Reconstructor", 5);
+    maestro.clear();
+    maestro.clearConditionalFormatRules();
+    maestro.setHiddenGridlines(false);
+    maestro.setFrozenRows(0);
+    maestro.setFrozenColumns(0);
+
+    _buildMaestro(maestro);
+
+    // 3. RESTAURAR DATOS DESDE MEMORIA
+    const newLr = maestro.getLastRow();
+    if (newLr >= MAESTRO_START) {
+      const newCount = newLr - MAESTRO_START + 1;
+      const newRange = maestro.getRange(MAESTRO_START, 1, newCount, 13);
+      const newData = newRange.getValues();
+
+      for (let i = 0; i < newCount; i++) {
+        const prod = String(newData[i][2] || "").trim().toLowerCase();
+        const snap = snapMaestro[prod];
+        if (snap) {
+          if (snap.cat) newData[i][1] = snap.cat;
+          newData[i][3] = snap.pres;
+          newData[i][4] = snap.uni;
+          newData[i][5] = snap.activo;
+          newData[i][6] = snap.minBA;
+          newData[i][7] = snap.maxBA;
+          newData[i][9] = snap.minBM;
+          newData[i][10] = snap.maxBM;
+        }
+      }
+
+      newRange.setValues(newData);
+    }
+
+    // 4. RESTAURAR VALIDACIONES Y BLINDAJE
+    restaurarValidacionesMaestro();
+    _ordenarYRenumerarTodo();
+    protegerMaestroSeguro();
+
+    const dur = MiseLogger.timeEnd(tId);
+    MiseLogger.info("reconstruirMaestroConRespaldo", "Hoja MAESTRO reconstruida con éxito.", dur);
+    ui.alert("✅ Reconstrucción Exitosa", "La hoja MAESTRO ha sido reconstruida desde cero.\n\nTodos los mínimos, máximos y categorías fueron restaurados con éxito.", ui.ButtonSet.OK);
+
+  } catch(err) {
+    const dur = MiseLogger.timeEnd(tId);
+    MiseLogger.error("reconstruirMaestroConRespaldo", `Error reconstruyendo MAESTRO: ${err.message}`, err, dur);
+    ui.alert("❌ Error en Reconstrucción", err.message, ui.ButtonSet.OK);
+  }
+}
+
+// ── MODAL HTML ASISTIDO: RECONCILIADOR INTELIGENTE (HUMAN-IN-THE-LOOP) ────────
+function abrirReconciliadorInteligenteHTML() {
+  const html = HtmlService.createHtmlOutput(`
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #F8F9FA; color: #2D3748; }
+    .header { margin-bottom: 20px; }
+    h2 { margin: 0 0 6px 0; color: #1A365D; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+    p { margin: 0; font-size: 13px; color: #718096; }
+    .card { background: #FFFFFF; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); padding: 16px; margin-bottom: 14px; border-left: 4px solid #3182CE; }
+    .card-title { font-weight: bold; font-size: 14px; color: #2B6CB0; margin-bottom: 8px; }
+    .card-detail { font-size: 12px; color: #4A5568; margin-bottom: 12px; }
+    .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; background: #EBF8FF; color: #2B6CB0; }
+    .score-badge { float: right; font-size: 12px; font-weight: bold; color: #2F855A; }
+    select { width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #CBD5E0; font-size: 13px; margin-bottom: 10px; }
+    .btn-group { display: flex; gap: 8px; justify-content: flex-end; }
+    button { padding: 7px 14px; border-radius: 6px; border: none; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .btn-primary { background: #3182CE; color: #FFFFFF; }
+    .btn-primary:hover { background: #2B6CB0; }
+    .btn-danger { background: #E2E8F0; color: #4A5568; }
+    .btn-danger:hover { background: #CBD5E0; }
+    .empty-state { text-align: center; padding: 40px 20px; color: #718096; }
+    .loading { text-align: center; padding: 30px; font-size: 14px; color: #4A5568; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>🧠 Reconciliador Inteligente de Insumos</h2>
+    <p>Revisa y resuelve discrepancias de nombres detectadas en Kardex y Cuarentena.</p>
+  </div>
+
+  <div id="content">
+    <div class="loading">🔍 Escaneando insumos y analizando similitudes...</div>
+  </div>
+
+  <script>
+    google.script.run.withSuccessHandler(renderizarCasos).obtenerCasosReconciliacion();
+
+    function renderizarCasos(data) {
+      const container = document.getElementById("content");
+      if (!data || data.length === 0) {
+        container.innerHTML = '<div class="empty-state"><h3>✨ Todo en Orden</h3><p>No hay insumos pendientes de reconciliación en este momento.</p></div>';
+        return;
+      }
+
+      let html = '';
+      data.forEach((item, idx) => {
+        html += \`
+          <div class="card" id="card-\${idx}">
+            <div class="card-title">
+              <span class="badge">\${item.origen}</span> \${item.textoIngresado}
+              <span class="score-badge">\${Math.round(item.score * 100)}% Similitud</span>
+            </div>
+            <div class="card-detail">Valores detectados: <b>\${item.valores}</b></div>
+            <label style="font-size:12px; font-weight:bold; color:#4A5568;">Vincular al producto oficial:</label>
+            <select id="sel-\${idx}">
+              \${item.opciones.map(op => \`<option value="\${op}" \${op === item.candidatoSugerido ? 'selected' : ''}>\${op}</option>\`).join('')}
+            </select>
+            <div class="btn-group">
+              <button class="btn-danger" onclick="ignorarCaso(\${idx}, '\${item.origen}', \${item.filaOriginal})">Mandar a Cuarentena</button>
+              <button class="btn-primary" onclick="vincularCaso(\${idx}, '\${item.textoIngresado}', \${item.filaCuarentena})">Vincular y Aprender</button>
+            </div>
+          </div>
+        \`;
+      });
+      container.innerHTML = html;
+    }
+
+    function vincularCaso(idx, textoIngresado, filaCuarentena) {
+      const sel = document.getElementById('sel-' + idx);
+      const prodOficial = sel.value;
+      document.getElementById('card-' + idx).style.opacity = '0.5';
+      google.script.run.withSuccessHandler(() => {
+        document.getElementById('card-' + idx).remove();
+        if (document.querySelectorAll('.card').length === 0) {
+          document.getElementById('content').innerHTML = '<div class="empty-state"><h3>✅ Reconciliación Completada</h3><p>Todos los insumos fueron vinculados y aprendidos con éxito.</p></div>';
+        }
+      }).aprobarVinculacionAlias(textoIngresado, prodOficial, filaCuarentena);
+    }
+
+    function ignorarCaso(idx, origen, fila) {
+      document.getElementById('card-' + idx).remove();
+      if (document.querySelectorAll('.card').length === 0) {
+        document.getElementById('content').innerHTML = '<div class="empty-state"><h3>✅ Revisión Finalizada</h3></div>';
+      }
+    }
+  </script>
+</body>
+</html>
+  `)
+  .setWidth(650)
+  .setHeight(520)
+  .setTitle("🧠 Reconciliador Inteligente");
+
+  SpreadsheetApp.getUi().showModalDialog(html, "🧠 Reconciliador Inteligente — Suite Mise");
+}
+
+function obtenerCasosReconciliacion() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const qSheet = ss.getSheetByName("⚠️ REVISIÓN_HUÉRFANOS");
+  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  if (!qSheet || !maestro || qSheet.getLastRow() < 2) return [];
+
+  const lr = maestro.getLastRow();
+  const map = _getMaestroHeaderMap(maestro);
+  const cProd = map["PRODUCTO"] ? map["PRODUCTO"].index : 2;
+  const listaOficiales = maestro.getRange(MAESTRO_START, 1, lr - MAESTRO_START + 1, maestro.getLastColumn())
+    .getValues()
+    .map(r => String(r[cProd] || "").trim())
+    .filter(n => n !== "");
+
+  const qData = qSheet.getRange(2, 1, qSheet.getLastRow() - 1, 7).getValues();
+  const aliasDict = (typeof MiseMatchingEngine !== "undefined") ? MiseMatchingEngine.obtenerDiccionarioAlias(ss) : {};
+  const casos = [];
+
+  qData.forEach((row, idx) => {
+    const origen = String(row[1] || "");
+    const fila = row[2];
+    const texto = String(row[3] || "").trim();
+    const vals = String(row[4] || "");
+    const estado = String(row[5] || "");
+
+    if (estado !== "RESUELTO" && texto && texto !== "[Sin Nombre]") {
+      const sTexto = (typeof MiseMatchingEngine !== "undefined") ? MiseMatchingEngine.sanitizarTexto(texto) : texto.toLowerCase();
+      
+      // Si el alias ya está registrado en _DICCIONARIO_ALIAS, marcarlo automáticamente como RESUELTO en Cuarentena y no mostrarlo
+      if (aliasDict[sTexto]) {
+        try {
+          qSheet.getRange(2 + idx, 6).setValue("RESUELTO");
+          qSheet.getRange(2 + idx, 7).setValue(`Vinculado a: ${aliasDict[sTexto]}`);
+        } catch(e) {}
+        return;
+      }
+
+      const matchEval = (typeof MiseMatchingEngine !== "undefined") 
+        ? MiseMatchingEngine.evaluarMatch(texto, listaOficiales, aliasDict)
+        : { score: 0, candidato: listaOficiales[0] };
+
+      casos.push({
+        origen: origen,
+        filaOriginal: fila,
+        filaCuarentena: 2 + idx,
+        textoIngresado: texto,
+        valores: vals,
+        score: matchEval.score,
+        candidatoSugerido: matchEval.match || matchEval.candidato || listaOficiales[0],
+        opciones: listaOficiales
+      });
+    }
+  });
+
+  return casos;
+}
+
+function aprobarVinculacionAlias(textoIngresado, productoOficial, filaCuarentena) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (typeof MiseMatchingEngine !== "undefined") {
+    MiseMatchingEngine.registrarAlias(ss, textoIngresado, productoOficial, 1.0, "MANUAL_HTML");
+  }
+
+  // Actualizar estado en la hoja de Cuarentena
+  if (filaCuarentena) {
+    const qSheet = ss.getSheetByName("⚠️ REVISIÓN_HUÉRFANOS");
+    if (qSheet && filaCuarentena <= qSheet.getLastRow()) {
+      try {
+        qSheet.getRange(filaCuarentena, 6).setValue("RESUELTO");
+        qSheet.getRange(filaCuarentena, 7).setValue(`Vinculado manualmente a: ${productoOficial}`);
+      } catch(e) {}
+    }
+  }
+  return true;
+}
+
+// ── SISTEMA DE BLINDAJE ESTRUCTURAL Y PROTECCIONES (ANTI-MANIPULACIÓN) ────────
 function protegerMaestroSeguro() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const maestro = ss.getSheetByName(SHEET_MAESTRO);
   if (!maestro) return;
   
-  // 1. Remover protecciones anteriores en esta hoja para evitar duplicidades
+  // 1. Remover protecciones anteriores en esta hoja
   const protections = maestro.getProtections(SpreadsheetApp.ProtectionType.SHEET);
   protections.forEach(p => {
     try { p.remove(); } catch(e) {}
   });
   
-  // 2. Crear una nueva protección para toda la hoja
-  const sheetProtection = maestro.protect().setDescription("Protección anti-dummies de MAESTRO");
+  // 2. Crear una nueva protección para toda la hoja MAESTRO
+  const sheetProtection = maestro.protect().setDescription("Protección Blindada de MAESTRO");
+  sheetProtection.setWarningOnly(false);
   
-  // Restringir a que solo el propietario y editores autorizados (incluyendo scripts) puedan modificarla
-  const me = Session.getEffectiveUser().getEmail();
-  sheetProtection.getEditors().forEach(editor => {
-    if (editor.getEmail() !== me) {
-      try { sheetProtection.removeEditor(editor); } catch(e) {}
+  // 2.1. APAGAR edición por dominio/enlace abierto ("Cualquiera con el enlace")
+  try {
+    if (sheetProtection.canDomainEdit()) {
+      sheetProtection.setDomainEdit(false);
     }
-  });
+  } catch(e) {}
+
+  // 2.2. Restringir a que solo el creador/editor efectivo pueda modificarla
+  try {
+    const me = Session.getEffectiveUser();
+    sheetProtection.removeEditors(sheetProtection.getEditors());
+    sheetProtection.addEditor(me);
+  } catch(e) {}
   
-  // 3. Definir rangos excepcionales (Libres de edición para cualquier editor de la hoja)
+  // 3. Desproteger celdas interactivas:
+  // - Checkboxes fila 2: D2 (Desactivar), F2 (Activar), H2 (Eliminar), J2 (Limpiar)
+  // - Checkboxes col 13 (SELECCIONAR)
+  // - Columna 6 / F (Dropdown ACTIVO SÍ/NO)
   const lr = Math.max(maestro.getLastRow(), MAESTRO_START);
   const count = lr - MAESTRO_START + 1;
   const map = _getMaestroHeaderMap(maestro);
+  const cSel = map["SELECCIONAR"] ? map["SELECCIONAR"].col : 13;
+  const cAct = map["ACTIVO"] ? map["ACTIVO"].col : 6;
 
-  const cMinBA = map["MÍN_BA"]      ? map["MÍN_BA"].col      : 7;
-  const cMinBM = map["MÍN_BM"]      ? map["MÍN_BM"].col      : 10;
-  const cSel   = map["SELECCIONAR"] ? map["SELECCIONAR"].col : 13;
-
-  const rangoMinMaxBA = maestro.getRange(MAESTRO_START, cMinBA, count, 2); // MÍN_BA y MÁX_BA
-  const rangoMinMaxBM = maestro.getRange(MAESTRO_START, cMinBM, count, 2); // MÍN_BM y MÁX_BM
-  const rangoSelect   = maestro.getRange(MAESTRO_START, cSel, count, 1);   // SELECCIONAR
-  const checkboxesFila2 = maestro.getRange("D2:J2");                        // Checkboxes de acciones por lote
+  const rangoSelect = maestro.getRange(MAESTRO_START, cSel, count, 1);
+  const rangoActivo = maestro.getRange(MAESTRO_START, cAct, count, 1);
+  const checkboxesFila2 = maestro.getRange("D2:J2");
   
-  sheetProtection.setUnprotectedRanges([rangoMinMaxBA, rangoMinMaxBM, rangoSelect, checkboxesFila2]);
+  sheetProtection.setUnprotectedRanges([rangoSelect, rangoActivo, checkboxesFila2]);
+  MiseLogger.info("protegerMaestroSeguro", "Hoja MAESTRO blindada exitosamente: Checkboxes y selección operativos.");
+}
+
+function protegerKardexSeguro(keyOrSheet) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let kSheet = null;
+  let kardexName = "";
+
+  if (typeof keyOrSheet === "string") {
+    const bConfig = BODEGAS[keyOrSheet];
+    if (bConfig) {
+      kSheet = ss.getSheetByName(bConfig.kardex);
+      kardexName = bConfig.kardex;
+    } else {
+      kSheet = ss.getSheetByName(keyOrSheet);
+      kardexName = keyOrSheet;
+    }
+  } else if (keyOrSheet && typeof keyOrSheet.getName === "function") {
+    kSheet = keyOrSheet;
+    kardexName = kSheet.getName();
+  }
+
+  if (!kSheet) return;
+
+  // 1. Remover protecciones anteriores (tanto de hoja como de rango)
+  const sheetProtections = kSheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
+  sheetProtections.forEach(p => { try { p.remove(); } catch(e) {} });
+
+  const rangeProtections = kSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
+  rangeProtections.forEach(p => { try { p.remove(); } catch(e) {} });
+
+  // 2. Crear protección total de la hoja
+  const sheetProtection = kSheet.protect().setDescription(`Blindaje Total de ${kardexName}`);
+  sheetProtection.setWarningOnly(false);
+
+  // 2.1. APAGAR edición por dominio/enlace abierto ("Cualquiera con el enlace")
+  try {
+    if (sheetProtection.canDomainEdit()) {
+      sheetProtection.setDomainEdit(false);
+    }
+  } catch(e) {}
+
+  // 2.2. Restringir a que solo el creador/editor efectivo pueda modificarla
+  try {
+    const me = Session.getEffectiveUser();
+    sheetProtection.removeEditors(sheetProtection.getEditors());
+    sheetProtection.addEditor(me);
+  } catch(e) {}
+
+  // 3. DESPROTEGER RANGOS INTERACTIVOS OPERATIVOS:
+  // a) Fecha inicial (G4) y Botones/Checkboxes interactivos de fila 4 (N4, Q4, T4, W4)
+  // b) Columnas numéricas de ENT y SAL de Lunes a Domingo (separadas para máxima compatibilidad móvil)
+  // c) Caducidad (Col F) y Lote (Col G) opcionales si se requiere captura
+  const lr = Math.max(kSheet.getLastRow(), KARDEX_START);
+  const count = lr - KARDEX_START + 1;
+  const unprotectedRanges = [];
+
+  // Botones y selectores interactivos en fila 4
+  unprotectedRanges.push(kSheet.getRange("G4")); // Fecha
+  unprotectedRanges.push(kSheet.getRange("N4")); // Avanzar Sem.
+  unprotectedRanges.push(kSheet.getRange("Q4")); // Recrear Vista
+  unprotectedRanges.push(kSheet.getRange("T4")); // Nuevo Prod.
+  unprotectedRanges.push(kSheet.getRange("W4")); // Anular Prod.
+
+  // Caducidad (F) y Lote (G)
+  unprotectedRanges.push(kSheet.getRange(KARDEX_START, 6, count, 2));
+
+  // ENT y SAL de cada día (Cols J-K, M-N, P-Q, S-T, V-W, Y-Z, AB-AC)
+  for (let d = 0; d < KARDEX_DAYS; d++) {
+    const entCol = 10 + d * 3;
+    const salCol = 11 + d * 3;
+    unprotectedRanges.push(kSheet.getRange(KARDEX_START, entCol, count, 1));
+    unprotectedRanges.push(kSheet.getRange(KARDEX_START, salCol, count, 1));
+  }
+
+  sheetProtection.setUnprotectedRanges(unprotectedRanges);
+  MiseLogger.info("protegerKardexSeguro", `${kardexName} blindado: ENT, SAL y Checkboxes fila 4 desprotegidos y 100% operativos.`);
+}
+
+function protegerTodasLasHojasSeguras() {
+  protegerMaestroSeguro();
+  protegerKardexSeguro("BA");
+  protegerKardexSeguro("BM");
+  SpreadsheetApp.getActive().toast("🔒 MAESTRO y KARDEX blindados con éxito ✓", "⚙️ Mise", 4);
 }
 
 function restaurarValidacionesMaestro() {
@@ -4017,189 +4744,11 @@ function registrarMovimientoRapidoKardex(payload) {
 
 // ── ISSUES 7 & 8: DESCUENTO AUTOMÁTICO DE INVENTARIO DESDE LOGS Y SAFEGUARD DE SEMANA ──
 function descontarSurtidoAutomaticoManualmente() {
-  descontarSurtidoAutomatico(false);
+  MiseSmartSync.ejecutarDescuento(false);
 }
 
 function descontarSurtidoAutomatico(silent = true) {
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(15000)) return;
-
-  let totalDescontados = 0;
-  const resumenDesglose = [];
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-  // Sanitizador flexible de insumos (conserva letras unicode/acentos, elimina espacios y sufijos como CDK)
-  const _norm = (str) => {
-    if (!str) return "";
-    return String(str)
-      .toLowerCase()
-      .replace(/\s+/g, "")
-      .replace(/cdk/g, "")
-      .replace(/[()]/g, "")
-      .trim();
-  };
-
-  try {
-    Object.keys(BODEGAS).forEach(key => {
-      const bConfig = BODEGAS[key];
-      const kSheet = ss.getSheetByName(bConfig.kardex);
-      if (!kSheet) return;
-
-      // Buscar la hoja de Log correspondiente a esta bodega específica
-      const posiblesHojas = [
-        `_SYNC_LOG_${key}`,
-        `LOG_SURTIDO_${key}`,
-        `_SYNC_LOG_${key.toLowerCase()}`,
-        "🗒 LOG_SURTIDO"
-      ];
-
-      let logSheet = null;
-      for (const name of posiblesHojas) {
-        const found = ss.getSheetByName(name);
-        if (found && found.getLastRow() >= 2) {
-          logSheet = found;
-          break;
-        }
-      }
-
-      if (!logSheet) {
-        logSheet = ss.getSheets().find(s => (s.getName().includes("LOG_SURTIDO") || s.getName().includes("SYNC_LOG")) && s.getName().includes(key));
-      }
-
-      if (!logSheet || logSheet.getLastRow() < 2) return;
-
-      const logLr = logSheet.getLastRow();
-      const logData = logSheet.getRange(2, 1, logLr - 1, 8).getValues();
-      if (logData.length === 0) return;
-
-      // Filtrar únicamente las filas de la sucursal actual (BA / Andares o BM / Mercado)
-      const filasSucursal = logData.filter(r => {
-        const bName = String(r[1] || "").trim().toLowerCase();
-        return bName.includes(bConfig.nombre.toLowerCase()) || bName.includes(key.toLowerCase());
-      });
-
-      if (filasSucursal.length === 0) return;
-
-      // Auxiliar para formatear fecha a YYYY-MM-DD
-      const _fmtDateKey = (d) => {
-        if (!(d instanceof Date) || isNaN(d)) return "";
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        return `${y}-${m}-${day}`;
-      };
-
-      // Auxiliar para parsear la fecha de cada fila de forma segura en hora local
-      const _parseFecha = (raw) => {
-        if (raw instanceof Date) return raw;
-        if (typeof raw === "string" && raw.includes("-")) {
-          const parts = raw.split("-");
-          return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-        }
-        return new Date();
-      };
-
-      // Determinar la fecha objetivo: Estrictamente la fecha de HOY (en hora local)
-      const fechaObjetivoDate = new Date();
-      const fechaObjetivoStr = _fmtDateKey(fechaObjetivoDate);
-
-      // ISSUE 8: Safeguard de Auto-Avance de Semana (usando la fecha del turno de hoy)
-      const esSemanaValida = _validarOAvanzarSemanaBDG(key, fechaObjetivoDate);
-      if (!esSemanaValida) {
-        _log("descontarSurtidoAutomatico", "REJECTED", `Safeguard activado: Log de ${bConfig.nombre} (${fechaObjetivoStr}) desfasado por >1 semana.`);
-        if (!silent) {
-          SpreadsheetApp.getUi().alert("❌ Desfase de Semana", `No se pudo aplicar el descuento de ${bConfig.nombre}. La fecha del log (${fechaObjetivoStr}) difiere de la semana activa por más de 1 semana.`, SpreadsheetApp.getUi().ButtonSet.OK);
-        }
-        return;
-      }
-
-      // Identificar el día de la semana correspondiente a la fecha de hoy
-      const dayMap = ["DOM", "LUN", "MAR", "MIE", "JUE", "VIE", "SAB"];
-      const targetDayName = dayMap[fechaObjetivoDate.getDay()];
-
-      // Obtener la Fila 5 del Kardex para ubicar dinámicamente la subcolumna SAL del día objetivo
-      const hRow5 = kSheet.getRange(5, 1, 1, kSheet.getLastColumn()).getValues()[0];
-      let salColIdx = -1;
-      for (let colIdx = 0; colIdx < hRow5.length; colIdx++) {
-        const cellText = String(hRow5[colIdx] || "").trim().toUpperCase();
-        if (cellText === targetDayName) {
-          salColIdx = colIdx + 2; // Subcolumna SAL (LUN=col 11, MAR=col 14, MIE=col 17, etc.)
-          break;
-        }
-      }
-
-      if (salColIdx === -1) {
-        const dow = fechaObjetivoDate.getDay() || 7;
-        salColIdx = 11 + (dow - 1) * 3;
-      }
-
-      // Mapear insumos del Kardex por clave normalizada
-      const klr = kSheet.getLastRow();
-      if (klr < KARDEX_START) return;
-      const kCount = klr - KARDEX_START + 1;
-      const kProds = kSheet.getRange(KARDEX_START, 3, kCount, 1).getValues();
-
-      const kRowMap = {};
-      kProds.forEach((r, idx) => {
-        const normKey = _norm(r[0]);
-        if (normKey) kRowMap[normKey] = KARDEX_START + idx;
-      });
-
-      // Sumar acumulativamente ÚNICAMENTE las entregas correspondientes a la fecha del turno objetivo
-      const acumuladoPorProducto = {};
-      filasSucursal.forEach(lRow => {
-        const rowDate = _parseFecha(lRow[0]);
-        const rowDateStr = _fmtDateKey(rowDate);
-
-        // Filtrar estrictamente solo las filas de la fecha activa
-        if (rowDateStr !== fechaObjetivoStr) return;
-
-        const normKey = _norm(lRow[2]);
-        let rawCant = lRow[5];
-        if (typeof rawCant === "string") rawCant = rawCant.replace(',', '.').trim();
-        const cantRec = parseFloat(rawCant) || 0;
-        const estado = String(lRow[6] || "").trim().toUpperCase();
-
-        if (normKey && kRowMap[normKey] && (estado.includes("COMPLETO") || estado.includes("PARCIAL") || cantRec > 0)) {
-          acumuladoPorProducto[normKey] = (acumuladoPorProducto[normKey] || 0) + cantRec;
-        }
-      });
-
-      // Escribir en el Kardex y generar el desglose
-      const listaDesgloseSucursal = [];
-      Object.keys(acumuladoPorProducto).forEach(normKey => {
-        const targetRow = kRowMap[normKey];
-        const cantTotal = acumuladoPorProducto[normKey];
-        kSheet.getRange(targetRow, salColIdx).setValue(cantTotal === 0 ? "" : cantTotal);
-
-        // Obtener el nombre bonito del producto directo de la columna C del Kardex
-        const nombreProductoOriginal = kSheet.getRange(targetRow, 3).getValue();
-        listaDesgloseSucursal.push(`  • [${targetDayName}] ${nombreProductoOriginal}: ${cantTotal}`);
-        totalDescontados++;
-      });
-
-      if (listaDesgloseSucursal.length > 0) {
-        resumenDesglose.push(`📍 ${bConfig.nombre.toUpperCase()}:\n` + listaDesgloseSucursal.join("\n"));
-      }
-    });
-
-    SpreadsheetApp.flush();
-
-    if (!silent) {
-      SpreadsheetApp.getActive().toast("🚚 Descuento automático aplicado con éxito ✓", "⚙️ Mise", 4);
-      
-      let msgFinal = `Se actualizaron ${totalDescontados} insumos en total.\n\n`;
-      if (resumenDesglose.length > 0) {
-        msgFinal += resumenDesglose.join("\n\n");
-      } else {
-        msgFinal += "No se encontraron insumos entregados pendientes de descontar.";
-      }
-
-      SpreadsheetApp.getUi().alert("🚚 Descuento Completo de Inventario", msgFinal, SpreadsheetApp.getUi().ButtonSet.OK);
-    }
-  } finally {
-    lock.releaseLock();
-  }
+  MiseSmartSync.ejecutarDescuento(silent);
 }
 
 /**
@@ -4285,33 +4834,144 @@ function _asegurarHojasSyncLogBDG() {
 }
 
 /**
- * Instala el activador automático por tiempo para ejecutar el descuento de surtido en Kardex
- * todos los días entre 01:00 y 02:00 AM (después del reseteo de tiendas a medianoche).
+ * ════════════════════════════════════════════════════════════════════════════
+ * 🛡️ MOTOR AUTÓNOMO DE MANTENIMIENTO Y AUTO-AVANCE SEMANAL (DOMINGOS 11:00 PM)
+ * ════════════════════════════════════════════════════════════════════════════
+ * Ejecuta desatendidamente cada Domingo a las 23:00 hrs:
+ * 1. Purga estricta de filas huérfanas o corruptas metidas por fuerza bruta en MAESTRO/KARDEX.
+ * 2. Regeneración atómica de fórmulas de saldos (SLD) y Stock para erradicar errores #N/A.
+ * 3. Auto-avance semanal de Kardex a la nueva semana sin requerir evento onOpen.
+ * 4. Reconstrucción de VISTAS_MOVILES y re-aplicación del blindaje total de celdas.
+ */
+function ejecutarMantenimientoSemanalBDG() {
+  const tId = "ejecutarMantenimientoSemanalBDG_" + Date.now();
+  MiseLogger.time(tId);
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(45000)) {
+    MiseLogger.warn("ejecutarMantenimientoSemanalBDG", "Bodega ocupada por otro proceso. Se reintentará.");
+    return;
+  }
+
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const maestro = ss.getSheetByName(SHEET_MAESTRO);
+    if (!maestro) throw new Error("No se encontró la hoja MAESTRO.");
+
+    let purgasCount = 0;
+    const lrM = maestro.getLastRow();
+
+    // ── FASE 1: PURGA DE FILAS CORRUPTAS / METIDAS A LA FUERZA ────────────────
+    if (lrM >= MAESTRO_START) {
+      const count = lrM - MAESTRO_START + 1;
+      const map = _getMaestroHeaderMap(maestro);
+      const cNo = map["NO"] ? map["NO"].index : 0;
+      const cCat = map["CATEGORÍA"] ? map["CATEGORÍA"].index : 1;
+      const cProd = map["PRODUCTO"] ? map["PRODUCTO"].index : 2;
+
+      const mData = maestro.getRange(MAESTRO_START, 1, count, maestro.getLastColumn()).getValues();
+      const filasValidas = [];
+      const nombresPurgados = [];
+
+      for (let i = 0; i < count; i++) {
+        const row = mData[i];
+        const numVal = row[cNo];
+        const catVal = String(row[cCat] || "").trim();
+        const prodVal = String(row[cProd] || "").trim();
+
+        // Criterio de Fila Válida: Debe tener Nombre, Categoría y Número válido
+        const esValida = prodVal !== "" && catVal !== "" && !isNaN(parseInt(numVal, 10));
+
+        if (esValida) {
+          filasValidas.push(row);
+        } else if (prodVal !== "" || catVal !== "") {
+          purgasCount++;
+          nombresPurgados.push(prodVal || `Fila ${MAESTRO_START + i}`);
+        }
+      }
+
+      if (purgasCount > 0) {
+        MiseLogger.warn("ejecutarMantenimientoSemanalBDG", `Purga: Se eliminaron ${purgasCount} filas corruptas/fuerza bruta: [${nombresPurgados.join(", ")}]`);
+      }
+    }
+
+    // ── FASE 2: RE-ORDENAMIENTO, RENUMERACIÓN Y SANEAMIENTO DE FÓRMULAS ───────
+    _ordenarYRenumerarTodo();
+    restaurarValidacionesMaestro();
+
+    // ── FASE 3: AUTO-AVANCE AUTÓNOMO DE SEMANA (ÚNICAMENTE SI ES DOMINGO O FORZADO) ─
+    const hoy = new Date();
+    const esDomingo = hoy.getDay() === 0; // 0 = Domingo
+    let semanasAvanzadas = 0;
+
+    if (esDomingo) {
+      const proximoLunes = new Date(hoy);
+      proximoLunes.setDate(hoy.getDate() + 1);
+      proximoLunes.setHours(0, 0, 0, 0);
+
+      Object.keys(BODEGAS).forEach(key => {
+        const bSheet = ss.getSheetByName(BODEGAS[key].kardex);
+        if (bSheet) {
+          const d4 = bSheet.getRange("G4").getValue();
+          _ejecutarAvanzarSemanaSilencioso(key, bSheet, d4);
+          semanasAvanzadas++;
+        }
+      });
+    }
+
+    // ── FASE 4: RECONSTRUCCIÓN DE VISTAS Y RE-APLICACIÓN DE BLINDAJE ──────────
+    _buildVista("BA");
+    _buildVista("BM");
+    protegerTodasLasHojasSeguras();
+
+    const dur = MiseLogger.timeEnd(tId);
+    MiseLogger.info("ejecutarMantenimientoSemanalBDG", `Mantenimiento Semanal Exitoso: ${purgasCount} filas purgadas, ${semanasAvanzadas} bodegas avanzadas, fórmulas saneadas y blindaje activo.`, dur);
+
+  } catch(err) {
+    const dur = MiseLogger.timeEnd(tId);
+    MiseLogger.error("ejecutarMantenimientoSemanalBDG", `Error en mantenimiento semanal: ${err.message}`, err, dur);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Instala los activadores automáticos por tiempo:
+ * 1. Descuento diario nocturno de inventario (01:00 AM)
+ * 2. Mantenimiento, purga y avance semanal de catálogo (Domingos 11:00 PM)
  */
 function instalarActivadoresNocturnosBDG() {
-  const funcionTarget = "descontarSurtidoAutomatico";
   const triggers = ScriptApp.getProjectTriggers();
   let countBorrados = 0;
 
   // Eliminar activadores previos para evitar duplicados
   triggers.forEach(t => {
-    if (t.getHandlerFunction() === funcionTarget || t.getHandlerFunction() === "descontarSurtidoAutomaticoManualmente") {
+    const h = t.getHandlerFunction();
+    if (h === "descontarSurtidoAutomatico" || h === "descontarSurtidoAutomaticoManualmente" || h === "ejecutarMantenimientoSemanalBDG") {
       ScriptApp.deleteTrigger(t);
       countBorrados++;
     }
   });
 
-  // Crear nuevo trigger programado a la 01:00 AM
-  ScriptApp.newTrigger(funcionTarget)
+  // 1. Trigger Diario de Descuento (01:00 AM)
+  ScriptApp.newTrigger("descontarSurtidoAutomatico")
     .timeBased()
     .everyDays(1)
     .atHour(1)
     .create();
 
-  _log("instalarActivadoresNocturnosBDG", `Activador nocturno de descuento instalado (01:00 AM). Se eliminaron ${countBorrados} activadores viejos.`);
+  // 2. Trigger Semanal de Mantenimiento y Avance de Semana (Domingos 11:00 PM / 23:00 hrs)
+  ScriptApp.newTrigger("ejecutarMantenimientoSemanalBDG")
+    .timeBased()
+    .everyWeeks(1)
+    .onWeekDay(ScriptApp.WeekDay.SUNDAY)
+    .atHour(23)
+    .create();
+
+  MiseLogger.info("instalarActivadoresNocturnosBDG", `Activadores automáticos configurados: Descuento diario (01:00 AM) y Mantenimiento/Avance semanal (Domingos 11:00 PM). Se renovaron ${countBorrados} activadores previos.`);
   SpreadsheetApp.getUi().alert(
-    "⏰ Activador Automático Configurado",
-    `Se ha programado el descuento automático de inventario para ejecutarse todos los días entre 01:00 y 02:00 AM.\n\nEsto asegura que procese la información recién archivada por las tiendas a medianoche.`,
+    "⏰ Activadores Automáticos Configurados",
+    `Se han programado con éxito los siguientes procesos autónomos desatendidos:\n\n1. 🚚 Descuento diario de inventario: Todos los días (01:00 AM).\n2. 🛡️ Mantenimiento, purga y auto-avance de semana: Todos los Domingos (11:00 PM).\n\nEl sistema operará en segundo plano sin requerir que nadie abra la hoja.`,
     SpreadsheetApp.getUi().ButtonSet.OK
   );
 }
