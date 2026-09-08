@@ -1,14 +1,20 @@
 {
-  "name": "mise-work",
+  "name": "mise",
   "version": "1.8.0",
-  "description": "Suite de automatización y telemetría de tiendas y bodegas para La Crêpe Parisienne",
+  "description": "Enterprise Inventory & Supply Chain Engine for Retail and Hospitality",
   "main": "tests/run_all.js",
   "type": "commonjs",
   "scripts": {
     "test": "node tests/run_all.js",
     "check:syntax": "node tests/check_syntax.js"
   },
-  "keywords": ["google-apps-script", "inventory", "telemetry", "suite-atelier"],
+  "keywords": [
+    "google-apps-script",
+    "inventory",
+    "telemetry",
+    "supply-chain",
+    "logistics"
+  ],
   "author": "Ibrahim García <ultima.ibrahim@proton.me>",
   "license": "UNLICENSED"
 }
