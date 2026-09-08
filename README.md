@@ -6,6 +6,7 @@
 [![Management](https://img.shields.io/badge/managed%20with-Google%20Clasp-34A853.svg?style=flat-square)](https://github.com/google/clasp)
 [![Tests](https://img.shields.io/badge/tests-100%25%20passing%20%28Node%20V8%20VM%29-388E3C.svg?style=flat-square)](tests/)
 [![Architecture](https://img.shields.io/badge/architecture-Multi--Worker%20Concurrent%20%7C%20Hub--and--Spoke-5C6BC0.svg?style=flat-square)](#-arquitectura-del-sistema)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg?style=flat-square)](LICENSE)
 
 ---
 
@@ -89,6 +90,10 @@ La suite incluye una batería de pruebas unitarias que simulan el entorno Google
 ```bash
 node tests/run_all.js
 ```
+
+## 📄 Licencia
+
+Este proyecto está distribuido bajo los términos de la licencia **GNU Affero General Public License v3.0 (GNU AGPLv3)**. Consulta el archivo [LICENSE](LICENSE) para más detalles.
 
 ---
 
