@@ -1,11 +1,46 @@
-# 📦 Changelog Público y Operativo — Suite MISE
-**La Crêpe Parisienne · Grupo MYT**
+# 🌟 Changelog Público y Operativo — MISE Platform
+**La Crêpe Parisienne · Grupo MYT**  
+**Arquitecto de Producto**: Ibrahim García (`ultimaibrahim`)
 
-Este documento contiene el historial de actualizaciones de Suite MISE redactado en **lenguaje operativo y de beneficio directo para tiendas y gerencias**, libre de jerga técnica.
+Este documento contiene el historial de actualizaciones y mejoras de la plataforma **MISE**, redactado en **lenguaje ejecutivo y de beneficio operativo**, libre de tecnicismos.
 
 ---
 
-## Versión 1.8.0 Altair - Blindaje de Seguridad Integral, Motor Matemático de Alias & Reconstrucción Resiliente (Agosto 2026) [ACTUAL]
+## Versión 2.0.0-alpha Atlas — El Salto a MISE 2.0: Pedidos en 3 Toques, Despacho Consolidado y Recepción Ciega (Septiembre 2026) [PREVIEW OPERATIVO]
+
+* 📱 **Pedidos en 3 Toques desde el Teléfono Móvil**:  
+  Nueva interfaz ultrarrápida diseñada específicamente para los encargados de tienda en Andares y Mercado. Ahora pueden seleccionar insumos mediante tarjetas táctiles de alta definición, filtrar por categorías (Abarrotes, Lácteos, Perecederos) y ajustar cantidades con botones más y menos en segundos, sin pelearse con cuadrículas pequeñas ni teclados incómodos.
+* 📦 **Floating Dock (Totalizador en Tiempo Real)**:  
+  Barra flotante inferior que resume al instante cuántos insumos se están pidiendo y permite enviar el pedido diario a Bodega Central con un solo toque.
+* 🚚 **Recepción a Ciegas (*Blind Receiving* - Cero Fraude y Cero Errores)**:  
+  Al llegar la camioneta de reparto a la sucursal, el personal cuenta físicamente los insumos recibidos sin ver la cantidad que se había pedido. Con dos botones claros (`✅ Llegó Completo` o `❌ Inexistente`), se garantiza que nadie firme de recibido por inercia o sin verificar el producto físico.
+* 🏭 **Matriz de Despacho Consolidado para Bodega Central**:  
+  El equipo de almacén ya no tiene que alternar entre dos pantallas diferentes para preparar pedidos. La nueva matriz consolida los pedidos de Andares y Mercado en una sola tabla de recolección: muestra lo que requiere cada tienda y calcula el lote total combinado para que el bodeguero baje el producto de los anaqueles en un único recorrido.
+* 🔒 **Libro Mayor Inmutable (Cero Pérdida de Información)**:  
+  Cada movimiento, entrega y salida queda registrado con un folio digital único e inalterable, garantizando que los datos históricos jamás se sobreescriban ni se borren por error humano.
+* 🔄 **Conexión Transparente con Hojas de Cálculo (Sheets Mirror)**:  
+  La nueva aplicación web convive pacíficamente con los archivos de Google Sheets actuales, actualizando la información de ida y vuelta en milisegundos para que la transición operativa sea completamente fluida y sin fricción.
+
+---
+
+## Versión 1.9.0 Altair — Fluidez Móvil Inmediata, Blindaje Nocturno y Cero Congelamientos (Septiembre 2026) [ACTUAL EN PRODUCCIÓN GAS]
+
+* ⚡ **Eliminación Total del Congelamiento en Celulares (Andares y Mercado)**:  
+  Se reestructuró por completo el motor de colores e indicadores visuales de la hoja `📋 PEDIDO DIARIO`. Se eliminaron cientos de cálculos ocultos que sobrecargaban la aplicación de Google Sheets en iPhone y Android. Ahora, al tocar una celda o escribir una cantidad, la pantalla responde al instante y sin retrasos.
+* ⏰ **Corte Nocturno Seguro a las 23:00 hrs**:  
+  Los procesos automáticos de fin de día se movieron de la madrugada (00:00 / 01:00 AM) a las **23:00 hrs del mismo día**. Esto asegura que las salidas y pedidos de las tiendas queden formalmente descontados antes de la medianoche, impidiendo que los pedidos del día se borren misteriosamente al cambiar la fecha.
+* 🛠️ **Botón de Reconciliación Inmediata de Salidas en Bodega General**:  
+  Se incorporó una nueva herramienta en el menú de Bodega:  
+  👉 **`⚙️ Mise ➔ 🧪 Automatizaciones Autónomas ➔ ⚡ Reconciliar directamente salidas del Lunes 07 de Septiembre`**.  
+  Permite al responsable de bodega recuperar con un solo clic los 49 insumos de Andares y 2 de Mercado del lunes 07 de septiembre, asegurando que la Semana 37 quede perfectamente cuadrada y cuadrada con el inventario físico.
+* 📊 **Cálculo Instantáneo de Faltantes y Diferencias**:  
+  La columna de Diferencia ahora compara directamente lo recibido contra lo pedido sin demoras ni errores `#REF!`, permitiendo a gerencia identificar faltantes en cuanto llega el camión.
+* 🛡️ **Blindaje de Plantillas de Recuperación**:  
+  Se eliminaron errores al generar reportes semanales con celdas combinadas, asegurando reportes limpios y listos para revisión directiva.
+
+---
+
+## Versión 1.8.0 Altair - Blindaje de Seguridad Integral, Motor Matemático de Alias & Reconstrucción Resiliente (Agosto 2026)
 * 🔒 **Blindaje de Seguridad Integral y Bloqueo Anti-Manipulación**:
   * **Bodega General**: Las hojas `MAESTRO`, `KARDEX_BA` y `KARDEX_BM` quedan 100% blindadas contra modificaciones accidentales, alteraciones de nombres o borrado de fórmulas de inventario (`SLD`). Los encargados pueden interactuar fluidamente con los checkboxes y capturar en Entrada (`ENT`) y Salida (`SAL`).
   * **Tiendas Andares & Mercado (`PDA` / `PDM`)**:
@@ -116,14 +151,6 @@ Este documento contiene el historial de actualizaciones de Suite MISE redactado 
 
 ---
 
-## Versión 1.6.2 Altair - Auto-Avance Semanal y Captura Rápida en PC (Agosto 2026)
-* ⚡ **Registro Rápido de Inventario en PC**: Nueva ventana emergente interactiva para buscar productos rápidamente por sus primeras letras (ej. "nut...") e ingresar entradas y salidas del día con un solo Enter, evitando hacer scroll manual por la lista de bodega.
-* 📅 **Avance Semanal Automático**: Al iniciar un nuevo período el Lunes por la mañana, el sistema traslada automáticamente los saldos finales de domingo a iniciales, respalda el historial de movimientos y prepara la semana sin solicitar fechas o datos manuales.
-* 🟢 **Indicador Visual de Estado Semanal**: Badge informativo en la parte superior del inventario que confirma el estado de la semana (`SEMANA ACTUALIZADA` vs `PENDIENTE DE CIERRE`).
-* ⚡ **Sincronización en 1 Clic**: Nueva función consolidada en el menú principal para actualizar la fecha activa en ambas bodegas (Andares y Mercado) simultáneamente con un solo clic.
-
----
-
 ## Versión 1.6.1 Altair - Rendimiento y Optimización Mobile-First (Agosto 2026)
 * 🚀 **Captura de Pedidos Más Rápida**: Se eliminaron procesos secundarios al tipear, logrando una experiencia más fluida en dispositivos móviles.
 * 🔄 **Reconexión Automática Transparente**: El sistema detecta y repara automáticamente cualquier interrupción de enlace entre Tienda y Bodega en segundo plano, sin mostrar mensajes ni interrumpir tu trabajo.
@@ -153,3 +180,4 @@ Este documento contiene el historial de actualizaciones de Suite MISE redactado 
 ## Versión 1.3.0 - Versión 1.3.7 Altair - Optimización de Velocidad y Datos (Agosto 2026)
 * ⚡ **Velocidad y Respuesta**: Procesamiento optimizado de pedidos masivos en bloque para evitar demoras al abrir y guardar archivos de tienda.
 * 🔒 **Seguridad y Respaldo de Información**: Protección de celdas con fórmulas clave y respaldo automático de cantidades ante reconstrucciones de hoja.
+

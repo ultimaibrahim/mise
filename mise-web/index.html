@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MISE 2.0 · La Crêpe Parisienne</title>
+  <link rel="stylesheet" href="src/styles.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0C130F">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%233D5A47'/><text y='65' x='50' text-anchor='middle' font-size='50' fill='%23F5EFE6' font-family='sans-serif' font-weight='bold'>M</text></svg>">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <!-- Header Bar -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-badge">
+        <div class="brand-logo-squircle">M</div>
+        <div>
+          <h1 style="font-size: 1.05rem; font-weight: 700; line-height: 1.1;">MISE <span style="font-size: 0.75rem; color: var(--brand-accent); font-weight: 500;">2.0</span></h1>
+          <p style="font-size: 0.7rem; color: var(--brand-sand-dim); letter-spacing: 0.02em;">LA CRÊPE PARISIENNE · GDL</p>
+        </div>
+      </div>
+
+      <!-- Main Navigation Tabs -->
+      <nav class="mode-pills-container">
+        <button id="nav-tienda" class="mode-pill active" onclick="switchView('tienda')">
+          <i data-lucide="smartphone" style="width: 15px; height: 15px;"></i>
+          <span>Tienda Móvil</span>
+        </button>
+        <button id="nav-bodega" class="mode-pill" onclick="switchView('bodega')">
+          <i data-lucide="warehouse" style="width: 15px; height: 15px;"></i>
+          <span>Bodega Central</span>
+        </button>
+        <button id="nav-ledger" class="mode-pill" onclick="switchView('ledger')">
+          <i data-lucide="shield-check" style="width: 15px; height: 15px;"></i>
+          <span>Ledger FIFO</span>
+        </button>
+      </nav>
+
+      <!-- Branch Quick Toggle & Sheets Live Status -->
+      <div style="display: flex; align-items: center; gap: 0.6rem;">
+        <button id="branch-toggle-btn" class="branch-toggle-btn" onclick="toggleBranch()">
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: #4CAF50; display: inline-block;"></span>
+          <span id="active-branch-label">Andares (PDA)</span>
+          <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
+        </button>
+        <div title="Sincronización Bidireccional Activa con Google Sheets" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; color: var(--brand-accent); background: rgba(122, 158, 138, 0.12); padding: 0.35rem 0.6rem; border-radius: var(--radius-xs); border: 1px solid rgba(122, 158, 138, 0.25);">
+          <i data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i>
+          <span>Sheets Mirror</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Viewport -->
+  <main class="main-layout">
+    
+    <!-- ========================================================================= -->
+    <!-- VIEW 1: TIENDA MÓVIL (PEDIDO DIARIO Y RECEPCIÓN RÁPIDA)                  -->
+    <!-- ========================================================================= -->
+    <section id="view-tienda" class="view-panel">
+      <!-- Sub-mode Selector: Pedido vs Recepción a Ciegas -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+        <div style="display: flex; gap: 0.5rem; background: rgba(255, 255, 255, 0.03); padding: 3px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+          <button id="tab-sub-order" class="mode-pill active" onclick="switchStoreTab('order')">
+            <i data-lucide="shopping-cart" style="width: 14px; height: 14px;"></i>
+            <span>1. Realizar Pedido</span>
+          </button>
+          <button id="tab-sub-receive" class="mode-pill" onclick="switchStoreTab('receive')">
+            <i data-lucide="truck" style="width: 14px; height: 14px;"></i>
+            <span>2. Recepción Física (Ciega)</span>
+          </button>
+        </div>
+
+        <div style="font-size: 0.8rem; color: var(--brand-sand-dim); display: flex; align-items: center; gap: 0.5rem;">
+          <span style="color: var(--brand-accent); font-weight: 600;">Semana 37</span> · Domingo 13 Septiembre
+        </div>
+      </div>
+
+      <!-- Controls: Search & Category Chips -->
+      <div class="bento-card" style="padding: 0.85rem 1rem; margin-bottom: 1rem;">
+        <div class="search-input-wrapper">
+          <i data-lucide="search" class="search-icon" style="width: 16px; height: 16px;"></i>
+          <input type="text" id="store-search-input" class="search-input" placeholder="Buscar por producto (ej: Harina, Nutella, Vainilla, Mantequilla)..." oninput="filterStoreProducts()">
+        </div>
+        
+        <div class="category-chips-bar" id="category-chips-container">
+          <!-- Populated by app.js -->
+        </div>
+      </div>
+
+      <!-- Order Sub-View -->
+      <div id="subview-order">
+        <div class="product-grid" id="product-grid-container">
+          <!-- Populated by app.js -->
+        </div>
+      </div>
+
+      <!-- Receive Sub-View (Blind Receiving) -->
+      <div id="subview-receive" style="display: none;">
+        <div class="bento-card" style="margin-bottom: 1rem; border-left: 4px solid var(--brand-accent);">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="background: rgba(122, 158, 138, 0.15); padding: 0.6rem; border-radius: var(--radius-sm); color: var(--brand-accent);">
+              <i data-lucide="eye-off" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size: 0.95rem; font-weight: 600;">Recepción a Ciegas (Restaurant365 Standard)</h3>
+              <p style="font-size: 0.775rem; color: var(--brand-sand-dim);">Cuenta físicamente lo que llegó del repartidor de Bodega. No se muestra el pedido teórico para evitar sesgos.</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="receive-cards-container" class="product-grid">
+          <!-- Populated by app.js -->
+        </div>
+      </div>
+
+      <!-- Floating Dock for Order Submission -->
+      <div class="floating-dock" id="order-dock">
+        <div>
+          <p class="dock-stats-title">Insumos Solicitados</p>
+          <div style="display: flex; align-items: baseline; gap: 0.4rem;">
+            <span class="dock-stats-count" id="dock-item-count">0</span>
+            <span style="font-size: 0.8rem; color: var(--brand-sand-dim);">artículos seleccionados</span>
+          </div>
+        </div>
+        <button class="btn-primary-squircle" onclick="submitStoreOrder()">
+          <span>Enviar Pedido a Bodega</span>
+          <i data-lucide="send" style="width: 16px; height: 16px;"></i>
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- VIEW 2: BODEGA CENTRAL (COMMISSARY MATRIX DISPATCH)                      -->
+    <!-- ========================================================================= -->
+    <section id="view-bodega" class="view-panel" style="display: none;">
+      <div class="bento-card" style="margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 style="font-size: 1.35rem; font-weight: 700;">Matriz de Surtido Central (Central Kitchen)</h2>
+            <p style="font-size: 0.825rem; color: var(--brand-sand-dim); margin-top: 0.2rem;">Consolidación de pedidos para ruta única de recolección en estantería.</p>
+          </div>
+          <div style="display: flex; gap: 0.6rem;">
+            <button class="btn-primary-squircle" onclick="confirmCommissaryDispatch()">
+              <i data-lucide="package-check" style="width: 16px; height: 16px;"></i>
+              <span>Confirmar Despacho a Tiendas</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bento-card" style="overflow-x: auto; padding: 0.5rem 0.75rem;">
+        <table class="matrix-table">
+          <thead>
+            <tr>
+              <th>Insumo / Categoría</th>
+              <th style="text-align: center;">Unidad</th>
+              <th style="text-align: center; color: #81C784;">Andares (PDA)</th>
+              <th style="text-align: center; color: #64B5F6;">Mercado (PDM)</th>
+              <th style="text-align: center; color: #FFD54F; font-weight: 800;">Total a Surtir</th>
+              <th style="text-align: center;">Estado Despacho</th>
+            </tr>
+          </thead>
+          <tbody id="commissary-matrix-tbody">
+            <!-- Populated by app.js -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- VIEW 3: LEDGER FIFO & TRANSACCIONES (RESTAURANT365)                      -->
+    <!-- ========================================================================= -->
+    <section id="view-ledger" class="view-panel" style="display: none;">
+      <div class="bento-card" style="margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 style="font-size: 1.35rem; font-weight: 700;">Ledger Transaccional Inmutable</h2>
+            <p style="font-size: 0.825rem; color: var(--brand-sand-dim); margin-top: 0.2rem;">Libro mayor de auditoría criptográfica con idempotencia y registro por lote.</p>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="branch-toggle-btn" onclick="renderLedger()">
+              <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+              <span>Refrescar Transacciones</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bento-card" style="overflow-x: auto; padding: 0.5rem 0.75rem;">
+        <table class="matrix-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Sucursal</th>
+              <th>Insumo</th>
+              <th>Tipo de Transacción</th>
+              <th style="text-align: right;">Movimiento</th>
+              <th>Hash Idempotencia</th>
+            </tr>
+          </thead>
+          <tbody id="ledger-tbody">
+            <!-- Populated by app.js -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="src/app.js"></script>
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

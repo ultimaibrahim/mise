@@ -1,32 +1,4 @@
-# System files
+node_modules/
 .DS_Store
-Thumbs.db
-
-# Caches
-.cache/
-.sass-cache/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Workspace files
-.idea/
-.vscode/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-
-# Product Presentation Deck (Ignored by User Request)
-presentacion_deck/
-
-# Agent Rulesets & Internal IA Documents (Stored in ibrahim-agent-core)
-AGENTS.md
-DESIGN.md
-PRODUCT.md
-
-# Legacy Scripts & Local Test Files
-.oldScripts/
-productos_pedidos.csv
-.env
-.env.local
+.clasp.json
+.clasprc.json

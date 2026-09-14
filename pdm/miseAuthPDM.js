@@ -1,14 +1,14 @@
 /**
- * MISE — Pedidos Andares Script v1.5.0 Altair (Quiosco de Picking & Categorías Dinámicas)
+ * MISE — Pedidos Mercado Script v1.9.0 Altair (Optimización Sheets Turbo, Matriz 2D & Cero Lag Móvil)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
- * INSTALAR EN: Pedidos Andares (Google Sheets de B-Andares)
+ * INSTALAR EN: Pedidos Mercado (Google Sheets de B-Mercado)
  */
 
 // ── BODEGA & CONFIGURACIÓN DINÁMICA DE ENTORNO ──────────────────────────────
 const props = PropertiesService.getScriptProperties();
-const BODEGA_KEY    = props.getProperty("BODEGA_KEY") || "BA";
-const BODEGA_NOMBRE = props.getProperty("BODEGA_NOMBRE") || "Andares";
+const BODEGA_KEY    = props.getProperty("BODEGA_KEY") || "BM";
+const BODEGA_NOMBRE = props.getProperty("BODEGA_NOMBRE") || "Mercado";
 const VISTA_MOVIL   = `VISTA_MOVIL_${BODEGA_KEY}`;
 const SHEET_SYNC    = `_SYNC_${BODEGA_KEY}`;
 
@@ -67,7 +67,7 @@ function onOpen() {
       .addItem("⚠️ Restablecer sistema (Destructivo)",     "setupCompleto")
       .addSeparator()
       .addSubMenu(ui.createMenu("🧪 Herramientas Experimentales")
-        .addItem("⏰ Activar reseteo automático de medianoche (00:00 AM)", "instalarActivadoresMedianochePDA")
+        .addItem("⏰ Activar reseteo automático de medianoche (00:00 AM)", "instalarActivadoresMedianochePDM")
         .addItem("🎲 Generar datos de prueba",             "generarDatosPrueba")
         .addItem("🗒️ Forzar registro en LOG_SURTIDO",     "probadorForzarLogSurtido")
         .addItem("🗑️ Simular Cierre de Día (Reset + Log)", "resetearPedidoManualmente"))
@@ -130,8 +130,7 @@ function _actualizarAvisoPedido() {
     return;
   }
 
-  const colA = [], colC = [], colD = [], colE = [], colG = [], colH = [], colI = [], colJ = [];
-  const colB = [];
+  const outputGrid = [];
   const bgs = [];
   
   for (let i = 0; i < count; i++) {
@@ -139,15 +138,19 @@ function _actualizarAvisoPedido() {
     const sr = 4 + i;
     const bg = i % 2 === 0 ? COLORS.neutral_a : COLORS.neutral_b;
 
-    colA.push([i + 1]);
-    colB.push(['=' + sRef + '!B' + sr]);
-    colC.push(['=' + sRef + '!C' + sr]);
-    colD.push(['=' + sRef + '!D' + sr]);
-    colE.push(['=IFERROR(' + sRef + '!E' + sr + '*1, 0) & IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "", IF(' + sRef + '!E' + sr + '<' + sRef + '!J' + sr + ', " (-" & (' + sRef + '!J' + sr + '-' + sRef + '!E' + sr + ') & ")", IF(' + sRef + '!E' + sr + '>' + sRef + '!K' + sr + ', " (+" & (' + sRef + '!E' + sr + '-' + sRef + '!K' + sr + ') & ")", " (-)")))']);
-    colG.push(['=IF(F' + r + '="", "", IFERROR(VLOOKUP(C' + r + ', \'🚚 SURTIDO RÁPIDO\'!C:E, 3, FALSE), 0) - F' + r + ')']);
-    colH.push([""]);
-    colI.push([""]);
-    colJ.push([""]);
+    outputGrid.push([
+      i + 1,                                        // Col A (No)
+      '=' + sRef + '!B' + sr,                       // Col B (CATEGORÍA)
+      '=' + sRef + '!C' + sr,                       // Col C (PRODUCTO)
+      '=' + sRef + '!D' + sr,                       // Col D (UNIDAD)
+      '=IFERROR(' + sRef + '!E' + sr + '*1, 0) & IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "", IF(' + sRef + '!E' + sr + '<' + sRef + '!J' + sr + ', " (-" & (' + sRef + '!J' + sr + '-' + sRef + '!E' + sr + ') & ")", IF(' + sRef + '!E' + sr + '>' + sRef + '!K' + sr + ', " (+" & (' + sRef + '!E' + sr + '-' + sRef + '!K' + sr + ') & ")", " (-)")))', // Col E
+      "",                                           // Col F (CANT. A PEDIR)
+      '=IF(OR(F' + r + '="", H' + r + '=""), "", H' + r + ' - F' + r + ')', // Col G (DIFERENCIA)
+      "",                                           // Col H (RECIBIDA)
+      "",                                           // Col I (ESTADO)
+      "",                                           // Col J (ADICIÓN)
+      '=IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "—", ' + sRef + '!J' + sr + ' & "  |  " & ' + sRef + '!K' + sr + ')' // Col K (MÍN | MÁX QUIOSCO)
+    ]);
 
     const rowBg = Array(NUM_COLS).fill(bg);
     rowBg[COL_CANT_PEDIR - 1] = COLORS.yellow; // Col F
@@ -155,20 +158,11 @@ function _actualizarAvisoPedido() {
     bgs.push(rowBg);
   }
 
-  // Escribir en bloque
-  pedido.getRange(DR, 1, count, NUM_COLS).clearContent();
-  pedido.getRange(DR, 1, count, NUM_COLS).setBackgrounds(bgs);
-
-  // Escribir valores y fórmulas por columnas separadas para evitar sobreescritura accidental
-  pedido.getRange(DR, 1, count, 1).setValues(colA);
-  pedido.getRange(DR, 2, count, 1).setFormulas(colB);
-  pedido.getRange(DR, 3, count, 1).setFormulas(colC);
-  pedido.getRange(DR, 4, count, 1).setFormulas(colD);
-  pedido.getRange(DR, 5, count, 1).setFormulas(colE);
-  pedido.getRange(DR, 7, count, 1).setFormulas(colG);
-  pedido.getRange(DR, 8, count, 1).setValues(colH);
-  pedido.getRange(DR, 9, count, 1).setValues(colI);
-  pedido.getRange(DR, 10, count, 1).setValues(colJ);
+  // Escribir en una sola llamada Batch 2D de alta velocidad (<100ms)
+  const fullRange = pedido.getRange(DR, 1, count, NUM_COLS);
+  fullRange.clearContent();
+  fullRange.setBackgrounds(bgs);
+  fullRange.setFormulas(outputGrid);
 
   pedido.getRange(DR, 1, count, NUM_COLS)
     .setFontFamily("Calibri").setFontSize(10).setVerticalAlignment("middle");
@@ -234,106 +228,92 @@ function onEdit(e) {
   const row = e.range.getRow();
   const col = e.range.getColumn();
 
-  // A. Manejo de la pestaña de Surtido Rápido
+  // A. Manejo de la pestaña de Surtido Rápido (Optimizado para latencia cero)
   if (name === "🚚 SURTIDO RÁPIDO") {
     if (row < 4) return;
 
-    const cantPedir = parseFloat(sheet.getRange(row, 4).getValue()) || 0;
+    const rData = sheet.getRange(row, 1, 1, 7).getValues()[0];
+    const prodNo    = rData[0];
+    const cantPedir = parseFloat(rData[3]) || 0;
+    const prodName  = String(rData[2] || "").trim();
+
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const pSheet = ss.getSheetByName(SHEET_PEDIDO);
     if (!pSheet) return;
 
-    // Obtener información del renglón actual
-    const prodNo = sheet.getRange(row, 1).getValue();
-    const prodName = sheet.getRange(row, 3).getValue();
-
-    // Buscar la fila correspondiente en SHEET_PEDIDO buscando por "PRODUCTO" (Col C) o "No" (Col A)
     const lrP = pSheet.getLastRow();
     const pData = pSheet.getRange(DATA_START_ROW, 1, lrP - DATA_START_ROW + 1, 3).getValues();
     let rowInPedido = -1;
     for (let i = 0; i < pData.length; i++) {
-      if (pData[i][0] === prodNo || String(pData[i][2]).trim() === String(prodName).trim()) {
+      if (pData[i][0] === prodNo || String(pData[i][2]).trim() === prodName) {
         rowInPedido = DATA_START_ROW + i;
         break;
       }
     }
-
-    if (rowInPedido === -1) {
-      try { ss.toast("No se encontró el producto en el pedido diario.", "❌ Error", 4); } catch(err) {}
-      return;
-    }
+    if (rowInPedido === -1) return;
 
     const lock = LockService.getScriptLock();
-    if (!lock.tryLock(10000)) return;
+    if (!lock.tryLock(5000)) return;
 
     try {
-      // 2. Columna F: ✅ COMPLETO
+      // 1. Columna F: ✅ COMPLETO
       if (col === 6) {
-        const valCheck = e.range.getValue();
-        if (valCheck === true) {
+        const isComp = (e.range.getValue() === true);
+        if (isComp) {
           sheet.getRange(row, 7).setValue(false); // Inexistente = false
-          sheet.getRange(row, 5).setValue(cantPedir); // Recibida = cantPedir
-          pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue(cantPedir); // Sincronizar con pedido diario
+          pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue(cantPedir);
           pSheet.getRange(rowInPedido, COL_ESTADO).setValue("COMPLETO");
         } else {
-          sheet.getRange(row, 5).setValue("");
           pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue("");
           pSheet.getRange(rowInPedido, COL_ESTADO).setValue("");
         }
       }
-      // 3. Columna G: ❌ INEXISTENTE
+      // 2. Columna G: ❌ INEXISTENTE
       else if (col === 7) {
-        const valCheck = e.range.getValue();
-        if (valCheck === true) {
+        const isZero = (e.range.getValue() === true);
+        if (isZero) {
           sheet.getRange(row, 6).setValue(false); // Completo = false
-          sheet.getRange(row, 5).setValue(0); // Recibida = 0
-          pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue(0); // Sincronizar con pedido diario
+          pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue(0);
           pSheet.getRange(rowInPedido, COL_ESTADO).setValue("INEXISTENTE");
         } else {
-          sheet.getRange(row, 5).setValue("");
           pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue("");
           pSheet.getRange(rowInPedido, COL_ESTADO).setValue("");
         }
       }
-      // 4. Columna E: CANT. RECIBIDA (Manual)
+      // 3. Columna E: CANT. RECIBIDA (Manual)
       else if (col === 5) {
-        let valInput = e.range.getValue();
-        if (valInput !== "") {
-          if (typeof valInput === "string") {
-            const cleanVal = valInput.replace(',', '.').trim();
-            const num = Number(cleanVal);
-            if (!isNaN(num) && num >= 0) {
-              e.range.setValue(num);
-              valInput = num;
+        let val = e.range.getValue();
+        if (val !== "") {
+          const num = typeof val === "string" ? parseFloat(val.replace(',', '.')) : Number(val);
+          if (!isNaN(num) && num >= 0) {
+            pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue(num);
+            if (num === cantPedir) {
+              sheet.getRange(row, 6).setValue(true);
+              sheet.getRange(row, 7).setValue(false);
+              pSheet.getRange(rowInPedido, COL_ESTADO).setValue("COMPLETO");
+            } else if (num === 0) {
+              sheet.getRange(row, 6).setValue(false);
+              sheet.getRange(row, 7).setValue(true);
+              pSheet.getRange(rowInPedido, COL_ESTADO).setValue("INEXISTENTE");
+            } else if (num > cantPedir) {
+              sheet.getRange(row, 6).setValue(false);
+              sheet.getRange(row, 7).setValue(false);
+              pSheet.getRange(rowInPedido, COL_ESTADO).setValue("EXCEDENTE");
+            } else {
+              sheet.getRange(row, 6).setValue(false);
+              sheet.getRange(row, 7).setValue(false);
+              pSheet.getRange(rowInPedido, COL_ESTADO).setValue("PARCIAL");
             }
-          }
-          const checkVal = Number(valInput);
-          if (isNaN(checkVal) || checkVal < 0) {
-            e.range.clearContent();
+          } else {
+            sheet.getRange(row, 5).setFormula(`=IF(G${row}=TRUE, 0, IF(F${row}=TRUE, D${row}, ""))`);
             sheet.getRange(row, 6).setValue(false);
             sheet.getRange(row, 7).setValue(false);
             pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue("");
             pSheet.getRange(rowInPedido, COL_ESTADO).setValue("");
-            return;
-          }
-
-          pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue(checkVal);
-
-          if (checkVal === cantPedir) {
-            sheet.getRange(row, 6).setValue(true);
-            sheet.getRange(row, 7).setValue(false);
-            pSheet.getRange(rowInPedido, COL_ESTADO).setValue("COMPLETO");
-          } else if (checkVal === 0) {
-            sheet.getRange(row, 6).setValue(false);
-            sheet.getRange(row, 7).setValue(true);
-            pSheet.getRange(rowInPedido, COL_ESTADO).setValue("INEXISTENTE");
-          } else {
-            sheet.getRange(row, 6).setValue(false);
-            sheet.getRange(row, 7).setValue(false);
-            pSheet.getRange(rowInPedido, COL_ESTADO).setValue("PARCIAL");
           }
         } else {
-          // Si borran la celda
+          // Si borran la celda, re-inyectar la fórmula local
+          sheet.getRange(row, 5).setFormula(`=IF(G${row}=TRUE, 0, IF(F${row}=TRUE, D${row}, ""))`);
           sheet.getRange(row, 6).setValue(false);
           sheet.getRange(row, 7).setValue(false);
           pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue("");
@@ -478,7 +458,7 @@ function sincronizarEstados() {
         '=' + sRef + '!D' + sr,                       // Col D (UNIDAD)
         '=IFERROR(' + sRef + '!E' + sr + '*1, 0) & IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "", IF(' + sRef + '!E' + sr + '<' + sRef + '!J' + sr + ', " (-" & (' + sRef + '!J' + sr + '-' + sRef + '!E' + sr + ') & ")", IF(' + sRef + '!E' + sr + '>' + sRef + '!K' + sr + ', " (+" & (' + sRef + '!E' + sr + '-' + sRef + '!K' + sr + ') & ")", " (-)")))', // Col E (SALDO TEÓRICO)
         "",                                           // Col F (CANT. A PEDIR)
-        '=IF(F' + r + '="", "", IFERROR(VLOOKUP(C' + r + ', \'🚚 SURTIDO RÁPIDO\'!C:E, 3, FALSE), 0) - F' + r + ')', // Col G (DIFERENCIA)
+        '=IF(OR(F' + r + '="", H' + r + '=""), "", H' + r + ' - F' + r + ')', // Col G (DIFERENCIA)
         "",                                           // Col H
         "",                                           // Col I
         ""                                            // Col J (ADICIÓN)
@@ -579,14 +559,7 @@ function ordenarPedido() {
       const nameA = String(a.vals[2] || "").trim();
       const nameB = String(b.vals[2] || "").trim();
 
-      // 1. Activos primero, Inactivos al final
-      const isInactiveA = (activeMap[nameA] === "NO") ? 1 : 0;
-      const isInactiveB = (activeMap[nameB] === "NO") ? 1 : 0;
-      if (isInactiveA !== isInactiveB) {
-        return isInactiveA - isInactiveB;
-      }
-
-      // 2. Ordenamiento Estricto por Posición de Picking de Quiosco (rankA vs rankB)
+      // 1. Ordenamiento Estricto por Posición de Picking de Quiosco (rankA vs rankB)
       const rankA = pickingMap[nameA] !== undefined ? pickingMap[nameA] : 9999;
       const rankB = pickingMap[nameB] !== undefined ? pickingMap[nameB] : 9999;
       if (rankA !== rankB) {
@@ -645,7 +618,7 @@ function ordenarPedido() {
         '=' + sRef + '!D' + sr,                       // Col D (UNIDAD)
         '=IFERROR(' + sRef + '!E' + sr + '*1, 0) & IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "", IF(' + sRef + '!E' + sr + '<' + sRef + '!J' + sr + ', " (-" & (' + sRef + '!J' + sr + '-' + sRef + '!E' + sr + ') & ")", IF(' + sRef + '!E' + sr + '>' + sRef + '!K' + sr + ', " (+" & (' + sRef + '!E' + sr + '-' + sRef + '!K' + sr + ') & ")", " (-)")))', // Col E (SALDO TEÓRICO)
         items[i].vals[5],                             // Col F (CANT. A PEDIR)
-        '=IF(F' + r + '="", "", IFERROR(VLOOKUP(C' + r + ', \'🚚 SURTIDO RÁPIDO\'!C:E, 3, FALSE), 0) - F' + r + ')', // Col G (DIFERENCIA)
+        '=IF(OR(F' + r + '="", H' + r + '=""), "", H' + r + ' - F' + r + ')', // Col G (DIFERENCIA)
         items[i].vals[7] === "" ? "" : items[i].vals[7], // Col H (CANT. RECIBIDA)
         items[i].vals[8] || "",                       // Col I (ESTADO)
         items[i].vals[9] || "",                       // Col J (ADICIÓN)
@@ -771,7 +744,7 @@ function _resetearPedidoSilencioso() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_PEDIDO);
   if (!sheet) return;
-  
+
   // Issue 6: Registrar evidencias en LOG_SURTIDO antes de vaciar las cantidades
   try { _registrarLogSurtidoDiario(ss, sheet); } catch(e) {}
 
@@ -836,8 +809,9 @@ function _registrarLogSurtidoDiario(ss, sheet) {
   const count = lr - DATA_START_ROW + 1;
   const data = sheet.getRange(DATA_START_ROW, 1, count, 10).getValues();
 
-  // Tomar fecha oficial de la orden (Fila 1 C1 o fecha del día transcurrido)
-  const fechaStr = _fmtDate(new Date());
+  const hoy = new Date();
+  const fechaObj = hoy.getHours() < 5 ? new Date(hoy.getTime() - 24 * 60 * 60 * 1000) : hoy;
+  const fechaStr = _fmtDate(fechaObj);
   const logRows = [];
 
   for (let i = 0; i < data.length; i++) {
@@ -954,53 +928,43 @@ function repararSistemaTienda() {
     _buildPedidoDiario(pedido);
     PropertiesService.getScriptProperties().setProperty("PRODUCT_COUNT", String(syncCount));
 
-    // 5. Re-inyectar fórmulas estables y restaurar cantidades resguardadas
+    // 5. Ensamblado y escritura en matriz 2D unificada (<100ms)
     const sRef = "'" + SHEET_SYNC + "'";
-    const formulasB = [], formulasC = [], formulasD = [], formulasE = [], formulasG = [], formulasK = [];
-    const restorePedir = [], restoreRecibida = [];
+    const syncNames = ss.getSheetByName(SHEET_SYNC).getRange(4, 3, syncCount, 1).getValues();
+    const outputGrid = [];
     const cleanBgs = [];
 
     for (let i = 0; i < syncCount; i++) {
       const r = DR + i;
       const sr = 4 + i;
-      formulasB.push(['=' + sRef + '!B' + sr]);
-      formulasC.push(['=' + sRef + '!C' + sr]);
-      formulasD.push(['=' + sRef + '!D' + sr]);
-      formulasE.push(['=IFERROR(' + sRef + '!E' + sr + '*1, 0) & IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "", IF(' + sRef + '!E' + sr + '<' + sRef + '!J' + sr + ', " (-" & (' + sRef + '!J' + sr + '-' + sRef + '!E' + sr + ') & ")", IF(' + sRef + '!E' + sr + '>' + sRef + '!K' + sr + ', " (+" & (' + sRef + '!E' + sr + '-' + sRef + '!K' + sr + ') & ")", " (-)")))']);
-      formulasG.push(['=IF(F' + r + '="", "", IFERROR(VLOOKUP(C' + r + ', \'🚚 SURTIDO RÁPIDO\'!C:E, 3, FALSE), 0) - F' + r + ')']);
-      formulasK.push(['=IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "—", ' + sRef + '!J' + sr + ' & "  |  " & ' + sRef + '!K' + sr + ')']);
-      
+      const pName = String(syncNames[i][0] || "").trim();
+      const b = backupData[pName] || null;
+
+      outputGrid.push([
+        i + 1,                                        // Col A (No)
+        '=' + sRef + '!B' + sr,                       // Col B (CATEGORÍA)
+        '=' + sRef + '!C' + sr,                       // Col C (PRODUCTO)
+        '=' + sRef + '!D' + sr,                       // Col D (UNIDAD)
+        '=IFERROR(' + sRef + '!E' + sr + '*1, 0) & IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "", IF(' + sRef + '!E' + sr + '<' + sRef + '!J' + sr + ', " (-" & (' + sRef + '!J' + sr + '-' + sRef + '!E' + sr + ') & ")", IF(' + sRef + '!E' + sr + '>' + sRef + '!K' + sr + ', " (+" & (' + sRef + '!E' + sr + '-' + sRef + '!K' + sr + ') & ")", " (-)")))', // Col E
+        b && b.pedir !== "" && b.pedir !== null ? b.pedir : "", // Col F (CANT. A PEDIR)
+        '=IF(OR(F' + r + '="", H' + r + '=""), "", H' + r + ' - F' + r + ')', // Col G (DIFERENCIA)
+        b && b.recibida !== "" && b.recibida !== null ? b.recibida : "", // Col H (RECIBIDA)
+        "",                                           // Col I (ESTADO)
+        "",                                           // Col J (ADICIÓN)
+        '=IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "—", ' + sRef + '!J' + sr + ' & "  |  " & ' + sRef + '!K' + sr + ')' // Col K (MÍN | MÁX QUIOSCO)
+      ]);
+
       const rowBg = Array(NUM_COLS).fill(i % 2 === 0 ? COLORS.neutral_a : COLORS.neutral_b);
       rowBg[4] = COLORS.blue;                    // Col E (Saldo Teórico)
       rowBg[COL_CANT_PEDIR - 1] = COLORS.yellow; // Col F (Cant a pedir)
       cleanBgs.push(rowBg);
     }
 
-    // Inyectar en bloque
+    // Inyectar en una sola llamada Batch 2D atómica
     const rangeData = pedido.getRange(DR, 1, syncCount, NUM_COLS);
+    rangeData.clearContent();
     rangeData.setBackgrounds(cleanBgs);
-
-    pedido.getRange(DR, 2, syncCount, 1).setFormulas(formulasB);
-    pedido.getRange(DR, 3, syncCount, 1).setFormulas(formulasC);
-    pedido.getRange(DR, 4, syncCount, 1).setFormulas(formulasD);
-    pedido.getRange(DR, 5, syncCount, 1).setFormulas(formulasE);
-    pedido.getRange(DR, 7, syncCount, 1).setFormulas(formulasG);
-    pedido.getRange(DR, 11, syncCount, 1).setFormulas(formulasK);
-
-    SpreadsheetApp.flush();
-
-    // Restablecer valores capturados desde backup por coincidencia de producto
-    if (Object.keys(backupData).length > 0) {
-      const newProdNames = pedido.getRange(DR, 3, syncCount, 1).getValues();
-      for (let i = 0; i < syncCount; i++) {
-        const name = String(newProdNames[i][0] || "").trim();
-        const b = backupData[name];
-        restorePedir.push([b && b.pedir !== "" && b.pedir !== null ? b.pedir : ""]);
-        restoreRecibida.push([b && b.recibida !== "" && b.recibida !== null ? b.recibida : ""]);
-      }
-      pedido.getRange(DR, COL_CANT_PEDIR, syncCount, 1).setValues(restorePedir);
-      pedido.getRange(DR, COL_RECIBIDA, syncCount, 1).setValues(restoreRecibida);
-    }
+    rangeData.setFormulas(outputGrid);
 
     // 6. Aplicar visibilidad, formatos condicionales y protecciones anti-dummies
     _aplicarFormatosCondicionales(pedido);
@@ -1179,42 +1143,49 @@ function _aplicarFormatosCondicionales(sheet) {
       
   // Regla 1.5: Inactivos (gris)
   const ruleInactivo = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=IFERROR(VLOOKUP($C4, INDIRECT("\'' + SHEET_SYNC + '\'!C:I"), 7, FALSE), "")="NO"')
+    .whenFormulaSatisfied(`=INDIRECT("'${SHEET_SYNC}'!$I" & ROW())="NO"`)
     .setBackground("#EEEEEE")
     .setFontColor("#9E9E9E")
     .setItalic(true)
     .setRanges([range])
     .build();
       
-  // Regla 2: Completos
+  // Regla 2: Completos (Verde suave - Directo desde Col I ESTADO)
   const ruleCompleto = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=AND($F4>0, IFERROR(VLOOKUP($C4, INDIRECT("\'🚚 SURTIDO RÁPIDO\'!C:G"), 4, FALSE), FALSE))')
+    .whenFormulaSatisfied('=$I4="COMPLETO"')
     .setBackground(COLORS.completo)
     .setRanges([range])
     .build();
 
-  // Regla 3: Inexistente / 0 Recibido (Rojo suave)
+  // Regla 3: Inexistente / 0 Recibido (Rojo suave - Directo desde Col I ESTADO)
   const ruleInexistente = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=AND($F4>0, IFERROR(VLOOKUP($C4, INDIRECT("\'🚚 SURTIDO RÁPIDO\'!C:G"), 5, FALSE), FALSE))')
+    .whenFormulaSatisfied('=$I4="INEXISTENTE"')
     .setBackground(COLORS.inexistente)
     .setRanges([range])
     .build();
       
-  // Regla 4: Parciales
+  // Regla 4: Parciales / Menor recibido (Naranja suave - Directo desde Col I ESTADO)
   const ruleParcial = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=AND($F4>0, IFERROR(VLOOKUP($C4, INDIRECT("\'🚚 SURTIDO RÁPIDO\'!C:G"), 3, FALSE), 0)>0, IFERROR(VLOOKUP($C4, INDIRECT("\'🚚 SURTIDO RÁPIDO\'!C:G"), 3, FALSE), 0)<$F4)')
+    .whenFormulaSatisfied('=$I4="PARCIAL"')
     .setBackground(COLORS.parcial)
     .setRanges([range])
     .build();
+
+  // Regla 4b: Excedentes / Mayor recibido (Azul claro suave - Directo desde Col I ESTADO)
+  const ruleExcedente = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=$I4="EXCEDENTE"')
+    .setBackground("#E1F5FE")
+    .setRanges([range])
+    .build();
       
-  // Regla 5: Pendientes (si la cant recibida no tiene valor/null)
+  // Regla 5: Pendientes (Tiene pedido pero aún no tiene entrega registrada)
   const rulePendiente = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=AND($F4>0, NOT(IFERROR(VLOOKUP($C4, INDIRECT("\'🚚 SURTIDO RÁPIDO\'!C:G"), 4, FALSE), FALSE)), NOT(IFERROR(VLOOKUP($C4, INDIRECT("\'🚚 SURTIDO RÁPIDO\'!C:G"), 5, FALSE), FALSE)), IFERROR(VLOOKUP($C4, INDIRECT("\'🚚 SURTIDO RÁPIDO\'!C:G"), 3, FALSE), 0)=0)')
+    .whenFormulaSatisfied('=AND($F4>0, $I4="")')
     .setBackground(COLORS.pendiente)
     .setRanges([range])
     .build();
 
-  const rules = [ruleCompleto, ruleParcial, ruleAdicion, ruleInexistente, rulePendiente, ruleInactivo];
+  const rules = [ruleCompleto, ruleParcial, ruleExcedente, ruleAdicion, ruleInexistente, rulePendiente, ruleInactivo];
   
   // Reglas Semáforo en Columna E (SALDO TEÓRICO)
   rules.push(SpreadsheetApp.newConditionalFormatRule()
@@ -1252,14 +1223,17 @@ function _actualizarVisibilidadInactivos(sheet) {
   const sync = ss.getSheetByName(SHEET_SYNC);
   if (!sync) return;
   
+  const syncCount = Math.max(0, sync.getLastRow() - 3);
+  if (syncCount < 1) return;
+
   sheet.showRows(DATA_START_ROW, count);
   
-  const syncValues = sync.getRange(4, 3, count, 7).getValues(); // Column C (PRODUCTO) to I (ACTIVO)
+  const syncValues = sync.getRange(4, 3, syncCount, 7).getValues(); // Column C (PRODUCTO) to I (ACTIVO)
   const activeMap = {};
   for (let i = 0; i < syncValues.length; i++) {
     const prodName = String(syncValues[i][0]).trim();
     const activo = String(syncValues[i][6]).trim(); // Col I is index 6 relative to Col C
-    activeMap[prodName] = activo;
+    if (prodName) activeMap[prodName] = activo;
   }
   
   const pedidoProducts = sheet.getRange(DATA_START_ROW, 3, count, 1).getValues();
@@ -1413,17 +1387,25 @@ function _generarSurtidoRapidoInternal(activateSheet) {
     const checkCompleto = [];
     const checkInexistente = [];
     
+    const formulasE = [];
+    
     for (let i = 0; i < rows; i++) {
       const item = filtered[i];
       const bg = i % 2 === 0 ? "#FAFAFA" : "#FFFFFF";
+      const rNum = 4 + i;
       
       values.push([
         item.no,
         item.cat,
         item.prod,
-        item.cantPedir,
-        item.cantRecibida
+        item.cantPedir
       ]);
+
+      if (item.cantRecibida !== "" && !item.completo && !item.inexistente && !isNaN(Number(item.cantRecibida))) {
+        formulasE.push([String(item.cantRecibida)]);
+      } else {
+        formulasE.push([`=IF(G${rNum}=TRUE, 0, IF(F${rNum}=TRUE, D${rNum}, ""))`]);
+      }
       
       const rowBg = Array(7).fill(item.highlightBg || bg);
       if (!item.highlightBg) {
@@ -1437,8 +1419,12 @@ function _generarSurtidoRapidoInternal(activateSheet) {
       checkInexistente.push([item.inexistente]);
     }
 
-    // Escribir datos básicos
-    sSheet.getRange(4, 1, rows, 5).setValues(values);
+    // Escribir datos básicos Cols 1-4 (No, Cat, Prod, CantPedir)
+    sSheet.getRange(4, 1, rows, 4).setValues(values);
+    
+    // Inyectar fórmulas dinámicas nativas en Col E (CANT. RECIBIDA instantánea en 0 ms)
+    sSheet.getRange(4, 5, rows, 1).setFormulas(formulasE);
+
     sSheet.getRange(4, 1, rows, 7).setBackgrounds(bgs)
       .setFontFamily("Calibri").setFontSize(10).setVerticalAlignment("middle");
     
@@ -1452,10 +1438,10 @@ function _generarSurtidoRapidoInternal(activateSheet) {
     sSheet.getRange(4, 6, rows, 1).insertCheckboxes().setValues(checkCompleto).setHorizontalAlignment("center");
     sSheet.getRange(4, 7, rows, 1).insertCheckboxes().setValues(checkInexistente).setHorizontalAlignment("center");
 
-    // Validar entrada numérica en la columna E (Cant. Recibida)
+    // Validar entrada numérica en la columna E (Cant. Recibida) permitiendo fórmulas locales
     const valRule = SpreadsheetApp.newDataValidation()
       .requireNumberGreaterThanOrEqualTo(0)
-      .setAllowInvalid(false)
+      .setAllowInvalid(true)
       .setHelpText("Ingresa una cantidad mayor o igual a 0.")
       .build();
     sSheet.getRange(4, 5, rows, 1).setDataValidation(valRule);
@@ -1483,29 +1469,39 @@ function _generarSurtidoRapidoInternal(activateSheet) {
       prot.setUnprotectedRanges([unprotRecibida, unprotChecks]);
     } catch(e) {}
 
-    // Aplicar Reglas de Formato Condicional para coloreado de filas
+    // Aplicar Reglas de Formato Condicional completas para coloreado de filas
     sSheet.clearConditionalFormatRules();
     const rangeS = sSheet.getRange(4, 1, rows, 7); // A4:G
     
+    // 1. Completo / Exacto (Verde suave): Checkbox F es TRUE o E = D (si E > 0)
     const ruleSCompleto = SpreadsheetApp.newConditionalFormatRule()
-      .whenFormulaSatisfied('=$F4=TRUE')
+      .whenFormulaSatisfied('=OR($F4=TRUE, AND($E4>0, $E4=$D4))')
       .setBackground("#C8E6C9") // light green
       .setRanges([rangeS])
       .build();
       
+    // 2. Inexistente / Cero (Rojo suave): Checkbox G es TRUE o E = 0
     const ruleSInexistente = SpreadsheetApp.newConditionalFormatRule()
-      .whenFormulaSatisfied('=$G4=TRUE')
+      .whenFormulaSatisfied('=OR($G4=TRUE, AND($E4<>"", $E4=0))')
       .setBackground("#FFCDD2") // light red
       .setRanges([rangeS])
       .build();
 
+    // 3. Parcial / Menor (Naranja suave): E > 0 y E < D y F es FALSE y G es FALSE
     const ruleSIncompleto = SpreadsheetApp.newConditionalFormatRule()
       .whenFormulaSatisfied('=AND($E4>0, $E4<$D4, $F4=FALSE, $G4=FALSE)')
       .setBackground("#FFE0B2") // light orange
       .setRanges([rangeS])
       .build();
 
-    sSheet.setConditionalFormatRules([ruleSCompleto, ruleSInexistente, ruleSIncompleto]);
+    // 4. Excedente / Mayor (Azul claro suave): E > D y F es FALSE y G es FALSE
+    const ruleSExcedente = SpreadsheetApp.newConditionalFormatRule()
+      .whenFormulaSatisfied('=AND($E4>$D4, $F4=FALSE, $G4=FALSE)')
+      .setBackground("#E1F5FE") // light cyan/blue
+      .setRanges([rangeS])
+      .build();
+
+    sSheet.setConditionalFormatRules([ruleSCompleto, ruleSInexistente, ruleSIncompleto, ruleSExcedente]);
   }
 
   // --- TABLA DE RESUMEN DE PRODUCTOS (COLUMNAS I-J) ---
@@ -1759,7 +1755,7 @@ function registrarLog(accion, estado, detalle) {
  * Instala el activador automático por tiempo para ejecutar el reseteo y registro en LOG
  * todos los días entre 00:00 y 01:00 AM.
  */
-function instalarActivadoresMedianochePDA() {
+function instalarActivadoresMedianochePDM() {
   const funcionTarget = "_resetearPedidoSilencioso";
   const triggers = ScriptApp.getProjectTriggers();
   let countBorrados = 0;
