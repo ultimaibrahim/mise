@@ -23,7 +23,22 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.9.0 Altair — Fluidez Móvil Inmediata, Blindaje Nocturno y Cero Congelamientos (Septiembre 2026) [ACTUAL EN PRODUCCIÓN GAS]
+## Versión 1.10.0 Altair — Conversión de Unidades Automática, Traspasos entre Tiendas y Recepción Numérica Libre (Septiembre 2026) [ACTUAL EN PRODUCCIÓN GAS]
+
+* 🍓 **Fin a los Cálculos Mentales (Conversión Automática de Domos y Cajas)**:  
+  Se implementó el sistema de equivalencias automáticas entre tiendas y almacén. En sucursal, el encargado pide en su unidad física habitual (*12 domos de fresa*, *2 cajas de guantes*). Bodega Central descuenta automáticamente los kilos y piezas exactas en el Kardex (`12 domos = 5.448 kg`, `2 cajas = 200 piezas`), eliminando para siempre las discrepancias de inventario y los errores de cálculo mental en el mostrador.
+* 🔄 **Módulo Rápido de Traspasos Inter-Tiendas (Andares ⇄ Mercado)**:  
+  Nuevo menú táctil en las hojas de tienda:  
+  👉 **`⚙️ Mise ➔ 🔄 Registrar Traspaso entre Tiendas`**.  
+  Permite a los encargados registrar préstamos o traspasos urgentes de producto entre sucursales en 3 toques desde su celular. El sistema actualiza en tiempo real la salida en la tienda que entrega, la entrada en la tienda que recibe y genera un folio único en la bitácora central de Bodega para que supervisión tenga visibilidad total.
+* 🚚 **Surtido Rápido con Captura Numérica Libre y Cero Fórmulas**:  
+  Se eliminaron las fórmulas incrustadas en la columna de cantidad recibida. Ahora el personal de reparto y los encargados pueden escribir libremente cualquier cantidad parcial o custom sin que el sistema bloquee la edición ni sobreescriba fórmulas rotas. Los botones `✅ Llegó Completo` y `❌ Inexistente` ahora funcionan como interruptores táctiles instantáneos.
+* 🛡️ **Claridad de Unidades en Celular y Blindaje contra Clics Accidentales**:  
+  La columna de **UNIDAD** (Domo, Caja, Pieza, Kg) ahora permanece siempre visible en la vista móvil de tiendas junto al producto, eliminando confusiones al capturar el pedido. Asimismo, todos los botones de reseteo, simulación y mantenimiento crítico se aislaron dentro de un submenú restringido de seguridad, protegiendo la operación contra clics accidentales desde computadoras de mostrador.
+
+---
+
+## Versión 1.9.0 Altair — Fluidez Móvil Inmediata, Blindaje Nocturno y Cero Congelamientos (Septiembre 2026)
 
 * ⚡ **Eliminación Total del Congelamiento en Celulares (Andares y Mercado)**:  
   Se reestructuró por completo el motor de colores e indicadores visuales de la hoja `📋 PEDIDO DIARIO`. Se eliminaron cientos de cálculos ocultos que sobrecargaban la aplicación de Google Sheets en iPhone y Android. Ahora, al tocar una celda o escribir una cantidad, la pantalla responde al instante y sin retrasos.

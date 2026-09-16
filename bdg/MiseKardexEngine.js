@@ -139,6 +139,30 @@ const MiseSmartSync = {
       const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
       const targetDayName = dayNames[dIdx];
 
+      // Mapear factores de conversión de MAESTRO para normalización automática de unidades
+      const maestroSheet = ss.getSheetByName(SHEET_MAESTRO);
+      const factorMap = {};
+      if (maestroSheet) {
+        const mlr = maestroSheet.getLastRow();
+        if (mlr >= MAESTRO_START) {
+          const mapM = _getMaestroHeaderMap(maestroSheet);
+          const cProdM = mapM["PRODUCTO"] ? mapM["PRODUCTO"].index : 2;
+          const cFactM = mapM["FACTOR_CONVERSION"] ? mapM["FACTOR_CONVERSION"].index : -1;
+          if (cFactM !== -1) {
+            const mData = maestroSheet.getRange(MAESTRO_START, 1, mlr - MAESTRO_START + 1, maestroSheet.getLastColumn()).getValues();
+            mData.forEach(r => {
+              const pKey = _norm(r[cProdM]);
+              let fact = r[cFactM];
+              if (typeof fact === "string") fact = fact.replace(',', '.').trim();
+              const numFact = parseFloat(fact);
+              if (pKey && !isNaN(numFact) && numFact > 0) {
+                factorMap[pKey] = numFact;
+              }
+            });
+          }
+        }
+      }
+
       Object.keys(BODEGAS).forEach(key => {
         const bConfig = BODEGAS[key];
         const kSheet = ss.getSheetByName(bConfig.kardex);
@@ -203,7 +227,7 @@ const MiseSmartSync = {
                   const adicion = String(row[9] || "").trim().toUpperCase(); // Col J
                   const esAdicion = adicion.includes("ADICIÓN") ? "SÍ" : "NO";
 
-                  // Determinar cantidad a descontar
+                  // Determinar cantidad a descontar (tienda)
                   let cantDeducir = 0;
                   if (cantRec > 0) {
                     cantDeducir = cantRec;
@@ -214,11 +238,15 @@ const MiseSmartSync = {
                   }
 
                   if (cantDeducir > 0) {
+                    // Normalización automática de unidades: Si el insumo tiene factor de conversión (ej. Domo -> Kg), deducir la masa real
+                    const factor = factorMap[normKey] || 1;
+                    const cantDeducirKardex = Math.round(cantDeducir * factor * 1000) / 1000;
+
                     const txHash = `${fechaObjetivoStr}_${key}_${normKey}_${cantDeducir}_pedido`;
                     if (MiseIdempotencyLedger.has(txHash)) {
                       totalOmitidosDuplicados++;
                     } else {
-                      acumuladoPorProducto[normKey] = (acumuladoPorProducto[normKey] || 0) + cantDeducir;
+                      acumuladoPorProducto[normKey] = (acumuladoPorProducto[normKey] || 0) + cantDeducirKardex;
                       txHashesAplicados.push(txHash);
                     }
                   }
@@ -330,7 +358,10 @@ const MiseSmartSync = {
               return;
             }
 
-            acumuladoPorProducto[normKey] = (acumuladoPorProducto[normKey] || 0) + cantRec;
+            const factor = factorMap[normKey] || 1;
+            const cantRecKardex = Math.round(cantRec * factor * 1000) / 1000;
+
+            acumuladoPorProducto[normKey] = (acumuladoPorProducto[normKey] || 0) + cantRecKardex;
             txHashesAplicados.push(txHash);
           });
         }
@@ -890,3 +921,211 @@ const MiseMatchingEngine = {
     return { match: null, score: top1.score, delta, candidato: top1.oficial, estado: 'DESCONOCIDO' };
   }
 };
+
+// ── 5. MOTOR TRANSACCIONAL DE TRASPASOS INTER-TIENDAS (MISE TRASPASOS) ────────
+const SHEET_TRASPASOS = "🔄 TRASPASOS";
+
+const MiseTraspasos = {
+  /**
+   * Asegura la existencia y encabezados de la hoja 🔄 TRASPASOS en Bodega Central
+   */
+  _asegurarHojaTraspasos(ss) {
+    let sheet = ss.getSheetByName(SHEET_TRASPASOS);
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEET_TRASPASOS);
+      const headers = [
+        ["FOLIO", "FECHA_HORA", "ORIGEN", "DESTINO", "PRODUCTO", "CANTIDAD", "UNIDAD", "FACTOR_KARDEX", "CANT_KARDEX", "MOTIVO", "USUARIO"]
+      ];
+      sheet.getRange(1, 1, 1, 11).setValues(headers)
+        .setBackground("#3D5A47").setFontColor("#FFFFFF").setFontWeight("bold")
+        .setFontSize(10).setFontFamily("Arial").setHorizontalAlignment("center").setVerticalAlignment("middle");
+      sheet.setRowHeight(1, 28);
+      sheet.setFrozenRows(1);
+      
+      sheet.setColumnWidth(1, 110); // FOLIO
+      sheet.setColumnWidth(2, 140); // FECHA_HORA
+      sheet.setColumnWidth(3, 90);  // ORIGEN
+      sheet.setColumnWidth(4, 90);  // DESTINO
+      sheet.setColumnWidth(5, 230); // PRODUCTO
+      sheet.setColumnWidth(6, 85);  // CANTIDAD
+      sheet.setColumnWidth(7, 85);  // UNIDAD
+      sheet.setColumnWidth(8, 100); // FACTOR_KARDEX
+      sheet.setColumnWidth(9, 100); // CANT_KARDEX
+      sheet.setColumnWidth(10, 160);// MOTIVO
+      sheet.setColumnWidth(11, 130);// USUARIO
+    }
+    return sheet;
+  },
+
+  /**
+   * Registra y aplica un traspaso atómico entre sucursales
+   * @param {Object} payload { origen: 'BA'|'BM', destino: 'BA'|'BM', producto: string, cantidad: number, unidad: string, motivo: string, usuario: string }
+   */
+  registrar(payload) {
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(20000)) {
+      throw new Error("El sistema de traspasos está ocupado. Intenta de nuevo.");
+    }
+
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const origenKey = String(payload.origen || "").trim().toUpperCase();
+      const destinoKey = String(payload.destino || "").trim().toUpperCase();
+      const prodName = String(payload.producto || "").trim();
+      const cant = parseFloat(payload.cantidad);
+      const unidad = String(payload.unidad || "").trim();
+      const motivo = String(payload.motivo || "Traspaso de emergencia").trim();
+      const usuario = String(payload.usuario || Session.getActiveUser().getEmail() || "Encargado").trim();
+
+      if (!origenKey || !destinoKey || origenKey === destinoKey) {
+        throw new Error("Las sucursales de origen y destino deben ser distintas (BA vs BM).");
+      }
+      if (!BODEGAS[origenKey] || !BODEGAS[destinoKey]) {
+        throw new Error(`Sucursal inválida: ${origenKey} -> ${destinoKey}`);
+      }
+      if (!prodName) {
+        throw new Error("Debes especificar un producto válido.");
+      }
+      if (isNaN(cant) || cant <= 0) {
+        throw new Error("La cantidad debe ser un número positivo mayor a 0.");
+      }
+
+      // 1. Mapear producto en Kardex y factores de conversión
+      const normKey = String(prodName).toLowerCase().replace(/\s+/g, "").replace(/cdk/g, "").replace(/[()]/g, "").trim();
+      const maestroSheet = ss.getSheetByName(SHEET_MAESTRO);
+      let factorConversion = 1;
+      if (maestroSheet) {
+        const mlr = maestroSheet.getLastRow();
+        if (mlr >= MAESTRO_START) {
+          const mapM = _getMaestroHeaderMap(maestroSheet);
+          const cProdM = mapM["PRODUCTO"] ? mapM["PRODUCTO"].index : 2;
+          const cFactM = mapM["FACTOR_CONVERSION"] ? mapM["FACTOR_CONVERSION"].index : -1;
+          if (cFactM !== -1) {
+            const mData = maestroSheet.getRange(MAESTRO_START, 1, mlr - MAESTRO_START + 1, maestroSheet.getLastColumn()).getValues();
+            for (let i = 0; i < mData.length; i++) {
+              const pNorm = String(mData[i][cProdM]).toLowerCase().replace(/\s+/g, "").replace(/cdk/g, "").replace(/[()]/g, "").trim();
+              if (pNorm === normKey) {
+                let fact = mData[i][cFactM];
+                if (typeof fact === "string") fact = fact.replace(',', '.').trim();
+                const numFact = parseFloat(fact);
+                if (!isNaN(numFact) && numFact > 0) factorConversion = numFact;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      const cantKardex = Math.round(cant * factorConversion * 1000) / 1000;
+
+      // 2. Localizar filas en Kardex de Origen y Destino
+      const kSheetOrigen = ss.getSheetByName(BODEGAS[origenKey].kardex);
+      const kSheetDestino = ss.getSheetByName(BODEGAS[destinoKey].kardex);
+      if (!kSheetOrigen || !kSheetDestino) {
+        throw new Error("No se encontraron las hojas de Kardex de origen o destino.");
+      }
+
+      const klrOri = kSheetOrigen.getLastRow();
+      const klrDes = kSheetDestino.getLastRow();
+      if (klrOri < KARDEX_START || klrDes < KARDEX_START) {
+        throw new Error("Kardex vacío o no inicializado.");
+      }
+
+      const prodsOri = kSheetOrigen.getRange(KARDEX_START, 3, klrOri - KARDEX_START + 1, 1).getValues();
+      const prodsDes = kSheetDestino.getRange(KARDEX_START, 3, klrDes - KARDEX_START + 1, 1).getValues();
+
+      let rowOri = -1;
+      let rowDes = -1;
+      let nombreOficialOri = prodName;
+      let nombreOficialDes = prodName;
+
+      for (let i = 0; i < prodsOri.length; i++) {
+        const pNorm = String(prodsOri[i][0]).toLowerCase().replace(/\s+/g, "").replace(/cdk/g, "").replace(/[()]/g, "").trim();
+        if (pNorm === normKey) {
+          rowOri = KARDEX_START + i;
+          nombreOficialOri = prodsOri[i][0];
+          break;
+        }
+      }
+
+      for (let i = 0; i < prodsDes.length; i++) {
+        const pNorm = String(prodsDes[i][0]).toLowerCase().replace(/\s+/g, "").replace(/cdk/g, "").replace(/[()]/g, "").trim();
+        if (pNorm === normKey) {
+          rowDes = KARDEX_START + i;
+          nombreOficialDes = prodsDes[i][0];
+          break;
+        }
+      }
+
+      if (rowOri === -1 || rowDes === -1) {
+        throw new Error(`El producto "${prodName}" no fue localizado en ambos Kardex.`);
+      }
+
+      // 3. Determinar columna según día de la semana (LUN=0 ... DOM=6)
+      const hoy = new Date();
+      const dow = hoy.getDay();
+      const dIdx = dow === 0 ? 6 : dow - 1;
+      const entColIdx = 10 + dIdx * 3;     // Columna ENT de hoy
+      const salColIdx = 10 + dIdx * 3 + 1; // Columna SAL de hoy
+
+      // Acreditar salida en Origen
+      const valSalOri = parseFloat(kSheetOrigen.getRange(rowOri, salColIdx).getValue()) || 0;
+      kSheetOrigen.getRange(rowOri, salColIdx).setValue(valSalOri + cantKardex);
+
+      // Acreditar entrada en Destino
+      const valEntDes = parseFloat(kSheetDestino.getRange(rowDes, entColIdx).getValue()) || 0;
+      kSheetDestino.getRange(rowDes, entColIdx).setValue(valEntDes + cantKardex);
+
+      // 4. Registrar en hoja central 🔄 TRASPASOS
+      const traspasosSheet = this._asegurarHojaTraspasos(ss);
+      const folio = "TRP-" + Utilities.formatDate(hoy, "GMT-6", "yyyyMMdd-HHmmss");
+      const fechaStr = Utilities.formatDate(hoy, "GMT-6", "yyyy-MM-dd HH:mm:ss");
+
+      const logRow = [
+        folio,
+        fechaStr,
+        BODEGAS[origenKey].nombre,
+        BODEGAS[destinoKey].nombre,
+        nombreOficialOri,
+        cant,
+        unidad || "PZ",
+        factorConversion,
+        cantKardex,
+        motivo,
+        usuario
+      ];
+
+      const nextRow = traspasosSheet.getLastRow() + 1;
+      traspasosSheet.getRange(nextRow, 1, 1, 11).setValues([logRow]);
+      const bg = (nextRow % 2 === 0) ? "#FAFAFA" : "#FFFFFF";
+      traspasosSheet.getRange(nextRow, 1, 1, 11).setBackground(bg).setFontSize(9).setFontFamily("Calibri").setVerticalAlignment("middle");
+      traspasosSheet.getRange(nextRow, 1).setHorizontalAlignment("center").setFontWeight("bold");
+      traspasosSheet.getRange(nextRow, 2).setHorizontalAlignment("center");
+      traspasosSheet.getRange(nextRow, 3, 1, 2).setHorizontalAlignment("center").setFontWeight("bold");
+      traspasosSheet.getRange(nextRow, 6, 1, 4).setHorizontalAlignment("right");
+
+      // Actualizar vistas móviles silenciosamente
+      try {
+        _buildVista("BA");
+        _buildVista("BM");
+      } catch(eVista) {}
+
+      MiseLogger.info("MiseTraspasos.registrar", `Folio ${folio}: ${cant} ${unidad} (${cantKardex} Kardex) de ${origenKey} a ${destinoKey} (${nombreOficialOri})`);
+
+      return {
+        success: true,
+        folio: folio,
+        mensaje: `Traspaso ${folio} registrado con éxito:\n• ${cant} ${unidad} de ${BODEGAS[origenKey].nombre} ➔ ${BODEGAS[destinoKey].nombre}\n• Movimiento Kardex: ${cantKardex}`
+      };
+    } finally {
+      lock.releaseLock();
+    }
+  }
+};
+
+/**
+ * Endpoint global invocable desde UI o RPC para ejecutar un traspaso
+ */
+function registrarTraspasoRPC(payload) {
+  return MiseTraspasos.registrar(payload);
+}

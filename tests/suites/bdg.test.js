@@ -97,7 +97,7 @@ function runBDGTests() {
   // 9. Test Motor de Matching Matemático Real (MiseMatchingEngine)
   const fs = require('fs');
   const vm = require('vm');
-  const engineCode = fs.readFileSync('scripts/miseKardexEngine.gs', 'utf8');
+  const engineCode = fs.readFileSync('bdg/MiseKardexEngine.js', 'utf8');
   const sandbox = {
     PropertiesService: MockPropertiesService,
     SpreadsheetApp: MockSpreadsheetApp,

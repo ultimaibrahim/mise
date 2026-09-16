@@ -3,6 +3,7 @@
  */
 const { runBDGTests } = require('./suites/bdg.test');
 const { runStoreTests } = require('./suites/pda_pdm.test');
+const { runV110Tests } = require('./suites/v1_10_features.test');
 const { execSync } = require('child_process');
 
 console.log("═════════════════════════════════════════════════════════════════");
@@ -18,6 +19,7 @@ try {
   console.log("\n[FASE 2] Ejecución de Suites de Pruebas Unitarias & Invariantes");
   runBDGTests();
   runStoreTests();
+  runV110Tests();
 
   console.log("\n═════════════════════════════════════════════════════════════════");
   console.log("✨ TODAS LAS PRUEBAS AUTOMATIZADAS PASARON CON ÉXITO (0 FALLOS)");

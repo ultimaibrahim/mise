@@ -1,5 +1,5 @@
 /**
- * MISE — Pedidos Andares Script v1.9.0 Altair (Optimización Sheets Turbo, Matriz 2D & Cero Lag Móvil)
+ * MISE — Pedidos Andares Script v1.10.0 Altair (Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Pedidos Andares (Google Sheets de B-Andares)
@@ -53,24 +53,27 @@ function onOpen() {
   try {
     const ui = SpreadsheetApp.getUi();
     const menu = ui.createMenu("⚙️ Mise")
-      .addItem("🗑️ Limpiar / Reiniciar pedido",           "resetearPedidoManualmente")
+      // Operación Diaria
+      .addItem("🚚 Generar Surtido Rápido (móvil)",       "generarSurtidoRapido")
+      .addItem("🔄 Registrar Traspaso entre Tiendas",     "abrirDialogoTraspasoTiendaHTML")
+      .addItem("🖐️ Reordenar lista por picking",          "ordenarPedido")
       .addSeparator()
-      .addItem("🔧 Reparar formatos y conexión",        "repararSistemaTienda")
+      .addItem("🔧 Sincronizar catálogo y reparar formato", "repararSistemaTienda")
       .addSeparator()
-      .addItem(`🔗 Configurar conexión con ${BODEGA_NOMBRE}`, "configurarBodega")
-      .addSeparator()
-      .addItem("🖐️ Ordenar picking",                    "ordenarPedido")
-      .addItem("🚚 Surtido Rápido (móvil)",                "generarSurtidoRapido")
-      .addSeparator()
-      .addItem("🔒 Blindar Pedido y Surtido (Total)",   "protegerTodasLasHojasTiendaSeguras")
-      .addSeparator()
-      .addItem("⚠️ Restablecer sistema (Destructivo)",     "setupCompleto")
-      .addSeparator()
-      .addSubMenu(ui.createMenu("🧪 Herramientas Experimentales")
-        .addItem("⏰ Activar reseteo automático de medianoche (00:00 AM)", "instalarActivadoresMedianochePDA")
-        .addItem("🎲 Generar datos de prueba",             "generarDatosPrueba")
-        .addItem("🗒️ Forzar registro en LOG_SURTIDO",     "probadorForzarLogSurtido")
-        .addItem("🗑️ Simular Cierre de Día (Reset + Log)", "resetearPedidoManualmente"))
+      // Submenú Cuarentena / Zona Avanzada
+      .addSubMenu(ui.createMenu("⚠️ Mantenimiento Avanzado y Zona de Riesgo")
+        .addSubMenu(ui.createMenu("🚨 Reseteo y Cierre Manual")
+          .addItem("🗑️ Limpiar / Reiniciar pedido de hoy", "resetearPedidoManualmente")
+          .addItem("⏰ Reinstalar activador nocturno (23:00 hrs)", "instalarActivadoresMedianochePDA"))
+        .addSubMenu(ui.createMenu("🔒 Blindaje y Permisos")
+          .addItem("🔒 Proteger Pedido Diario", "protegerPedidoSeguro")
+          .addItem("🛡️ Blindar Pedido y Surtido (Total)", "protegerTodasLasHojasTiendaSeguras"))
+        .addSubMenu(ui.createMenu("🧪 Diagnóstico y Pruebas")
+          .addItem("🎲 Generar datos aleatorios de prueba", "generarDatosPrueba")
+          .addItem("🗒️ Forzar registro en LOG_SURTIDO", "probadorForzarLogSurtido"))
+        .addSubMenu(ui.createMenu("⚠️ Configuración Crítica")
+          .addItem(`🔗 Configurar conexión con ${BODEGA_NOMBRE}`, "configurarBodega")
+          .addItem("⚠️ Restablecer sistema desde cero (Destructivo)", "setupCompleto")))
       .addSeparator()
       .addItem("ℹ️ Acerca de Mise",                        "acercaDe");
     menu.addToUi();
@@ -183,8 +186,8 @@ function _aplicarOcultamientoColumnas(sheet) {
   try {
     sheet.showColumns(1, 11);  // Asegurar estado base limpio hasta Col 11
     sheet.hideColumns(1, 2);   // Ocultar Col A (No) y Col B (CATEGORÍA)
-    sheet.showColumns(3);      // Mostrar Col C (PRODUCTO)
-    sheet.hideColumns(4, 2);   // Ocultar Col D (UNIDAD) y Col E (SALDO TEÓRICO)
+    sheet.showColumns(3, 2);   // Mostrar Col C (PRODUCTO) y Col D (UNIDAD TIENDA)
+    sheet.hideColumns(5);      // Ocultar Col E (SALDO TEÓRICO)
     sheet.showColumns(6);      // Mostrar Col F (CANT. A PEDIR)
     sheet.hideColumns(7, 4);   // Ocultar Col G (DIFERENCIA), Col H (RECIBIDA), Col I (ESTADO), Col J (ADICIÓN)
     sheet.showColumns(11);     // Mostrar Col K (MÍN/MÁX QUIOSCO)
@@ -197,10 +200,10 @@ function _aplicarOcultamientoColumnas(sheet) {
 function _aplicarAnchosColumnas(sheet) {
   sheet.setColumnWidth(1, 40);   // No
   sheet.setColumnWidth(2, 115);  // CATEGORÍA
-  sheet.setColumnWidth(3, 260);  // PRODUCTO (VISIBLE)
-  sheet.setColumnWidth(4, 65);   // UNIDAD
-  sheet.setColumnWidth(5, 110);  // SALDO TEÓRICO
-  sheet.setColumnWidth(6, 120);  // CANT. A PEDIR (VISIBLE)
+  sheet.setColumnWidth(3, 240);  // PRODUCTO (VISIBLE)
+  sheet.setColumnWidth(4, 75);   // UNIDAD TIENDA (VISIBLE: Domo, Caja, Kg, etc.)
+  sheet.setColumnWidth(5, 100);  // SALDO TEÓRICO (Oculto)
+  sheet.setColumnWidth(6, 115);  // CANT. A PEDIR (VISIBLE)
   sheet.setColumnWidth(7, 100);  // DIFERENCIA
   sheet.setColumnWidth(8, 120);  // H
   sheet.setColumnWidth(9, 60);   // I
@@ -261,9 +264,11 @@ function onEdit(e) {
         const isComp = (e.range.getValue() === true);
         if (isComp) {
           sheet.getRange(row, 7).setValue(false); // Inexistente = false
+          sheet.getRange(row, 5).setValue(cantPedir); // Escribe número puro en Col E
           pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue(cantPedir);
           pSheet.getRange(rowInPedido, COL_ESTADO).setValue("COMPLETO");
         } else {
+          sheet.getRange(row, 5).clearContent();
           pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue("");
           pSheet.getRange(rowInPedido, COL_ESTADO).setValue("");
         }
@@ -273,19 +278,22 @@ function onEdit(e) {
         const isZero = (e.range.getValue() === true);
         if (isZero) {
           sheet.getRange(row, 6).setValue(false); // Completo = false
+          sheet.getRange(row, 5).setValue(0); // Escribe 0 puro en Col E
           pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue(0);
           pSheet.getRange(rowInPedido, COL_ESTADO).setValue("INEXISTENTE");
         } else {
+          sheet.getRange(row, 5).clearContent();
           pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue("");
           pSheet.getRange(rowInPedido, COL_ESTADO).setValue("");
         }
       }
-      // 3. Columna E: CANT. RECIBIDA (Manual)
+      // 3. Columna E: CANT. RECIBIDA (Manual / Desacoplada sin fórmulas)
       else if (col === 5) {
         let val = e.range.getValue();
-        if (val !== "") {
+        if (val !== "" && val !== null && val !== undefined) {
           const num = typeof val === "string" ? parseFloat(val.replace(',', '.')) : Number(val);
           if (!isNaN(num) && num >= 0) {
+            sheet.getRange(row, 5).setValue(num);
             pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue(num);
             if (num === cantPedir) {
               sheet.getRange(row, 6).setValue(true);
@@ -305,15 +313,16 @@ function onEdit(e) {
               pSheet.getRange(rowInPedido, COL_ESTADO).setValue("PARCIAL");
             }
           } else {
-            sheet.getRange(row, 5).setFormula(`=IF(G${row}=TRUE, 0, IF(F${row}=TRUE, D${row}, ""))`);
+            // Entrada inválida: limpiar celda de manera pura sin reinyectar fórmula
+            sheet.getRange(row, 5).clearContent();
             sheet.getRange(row, 6).setValue(false);
             sheet.getRange(row, 7).setValue(false);
             pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue("");
             pSheet.getRange(rowInPedido, COL_ESTADO).setValue("");
           }
         } else {
-          // Si borran la celda, re-inyectar la fórmula local
-          sheet.getRange(row, 5).setFormula(`=IF(G${row}=TRUE, 0, IF(F${row}=TRUE, D${row}, ""))`);
+          // Si el usuario borra la celda, mantenerla limpia sin reinyectar fórmulas
+          sheet.getRange(row, 5).clearContent();
           sheet.getRange(row, 6).setValue(false);
           sheet.getRange(row, 7).setValue(false);
           pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue("");
@@ -1388,12 +1397,11 @@ function _generarSurtidoRapidoInternal(activateSheet) {
     const checkCompleto = [];
     const checkInexistente = [];
     
-    const formulasE = [];
+    const valuesE = [];
     
     for (let i = 0; i < rows; i++) {
       const item = filtered[i];
       const bg = i % 2 === 0 ? "#FAFAFA" : "#FFFFFF";
-      const rNum = 4 + i;
       
       values.push([
         item.no,
@@ -1402,10 +1410,15 @@ function _generarSurtidoRapidoInternal(activateSheet) {
         item.cantPedir
       ]);
 
-      if (item.cantRecibida !== "" && !item.completo && !item.inexistente && !isNaN(Number(item.cantRecibida))) {
-        formulasE.push([String(item.cantRecibida)]);
+      // Col E: Valor numérico puro (desacoplado de fórmulas volátiles)
+      if (item.cantRecibida !== "" && item.cantRecibida !== null && !isNaN(Number(item.cantRecibida))) {
+        valuesE.push([Number(item.cantRecibida)]);
+      } else if (item.completo) {
+        valuesE.push([Number(item.cantPedir)]);
+      } else if (item.inexistente) {
+        valuesE.push([0]);
       } else {
-        formulasE.push([`=IF(G${rNum}=TRUE, 0, IF(F${rNum}=TRUE, D${rNum}, ""))`]);
+        valuesE.push([""]);
       }
       
       const rowBg = Array(7).fill(item.highlightBg || bg);
@@ -1423,8 +1436,8 @@ function _generarSurtidoRapidoInternal(activateSheet) {
     // Escribir datos básicos Cols 1-4 (No, Cat, Prod, CantPedir)
     sSheet.getRange(4, 1, rows, 4).setValues(values);
     
-    // Inyectar fórmulas dinámicas nativas en Col E (CANT. RECIBIDA instantánea en 0 ms)
-    sSheet.getRange(4, 5, rows, 1).setFormulas(formulasE);
+    // Inyectar valores numéricos puros en Col E (Cero fórmulas, cero congelamiento)
+    sSheet.getRange(4, 5, rows, 1).setValues(valuesE);
 
     sSheet.getRange(4, 1, rows, 7).setBackgrounds(bgs)
       .setFontFamily("Calibri").setFontSize(10).setVerticalAlignment("middle");
@@ -1782,4 +1795,202 @@ function instalarActivadoresMedianochePDA() {
     `Se ha programado el reseteo diario y guardado en LOG_SURTIDO para ejecutarse automáticamente todos los días entre 00:00 y 01:00 AM.\n\nNo necesitas dejar ninguna pestaña abierta.`,
     SpreadsheetApp.getUi().ButtonSet.OK
   );
+}
+
+// ── MÓDULO DE TRASPASOS INTER-TIENDAS (MOBILE-FIRST) ─────────────────────────
+function abrirDialogoTraspasoTiendaHTML() {
+  const html = HtmlService.createHtmlOutputFromFile('TraspasoTiendaDialog')
+    .setWidth(450)
+    .setHeight(560);
+  SpreadsheetApp.getUi().showModalDialog(html, `🔄 Registrar Traspaso — ${BODEGA_NOMBRE}`);
+}
+
+function obtenerCatalogoParaTraspasoTienda() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sync = ss.getSheetByName(SHEET_SYNC);
+  const items = [];
+
+  if (sync && sync.getLastRow() >= 4) {
+    const sData = sync.getRange(4, 1, sync.getLastRow() - 3, 12).getValues();
+    sData.forEach(r => {
+      const act = String(r[8] || "").trim().toUpperCase();
+      if (act === "NO") return;
+      const name = String(r[2] || "").trim();
+      if (!name) return;
+      const cat = String(r[1] || "").trim();
+      const unit = String(r[3] || "").trim();
+      items.push({
+        name: name,
+        cat: cat,
+        unit: unit
+      });
+    });
+  }
+
+  // Si no hay datos en _SYNC, leer directamente de PEDIDO DIARIO
+  if (items.length === 0) {
+    const pedido = ss.getSheetByName(SHEET_PEDIDO);
+    if (pedido && pedido.getLastRow() >= 4) {
+      const pData = pedido.getRange(4, 1, pedido.getLastRow() - 3, 5).getValues();
+      pData.forEach(r => {
+        const name = String(r[2] || "").trim();
+        if (!name) return;
+        items.push({
+          name: name,
+          cat: String(r[1] || "").trim(),
+          unit: String(r[3] || "").trim()
+        });
+      });
+    }
+  }
+
+  return {
+    miBodegaKey: BODEGA_KEY,
+    miBodegaNombre: BODEGA_NOMBRE,
+    contraparteKey: (BODEGA_KEY === "BA") ? "BM" : "BA",
+    contraparteNombre: (BODEGA_KEY === "BA") ? "Mercado" : "Andares",
+    productos: items
+  };
+}
+
+function registrarTraspasoTiendaRPC(payload) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) {
+    throw new Error("El sistema de traspasos está ocupado. Intenta de nuevo.");
+  }
+
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const bdgUrl = props.getProperty(`BODEGA_URL_${BODEGA_KEY}`) || props.getProperty("BODEGA_URL_BA") || props.getProperty("BODEGA_URL_BM");
+    const bdgId = props.getProperty("BODEGA_SPREADSHEET_ID") || props.getProperty("BDG_SPREADSHEET_ID");
+
+    let bdgSs = null;
+    if (bdgId) {
+      try { bdgSs = SpreadsheetApp.openById(bdgId); } catch(e) {}
+    }
+    if (!bdgSs && bdgUrl) {
+      try { bdgSs = SpreadsheetApp.openByUrl(bdgUrl); } catch(e) {}
+    }
+
+    if (!bdgSs) {
+      throw new Error(`No se pudo conectar con el archivo de Bodega Central para registrar el traspaso.`);
+    }
+
+    // Asegurar usuario
+    const userEmail = Session.getActiveUser().getEmail() || `Encargado ${BODEGA_NOMBRE}`;
+    const payloadEnriquecido = {
+      origen: payload.origen,
+      destino: payload.destino,
+      producto: payload.producto,
+      cantidad: parseFloat(payload.cantidad),
+      unidad: payload.unidad,
+      motivo: payload.motivo || "Traspaso inter-tiendas",
+      usuario: userEmail
+    };
+
+    // 1. Ejecutar registro autoritativo en BDG mediante importación directa en libro
+    // Llamada atómica hacia la función global en BDG
+    const res = bdgSs.getName() ? (function() {
+      // Registrar fila en 🔄 TRASPASOS de BDG
+      let traspasosSheet = bdgSs.getSheetByName("🔄 TRASPASOS");
+      if (!traspasosSheet) {
+        traspasosSheet = bdgSs.insertSheet("🔄 TRASPASOS");
+        traspasosSheet.getRange(1, 1, 1, 11).setValues([[
+          "FOLIO", "FECHA_HORA", "ORIGEN", "DESTINO", "PRODUCTO", "CANTIDAD", "UNIDAD", "FACTOR_KARDEX", "CANT_KARDEX", "MOTIVO", "USUARIO"
+        ]]).setBackground("#3D5A47").setFontColor("#FFFFFF").setFontWeight("bold");
+        traspasosSheet.setRowHeight(1, 28);
+        traspasosSheet.setFrozenRows(1);
+      }
+
+      // Buscar factores y actualizar Kardex
+      const hoy = new Date();
+      const dow = hoy.getDay();
+      const dIdx = dow === 0 ? 6 : dow - 1;
+      const entColIdx = 10 + dIdx * 3;
+      const salColIdx = 10 + dIdx * 3 + 1;
+
+      const normKey = String(payload.producto).toLowerCase().replace(/\s+/g, "").replace(/cdk/g, "").replace(/[()]/g, "").trim();
+
+      // Factor de conversión desde MAESTRO
+      let factorConversion = 1;
+      const mSheet = bdgSs.getSheetByName("MAESTRO");
+      if (mSheet && mSheet.getLastRow() >= 4) {
+        const mHeaders = mSheet.getRange(3, 1, 1, mSheet.getLastColumn()).getValues()[0].map(h => String(h).trim().toUpperCase());
+        const cFact = mHeaders.findIndex(h => h.includes("FACTOR"));
+        const cProd = mHeaders.indexOf("PRODUCTO");
+        if (cFact !== -1 && cProd !== -1) {
+          const mData = mSheet.getRange(4, 1, mSheet.getLastRow() - 3, mSheet.getLastColumn()).getValues();
+          for (let i = 0; i < mData.length; i++) {
+            const pNorm = String(mData[i][cProd]).toLowerCase().replace(/\s+/g, "").replace(/cdk/g, "").replace(/[()]/g, "").trim();
+            if (pNorm === normKey) {
+              let fVal = mData[i][cFact];
+              if (typeof fVal === "string") fVal = fVal.replace(',', '.').trim();
+              const numF = parseFloat(fVal);
+              if (!isNaN(numF) && numF > 0) factorConversion = numF;
+              break;
+            }
+          }
+        }
+      }
+
+      const cantKardex = Math.round(payload.cantidad * factorConversion * 1000) / 1000;
+
+      // Actualizar Kardex Origen y Destino en BDG
+      const kOri = bdgSs.getSheetByName(payload.origen === "BA" ? "KARDEX_BA" : "KARDEX_BM");
+      const kDes = bdgSs.getSheetByName(payload.destino === "BA" ? "KARDEX_BA" : "KARDEX_BM");
+
+      if (kOri && kDes) {
+        const dataOri = kOri.getRange(7, 3, kOri.getLastRow() - 6, 1).getValues();
+        const dataDes = kDes.getRange(7, 3, kDes.getLastRow() - 6, 1).getValues();
+
+        for (let i = 0; i < dataOri.length; i++) {
+          if (String(dataOri[i][0]).toLowerCase().replace(/\s+/g, "").replace(/cdk/g, "").replace(/[()]/g, "").trim() === normKey) {
+            const rowO = 7 + i;
+            const curSal = parseFloat(kOri.getRange(rowO, salColIdx).getValue()) || 0;
+            kOri.getRange(rowO, salColIdx).setValue(curSal + cantKardex);
+            break;
+          }
+        }
+
+        for (let i = 0; i < dataDes.length; i++) {
+          if (String(dataDes[i][0]).toLowerCase().replace(/\s+/g, "").replace(/cdk/g, "").replace(/[()]/g, "").trim() === normKey) {
+            const rowD = 7 + i;
+            const curEnt = parseFloat(kDes.getRange(rowD, entColIdx).getValue()) || 0;
+            kDes.getRange(rowD, entColIdx).setValue(curEnt + cantKardex);
+            break;
+          }
+        }
+      }
+
+      const folio = "TRP-" + Utilities.formatDate(hoy, "GMT-6", "yyyyMMdd-HHmmss");
+      const fechaStr = Utilities.formatDate(hoy, "GMT-6", "yyyy-MM-dd HH:mm:ss");
+      const nextRow = traspasosSheet.getLastRow() + 1;
+      const logRow = [
+        folio,
+        fechaStr,
+        payload.origen === "BA" ? "Andares" : "Mercado",
+        payload.destino === "BA" ? "Andares" : "Mercado",
+        payload.producto,
+        payload.cantidad,
+        payload.unidad,
+        factorConversion,
+        cantKardex,
+        payload.motivo,
+        userEmail
+      ];
+      traspasosSheet.getRange(nextRow, 1, 1, 11).setValues([logRow]);
+
+      return {
+        success: true,
+        folio: folio,
+        mensaje: `Traspaso registrado: ${payload.cantidad} ${payload.unidad} de ${payload.origen} a ${payload.destino}`
+      };
+    })() : null;
+
+    registrarLog("registrarTraspasoTienda", "SUCCESS", `Folio ${res ? res.folio : 'OK'}: ${payload.cantidad} ${payload.unidad} [${payload.producto}]`);
+
+    return res || { success: true, mensaje: "Traspaso aplicado." };
+  } finally {
+    lock.releaseLock();
+  }
 }

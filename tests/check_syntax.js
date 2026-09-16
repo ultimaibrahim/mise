@@ -6,10 +6,11 @@ const path = require('path');
 const vm = require('vm');
 
 const filesToValidate = [
-  'scripts/miseAuthBDG.gs',
-  'scripts/miseKardexEngine.gs',
-  'scripts/miseAuthPDA.gs',
-  'scripts/miseAuthPDM.gs'
+  'bdg/miseAuthBDG.js',
+  'bdg/MiseKardexEngine.js',
+  'pda/miseAuthPDA.js',
+  'pdm/miseAuthPDM.js',
+  'scripts/sheets_mirror_worker.js'
 ];
 
 let hasErrors = false;

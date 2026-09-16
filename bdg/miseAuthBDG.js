@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.9.0 Altair (Optimización Sheets Turbo, Erradicación VLOOKUP & Blindaje 23:00 hrs)
+ * MISE — Bodegas Script v1.10.0 Altair (Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -74,7 +74,9 @@ function _getMaestroHeaderMap(sheet) {
     { canonical: "MÍN_BA", aliases: ["MIN_BA"] },
     { canonical: "MÁX_BA", aliases: ["MAX_BA"] },
     { canonical: "MÍN_BM", aliases: ["MIN_BM"] },
-    { canonical: "MÁX_BM", aliases: ["MAX_BM"] }
+    { canonical: "MÁX_BM", aliases: ["MAX_BM"] },
+    { canonical: "UNIDAD_TIENDA", aliases: ["UNIDAD_TIENDA", "UNIDAD TIENDA", "UNIDAD_PEDIDO", "UNIDAD PEDIDO", "UNIDAD_SUCURSAL"] },
+    { canonical: "FACTOR_CONVERSION", aliases: ["FACTOR_CONVERSION", "FACTOR_CONVERSIÓN", "FACTOR", "FACTOR CONVERSION", "FACTOR CONVERSIÓN", "CONVERSION"] }
   ];
 
   aliasGroups.forEach(g => {
@@ -135,53 +137,54 @@ function onOpen() {
   try {
     const ui = SpreadsheetApp.getUi();
     const menu = ui.createMenu("⚙️ Mise")
+      // Operación Diaria y Supervisión Rápida
+      .addItem("🚚 Descontar Pedidos de Hoy (Cierre diario)", "descontarSurtidoAutomaticoManualmente")
+      .addItem("🔄 Registrar Traspaso entre Sucursales",  "abrirDialogoTraspasoBDGHTML")
+      .addItem("⚡ Mise Powerhouse (Catálogo & Picking)", "abrirConstructorPickingHTML")
+      .addItem("📅 Sincronizar semana actual (Ambas bodegas)", "configurarSemanaAmbas")
+      .addSeparator()
       .addItem("🩺 Diagnosticar y reparar sistema",       "repararYSincronizarSistemaManualmente")
       .addSeparator()
+      // Gestión de Semanas y Calendario
       .addSubMenu(ui.createMenu("📅 Gestión Semanal")
-        .addItem("⚡ Sincronizar semana actual (Ambas bodegas)", "configurarSemanaAmbas")
-        .addSeparator()
         .addItem("📅 Configurar semana — Andares",          "configurarSemanaBA")
         .addItem("📅 Configurar semana — Mercado",          "configurarSemanaBM")
         .addSeparator()
         .addItem("⏩ Avanzar semana — Andares",             "avanzarSemanaBA")
-        .addItem("⏩ Avanzar semana — Mercado",             "avanzarSemanaBM"))
-      .addSeparator()
-      .addSubMenu(ui.createMenu("🛠️ Gestión de Productos")
-        .addItem("⚡ Mise Powerhouse (Catálogo & Picking)", "abrirConstructorPickingHTML")
+        .addItem("⏩ Avanzar semana — Mercado",             "avanzarSemanaBM")
+        .addItem("⏩ Auto-verificar y avanzar semana ahora", "forzarAutoVerificarYAvanzarSemana"))
+      // Gestión de Catálogo
+      .addSubMenu(ui.createMenu("🛠️ Gestión de Catálogo")
         .addItem("⚡ Registro rápido de movimientos (PC)", "abrirRegistroRapidoHTML")
-        .addSeparator()
-        .addItem("🖐️ Constructor de Picking directo",     "abrirConstructorPickingHTML")
-        .addItem("🗑 Eliminar productos seleccionados",    "eliminarSeleccionadosMaestro")
-        .addItem("🧹 Eliminar productos duplicados",      "eliminarDuplicadosCatalogo"))
+        .addItem("🗑️ Eliminar productos seleccionados",    "eliminarSeleccionadosMaestro")
+        .addItem("🧹 Eliminar productos duplicados",        "eliminarDuplicadosCatalogo"))
       .addSeparator()
-      .addSubMenu(ui.createMenu("📊 Mantenimiento y Blindaje")
-        .addItem("🔒 Blindar catálogo y Kardex (Total)",   "protegerTodasLasHojasSeguras")
-        .addItem("🛡️ Ejecutar mantenimiento semanal (Manual)", "ejecutarMantenimientoSemanalBDG")
-        .addSeparator()
-        .addItem("🏗️ Reconstruir KARDEX Andares (con respaldo en RAM)", "reconstruirKardexBAConRespaldo")
-        .addItem("🏗️ Reconstruir KARDEX Mercado (con respaldo en RAM)", "reconstruirKardexBMConRespaldo")
-        .addItem("🏗️ Reconstruir MAESTRO (con respaldo en RAM)",       "reconstruirMaestroConRespaldo")
-        .addSeparator()
-        .addItem("🧠 Reconciliador Inteligente de Huérfanos (Modal)", "abrirReconciliadorInteligenteHTML")
-        .addSeparator()
-        .addItem("📊 Recrear VISTA_MOVIL_BA",             "crearVistaMóvilBA")
-        .addItem("📊 Recrear VISTA_MOVIL_BM",             "crearVistaMóvilBM"))
+      // Cuarentena de Alto Riesgo / Mantenimiento
+      .addSubMenu(ui.createMenu("⚠️ Mantenimiento Avanzado y Zona de Riesgo")
+        .addSubMenu(ui.createMenu("🚨 Reconstrucción y Respaldo")
+          .addItem("🏗️ Reconstruir KARDEX Andares (con respaldo en RAM)", "reconstruirKardexBAConRespaldo")
+          .addItem("🏗️ Reconstruir KARDEX Mercado (con respaldo en RAM)", "reconstruirKardexBMConRespaldo")
+          .addItem("🏗️ Reconstruir MAESTRO (con respaldo en RAM)",       "reconstruirMaestroConRespaldo")
+          .addSeparator()
+          .addItem("📊 Recrear VISTA_MOVIL_BA",             "crearVistaMóvilBA")
+          .addItem("📊 Recrear VISTA_MOVIL_BM",             "crearVistaMóvilBM"))
+        .addSubMenu(ui.createMenu("🧪 Reconciliación Forense y Recuperación")
+          .addItem("📥 Preparar plantilla de recuperación semanal", "prepararPlantillaRecuperacionSemana")
+          .addItem("⚡ Inyectar datos de recuperación a Kardex y Logs", "procesarInyeccionRecuperacionKardex")
+          .addItem("🔄 Reconciliar y descontar toda la semana activa", "reconciliarSemanaCompletaDesdeLogs")
+          .addItem("⚡ Reconciliar salidas del Lunes 07 de Septiembre", "reconciliarLunes7SeptiembreManualmente")
+          .addItem("🧠 Reconciliador Inteligente de Huérfanos", "abrirReconciliadorInteligenteHTML"))
+        .addSubMenu(ui.createMenu("⚙️ Automatizaciones y Triggers")
+          .addItem("🚚 Descontar pedidos de ayer (Manual)", "descontarSurtidoHoyManualmente")
+          .addItem("⏰ Reinstalar activadores automáticos (23:00 hrs)", "instalarActivadoresNocturnosBDG")
+          .addItem("🔗 Configurar conexión con Logs (IMPORTRANGE)", "configurarConexionLogTiendas")
+          .addItem("🛡️ Ejecutar mantenimiento semanal (Manual)", "ejecutarMantenimientoSemanalBDG"))
+        .addSubMenu(ui.createMenu("🔒 Protección y Seguridad Crítica")
+          .addItem("🔒 Blindar catálogo y Kardex (Total)",   "protegerTodasLasHojasSeguras")
+          .addSeparator()
+          .addItem("⚠️ Restablecer sistema desde cero (Destructivo)", "setupCompleto")))
       .addSeparator()
-      .addSubMenu(ui.createMenu("🧪 Automatizaciones Autónomas")
-        .addItem("📥 Preparar plantilla de recuperación semanal (Pegado rápido)", "prepararPlantillaRecuperacionSemana")
-        .addItem("⚡ Inyectar datos de recuperación a Kardex y Logs", "procesarInyeccionRecuperacionKardex")
-        .addItem("🔄 Reconciliar y descontar toda la semana activa (LUN a DOM)", "reconciliarSemanaCompletaDesdeLogs")
-        .addItem("⚡ Reconciliar directamente salidas del Lunes 07 de Septiembre", "reconciliarLunes7SeptiembreManualmente")
-        .addSeparator()
-        .addItem("⏰ Reinstalar activadores automáticos (Descuento 11PM + Mantenimiento Dom 11PM)", "instalarActivadoresNocturnosBDG")
-        .addItem("🚚 Descontar pedidos de hoy y vaciar tiendas (Cierre diario)", "descontarSurtidoAutomaticoManualmente")
-        .addItem("🚚 Descontar pedidos de ayer (Manual)", "descontarSurtidoHoyManualmente")
-        .addItem("⏩ Auto-verificar y avanzar semana ahora", "forzarAutoVerificarYAvanzarSemana")
-        .addItem("🔗 Configurar conexión con Logs (IMPORTRANGE)", "configurarConexionLogTiendas"))
-      .addSeparator()
-      .addItem("⚠️ Restablecer sistema (Destructivo)",     "setupCompleto")
-      .addSeparator()
-      .addItem("ℹ️ Acerca de",                               "acercaDe");
+      .addItem("ℹ️ Acerca de Mise",                        "acercaDe");
     menu.addToUi();
   } catch(e) {}
 }
@@ -976,12 +979,14 @@ function _buildVista(key) {
   
   const cProd = map["PRODUCTO"] ? map["PRODUCTO"].index : 2;
   const cCatM = map["CATEGORÍA"] ? map["CATEGORÍA"].index : 1;
+  const cUnTienda = map["UNIDAD_TIENDA"] ? map["UNIDAD_TIENDA"].index : -1;
   const cMin  = (key === "BA") ? (map["MÍN_BA"] ? map["MÍN_BA"].index : 6) : (map["MÍN_BM"] ? map["MÍN_BM"].index : 9);
   const cMax  = (key === "BA") ? (map["MÁX_BA"] ? map["MÁX_BA"].index : 7) : (map["MÁX_BM"] ? map["MÁX_BM"].index : 10);
   const cMinQ = (key === "BA") ? (map["MÍN_Q_BA"] ? map["MÍN_Q_BA"].index : -1) : (map["MÍN_Q_BM"] ? map["MÍN_Q_BM"].index : -1);
   const cMaxQ = (key === "BA") ? (map["MÁX_Q_BA"] ? map["MÁX_Q_BA"].index : -1) : (map["MÁX_Q_BM"] ? map["MÁX_Q_BM"].index : -1);
 
   const maestroCatMap = {};
+  const maestroUnidadTiendaMap = {};
   const minStockMap = {};
   const maxStockMap = {};
   const minQMap = {};
@@ -989,12 +994,14 @@ function _buildVista(key) {
   mData.forEach(r => {
     const prodName = String(r[cProd]).trim();
     const catVal   = String(r[cCatM]).trim().toUpperCase();
+    const unTienda = cUnTienda !== -1 ? String(r[cUnTienda] || "").trim() : "";
     const minVal   = parseFloat(r[cMin]) || 0;
     const maxVal   = parseFloat(r[cMax]) || 0;
     const minQVal  = cMinQ !== -1 ? (parseFloat(r[cMinQ]) || 0) : minVal;
     const maxQVal  = cMaxQ !== -1 ? (parseFloat(r[cMaxQ]) || 0) : maxVal;
     if (prodName) {
       maestroCatMap[prodName] = catVal;
+      if (unTienda) maestroUnidadTiendaMap[prodName] = unTienda;
       minStockMap[prodName]   = minVal;
       maxStockMap[prodName]   = maxVal;
       minQMap[prodName]       = minQVal;
@@ -1009,7 +1016,7 @@ function _buildVista(key) {
       no: r[0], 
       cat: maestroCatMap[pName] || String(r[1]).trim().toUpperCase(), 
       nombre: pName, 
-      unidad: r[4], 
+      unidad: maestroUnidadTiendaMap[pName] || r[4], 
       saldo: parseFloat(r[29]) || 0, // Col AD (Sunday balance) is column 30, index 29
       srcRow: KARDEX_START + i 
     };
@@ -4732,7 +4739,9 @@ function _asegurarColumnasQuioscoEnMaestro(maestroSheet) {
     { key: "MÍN_Q_BM", width: 95, isStock: true },
     { key: "MÁX_Q_BM", width: 95, isStock: true },
     { key: "PICKING_BA", width: 90, isStock: false },
-    { key: "PICKING_BM", width: 90, isStock: false }
+    { key: "PICKING_BM", width: 90, isStock: false },
+    { key: "UNIDAD_TIENDA", width: 100, isStock: false, defaultVal: "" },
+    { key: "FACTOR_CONVERSION", width: 110, isStock: false, defaultVal: 1, numberFormat: "0.####" }
   ];
 
   const lr = sheet.getLastRow();
@@ -4756,6 +4765,11 @@ function _asegurarColumnasQuioscoEnMaestro(maestroSheet) {
           sheet.getRange(MAESTRO_START, newCol, numRows, 1)
             .setValue(0)
             .setNumberFormat("0.####")
+            .setHorizontalAlignment("center");
+        } else if (colDef.defaultVal !== undefined) {
+          sheet.getRange(MAESTRO_START, newCol, numRows, 1)
+            .setValue(colDef.defaultVal)
+            .setNumberFormat(colDef.numberFormat || "@")
             .setHorizontalAlignment("center");
         } else {
           const seqVals = Array.from({ length: numRows }, (_, idx) => [idx + 1]);
@@ -4983,6 +4997,54 @@ function abrirRegistroRapidoHTML() {
     .setWidth(650)
     .setHeight(520);
   SpreadsheetApp.getUi().showModalDialog(html, "⚡ Registro Rápido de Movimientos (PC)");
+}
+
+function abrirDialogoTraspasoBDGHTML() {
+  const html = HtmlService.createHtmlOutputFromFile('TraspasoDialog')
+    .setWidth(580)
+    .setHeight(540);
+  SpreadsheetApp.getUi().showModalDialog(html, "🔄 Registrar Traspaso entre Sucursales (Andares ⇄ Mercado)");
+}
+
+function obtenerCatalogoParaTraspaso() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  if (!maestro) return [];
+  const lr = maestro.getLastRow();
+  if (lr < MAESTRO_START) return [];
+
+  const map = _getMaestroHeaderMap(maestro);
+  const cProd = map["PRODUCTO"] ? map["PRODUCTO"].index : 2;
+  const cCat = map["CATEGORÍA"] ? map["CATEGORÍA"].index : 1;
+  const cUnit = map["UNIDAD"] ? map["UNIDAD"].index : 4;
+  const cUnTienda = map["UNIDAD_TIENDA"] ? map["UNIDAD_TIENDA"].index : -1;
+  const cFact = map["FACTOR_CONVERSION"] ? map["FACTOR_CONVERSION"].index : -1;
+  const cAct = map["ACTIVO"] ? map["ACTIVO"].index : 5;
+
+  const data = maestro.getRange(MAESTRO_START, 1, lr - MAESTRO_START + 1, maestro.getLastColumn()).getValues();
+  const prods = [];
+  data.forEach(r => {
+    const act = String(r[cAct] || "").trim().toUpperCase();
+    if (act === "NO") return;
+    const name = String(r[cProd] || "").trim();
+    if (!name) return;
+    const cat = String(r[cCat] || "").trim();
+    const unitKardex = String(r[cUnit] || "").trim();
+    const unitTienda = cUnTienda !== -1 ? String(r[cUnTienda] || "").trim() : "";
+    let fact = cFact !== -1 ? r[cFact] : 1;
+    if (typeof fact === "string") fact = fact.replace(',', '.').trim();
+    const numFact = parseFloat(fact) || 1;
+
+    prods.push({
+      name: name,
+      cat: cat,
+      unitKardex: unitKardex,
+      unitTienda: unitTienda || unitKardex,
+      factor: numFact
+    });
+  });
+
+  return prods;
 }
 
 function obtenerCatalogoKardexParaRegistro(key = "BA") {

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root {
+      --bg: #F5EFE6;
+      --surface: #FFFFFF;
+      --dark: #3D5A47;
+      --sage: #7A9E8A;
+      --border: #E2D9CC;
+      --text: #1A1A1A;
+      --text-muted: #666666;
+      --accent: #2E5D4B;
+      --amber: #C97D10;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    html, body { height: 100%; width: 100%; overflow: hidden; background: var(--bg); color: var(--text); }
+    body { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    
+    header { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; background: var(--surface); padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--border); }
+    .title-group { display: flex; align-items: center; gap: 8px; }
+    h2 { font-size: 15px; font-weight: 700; color: var(--dark); }
+    .subtitle { font-size: 11px; color: var(--text-muted); }
+
+    .route-card { display: flex; align-items: center; justify-content: space-between; background: var(--surface); padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--border); flex-shrink: 0; }
+    .node { display: flex; flex-direction: column; gap: 2px; }
+    .node-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
+    .node-select { padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; font-weight: 700; font-size: 12px; outline: none; background: #FAFAFA; color: var(--dark); }
+    .arrow-icon { font-size: 18px; color: var(--accent); font-weight: 700; padding: 0 8px; }
+
+    .search-box { position: relative; flex-shrink: 0; }
+    .search-input { width: 100%; padding: 10px 12px; font-size: 13px; border: 2px solid var(--sage); border-radius: var(--radius); outline: none; background: var(--surface); transition: border-color 0.2s ease; }
+    .search-input:focus { border-color: var(--dark); box-shadow: 0 0 0 3px rgba(61,90,71,0.15); }
+    
+    .content-area { flex: 1; display: flex; gap: 10px; min-height: 0; }
+    
+    .results-list { flex: 1.2; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+    .product-item { padding: 8px 10px; border-radius: 8px; border: 1px solid transparent; background: #FAFAFA; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.15s ease; }
+    .product-item:hover { background: #F0F4F1; border-color: var(--sage); }
+    .product-item.selected { background: #E2EFE6; border-color: var(--dark); font-weight: 600; }
+    .item-title { font-size: 12px; color: var(--text); }
+    .item-cat { font-size: 10px; color: var(--text-muted); }
+
+    .entry-card { flex: 1.1; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 10px; justify-content: space-between; }
+    .product-details { border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    .details-title { font-size: 13px; font-weight: 700; color: var(--dark); }
+    .details-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+    .conversion-badge { background: #E8F0EA; border: 1px dashed var(--sage); padding: 6px 8px; border-radius: 6px; font-size: 10.5px; color: var(--dark); }
+    
+    .input-grid { display: flex; flex-direction: column; gap: 8px; }
+    .input-field { display: flex; flex-direction: column; gap: 3px; }
+    .input-field label { font-size: 10.5px; font-weight: 700; color: var(--dark); }
+    .num-input { padding: 7px 10px; font-size: 14px; border: 1px solid var(--border); border-radius: 8px; outline: none; font-weight: 600; text-align: center; }
+    .num-input:focus { border-color: var(--dark); background: #F4F7F5; }
+    .text-input { padding: 7px 10px; font-size: 11px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
+    .text-input:focus { border-color: var(--dark); }
+
+    .btn-submit { padding: 10px; background: var(--dark); color: #FFF; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 0.15s ease; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-submit:hover { background: var(--accent); }
+    .btn-submit:active { transform: scale(0.98); }
+    .btn-submit:disabled { background: #BBB; cursor: not-allowed; }
+
+    .status-msg { font-size: 11px; text-align: center; height: 16px; font-weight: 600; }
+    .status-msg.success { color: var(--dark); }
+    .status-msg.error { color: #C62828; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="title-group">
+      <h2>🔄 Registrar Traspaso entre Tiendas</h2>
+    </div>
+    <div class="subtitle">Andares ⇄ Mercado</div>
+  </header>
+
+  <div class="route-card">
+    <div class="node">
+      <span class="node-label">Origen (Entrega)</span>
+      <select id="selOrigen" class="node-select" onchange="ajustarDestino()">
+        <option value="BA" selected>🟢 Andares</option>
+        <option value="BM">🔵 Mercado</option>
+      </select>
+    </div>
+    <div class="arrow-icon">➔</div>
+    <div class="node">
+      <span class="node-label">Destino (Recibe)</span>
+      <select id="selDestino" class="node-select" disabled>
+        <option value="BM" selected>🔵 Mercado</option>
+        <option value="BA">🟢 Andares</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="search-box">
+    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar insumo para traspasar... (Ej. Fresa, Harina, Nutella)" autocomplete="off">
+  </div>
+
+  <div class="content-area">
+    <div class="results-list" id="resultsList">
+      <!-- Insumos cargados dinámicamente -->
+    </div>
+
+    <div class="entry-card">
+      <div>
+        <div class="product-details">
+          <div class="details-title" id="lblProducto">Selecciona un producto</div>
+          <div class="details-meta" id="lblCategoria">Categoría: - | Unidad: -</div>
+        </div>
+
+        <div class="conversion-badge" id="boxConversion" style="margin-top: 8px; display: none;">
+          Factor: <strong id="lblFactor">1.0</strong> | Mov. Kardex: <strong id="lblMovKardex">0</strong> <span id="lblUnidadKardex"></span>
+        </div>
+
+        <div class="input-grid" style="margin-top: 10px;">
+          <div class="input-field">
+            <label for="txtCantidad">📦 Cantidad a traspasar (<span id="lblUnidadTienda">Unidades</span>)</label>
+            <input type="number" id="txtCantidad" class="num-input" placeholder="0" min="0.001" step="any" oninput="calcularKardexPrevio()">
+          </div>
+          <div class="input-field">
+            <label for="txtMotivo">📝 Motivo del traspaso</label>
+            <input type="text" id="txtMotivo" class="text-input" placeholder="Ej. Faltante por fin de semana / Préstamo">
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="status-msg" id="statusMsg"></div>
+        <button class="btn-submit" id="btnGuardar" onclick="guardarTraspaso()">
+          <span>⚡ Registrar y Aplicar Traspaso</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let catalogo = [];
+    let productoSeleccionado = null;
+
+    window.onload = function() {
+      document.getElementById("searchInput").focus();
+      cargarCatalogo();
+
+      document.getElementById("searchInput").addEventListener("input", filtrarProductos);
+      document.getElementById("txtCantidad").addEventListener("keydown", function(e) {
+        if (e.key === "Enter") document.getElementById("txtMotivo").focus();
+      });
+      document.getElementById("txtMotivo").addEventListener("keydown", function(e) {
+        if (e.key === "Enter") guardarTraspaso();
+      });
+    };
+
+    function ajustarDestino() {
+      const ori = document.getElementById("selOrigen").value;
+      const des = document.getElementById("selDestino");
+      des.value = (ori === "BA") ? "BM" : "BA";
+    }
+
+    function cargarCatalogo() {
+      mostrarEstado("Cargando catálogo maestro...", "");
+      google.script.run
+        .withSuccessHandler(function(data) {
+          catalogo = data || [];
+          filtrarProductos();
+          mostrarEstado("", "");
+        })
+        .withFailureHandler(function(err) {
+          mostrarEstado("Error al cargar productos: " + err.message, "error");
+        })
+        .obtenerCatalogoParaTraspaso();
+    }
+
+    function filtrarProductos() {
+      const q = document.getElementById("searchInput").value.toLowerCase().trim();
+      const list = document.getElementById("resultsList");
+      list.innerHTML = "";
+
+      const filtrados = catalogo.filter(p => {
+        return p.name.toLowerCase().includes(q) || p.cat.toLowerCase().includes(q);
+      });
+
+      if (filtrados.length === 0) {
+        list.innerHTML = `<div style="padding:15px; font-size:11px; color:#888; text-align:center;">No se encontraron productos.</div>`;
+        return;
+      }
+
+      filtrados.slice(0, 35).forEach(p => {
+        const item = document.createElement("div");
+        item.className = "product-item" + (productoSeleccionado && productoSeleccionado.name === p.name ? " selected" : "");
+        item.onclick = function() { seleccionarProducto(p); };
+        item.innerHTML = `
+          <div>
+            <div class="item-title">${p.name}</div>
+            <div class="item-cat">${p.cat}</div>
+          </div>
+          <span style="font-size:10px; font-weight:700; color:var(--dark); background:#FFF; border:1px solid var(--border); padding:2px 6px; border-radius:4px;">${p.unitTienda}</span>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function seleccionarProducto(p) {
+      productoSeleccionado = p;
+      document.getElementById("lblProducto").innerText = p.name;
+      document.getElementById("lblCategoria").innerText = `Categoría: ${p.cat} | Unidad: ${p.unitTienda}`;
+      document.getElementById("lblUnidadTienda").innerText = p.unitTienda;
+
+      if (p.factor && p.factor !== 1) {
+        document.getElementById("boxConversion").style.display = "block";
+        document.getElementById("lblFactor").innerText = `1 ${p.unitTienda} = ${p.factor} ${p.unitKardex}`;
+        document.getElementById("lblUnidadKardex").innerText = p.unitKardex;
+      } else {
+        document.getElementById("boxConversion").style.display = "none";
+      }
+
+      calcularKardexPrevio();
+      filtrarProductos();
+      document.getElementById("txtCantidad").focus();
+    }
+
+    function calcularKardexPrevio() {
+      if (!productoSeleccionado) return;
+      const cant = parseFloat(document.getElementById("txtCantidad").value) || 0;
+      const factor = productoSeleccionado.factor || 1;
+      const kardexVal = Math.round(cant * factor * 1000) / 1000;
+      document.getElementById("lblMovKardex").innerText = kardexVal;
+    }
+
+    function guardarTraspaso() {
+      if (!productoSeleccionado) {
+        mostrarEstado("Por favor selecciona un insumo de la lista.", "error");
+        return;
+      }
+      const cant = parseFloat(document.getElementById("txtCantidad").value);
+      if (isNaN(cant) || cant <= 0) {
+        mostrarEstado("Ingresa una cantidad válida mayor a 0.", "error");
+        document.getElementById("txtCantidad").focus();
+        return;
+      }
+
+      const origen = document.getElementById("selOrigen").value;
+      const destino = document.getElementById("selDestino").value;
+      const motivo = document.getElementById("txtMotivo").value.trim() || "Traspaso inter-tiendas";
+
+      const btn = document.getElementById("btnGuardar");
+      btn.disabled = true;
+      mostrarEstado("Aplicando traspaso atómico en Kardex...", "");
+
+      const payload = {
+        origen: origen,
+        destino: destino,
+        producto: productoSeleccionado.name,
+        cantidad: cant,
+        unidad: productoSeleccionado.unitTienda,
+        motivo: motivo
+      };
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          btn.disabled = false;
+          mostrarEstado("✅ Traspaso exitoso: " + res.folio, "success");
+          document.getElementById("txtCantidad").value = "";
+          document.getElementById("txtMotivo").value = "";
+          setTimeout(function() {
+            google.script.host.close();
+          }, 1400);
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          mostrarEstado("❌ " + err.message, "error");
+        })
+        .registrarTraspasoRPC(payload);
+    }
+
+    function mostrarEstado(msg, tipo) {
+      const el = document.getElementById("statusMsg");
+      el.className = "status-msg " + (tipo || "");
+      el.innerText = msg;
+    }
+  </script>
+</body>
+</html>

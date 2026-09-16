@@ -29,11 +29,29 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 ---
 
-## Época Altair (v1.0.0 - v1.9.0) [MOTOR GOOGLE APPS SCRIPT V8]
+## Época Altair (v1.0.0 - v1.10.0) [MOTOR GOOGLE APPS SCRIPT V8]
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, erradicando cuellos de botella de red y cómputo volátil en dispositivos móviles.
 
-### Version 1.9.0 Altair — Optimización Sheets Turbo Sub-Second, Erradicación de VLOOKUP y Blindaje Horario 23:00 hrs (Septiembre 2026) [ACTUAL EN PRODUCCIÓN GAS]
+### Version 1.10.0 Altair — Conversión de Unidades Automática, Sistema de Traspasos Inter-Tiendas & Surtido Numérico Desacoplado (Septiembre 2026) [ACTUAL EN PRODUCCIÓN GAS]
+* **Desacoplamiento Total de Fórmulas en `CANT. RECIBIDA` (`pda/miseAuthPDA.js`, `pdm/miseAuthPDM.js`)**:
+  - **Erradicación de Fórmulas Volátiles**: Eliminación total de la inyección de `=IF(G{row}=TRUE, 0, IF(F{row}=TRUE, D{row}, ""))` en la columna E de `🚚 SURTIDO RÁPIDO`.
+  - **Captura Numérica Pura**: La columna E pasa a ser un campo numérico limpio que acepta valores custom (ej. 17 domos, 1.5 kg) sin que refrescos de página ni limpiezas accidentales restauren fórmulas corruptas.
+  - **Event-Driven Checkbox Swapping**: Los checkboxes `✅ COMPLETO` (Col F) y `❌ INEXISTENTE` (Col G) ahora operan como interruptores directos en el evento `onEdit()`, inyectando la cantidad pedida o 0 numérico puro y sincronizando atómicamente con las columnas ocultas H e I de `📋 PEDIDO DIARIO`.
+* **Módulo Automático de Conversión de Unidades (`bdg/miseAuthBDG.js`, `bdg/MiseKardexEngine.js`)**:
+  - **Columnas Dinámicas en `MAESTRO`**: Incorporación y autodetección en `_asegurarColumnasQuioscoEnMaestro()` de `UNIDAD_TIENDA` (ej. `DOMO`, `CAJA`, `PAQ`) y `FACTOR_CONVERSION` (ej. `0.454` para Domo Fresa ➔ Kg; `100` para Caja Guantes ➔ Piezas).
+  - **Normalización Automática en Kardex (`MiseSmartSync`)**: Al ejecutar el descuento diario (23:00 hrs) o la reconciliación por log, el motor calcula la deducción real con precisión milimétrica: `cantDeducirKardex = Math.round(cantDeducir * factor * 1000) / 1000`.
+  - **Cero Cálculo Mental en Tienda**: Las tiendas piden en unidades de uso de mostrador (12 domos) y Bodega deduce la masa neta real en Kardex (5.448 kg) sin requerir conversiones manuales.
+* **Sistema de Traspasos Inter-Tiendas Mobile-First (Andares ⇄ Mercado) (`bdg`, `pda`, `pdm`)**:
+  - **Arquitectura Híbrida Distribuida**: El encargado de tienda registra el traspaso directamente desde su celular mediante un modal Crystal & Squircle táctil (`TraspasoTiendaDialog.html`), mientras que el libro mayor autoritativo se centraliza en la hoja `🔄 TRASPASOS` en Bodega General.
+  - **Transacción Atómica Simétrica en Kardex (`MiseTraspasos.registrar()`)**: Descuenta en tiempo real la salida en el Kardex de la tienda que entrega y acredita la entrada en el Kardex de la tienda que recibe en la columna del día activo (`ENT` / `SAL`), generando un folio inmutable `TRP-YYYYMMDD-HHmmss`.
+* **Diálogo Crystal & Squircle para Bodega (`bdg/TraspasoDialog.html`)**:
+* **Blindaje Esencial, Cuarentena de Menús y Visibilidad de Unidad en Móvil (`pda`, `pdm`, `bdg`)**:
+  - **Cuarentena de Acciones Críticas en Menús**: Reorganización de `onOpen()` aislando funciones destructivas (`setupCompleto`), reseteos manuales y herramientas de simulación bajo el submenú restringido `⚠️ Mantenimiento Avanzado y Zona de Riesgo`. La superficie visible para tiendas queda reducida a acciones operativas directas (Surtido Rápido, Traspasos, Picking y Sincronización).
+  - **Visibilidad Mandatoria de Unidad en Tienda**: Corrección en `_aplicarOcultamientoColumnas()` para mostrar permanentemente la Columna D (`UNIDAD TIENDA`) junto a Columna C (`PRODUCTO`) y Columna F (`CANT. A PEDIR`). La Columna E (`SALDO TEÓRICO`) se mantiene oculta para evitar lag de recálculo en la app móvil.
+  - **Anchos Táctiles Calibrados**: Ajuste ergonómico de columnas en móvil (Col C: 240px, Col D: 75px, Col F: 115px) permitiendo lectura clara de unidades de mostrador (Domo, Caja, Kg) en pantallas pequeñas.
+
+### Version 1.9.0 Altair — Optimización Sheets Turbo Sub-Second, Erradicación de VLOOKUP y Blindaje Horario 23:00 hrs (Septiembre 2026)
 * **Erradicación de 858 Evaluaciones Volátiles de Formato Condicional (`pda/miseAuthPDA.js`, `pdm/miseAuthPDM.js`)**:
   - **Diagnóstico de Causa Raíz**: La función `_aplicarFormatosCondicionales()` inyectaba 5 reglas condicionales basadas en `INDIRECT("'🚚 SURTIDO RÁPIDO'!C:G")` con `VLOOKUP`. Con 143 filas por tienda, cada pulsación táctil en la app móvil de Google Sheets disparaba 858 escaneos de rangos externos, provocando congelamientos de 1.2 a 2.0 segundos.
   - **Refactorización Determinista O(1)**: Sustitución total de las fórmulas indirectas por lecturas atómicas de la celda de estado local en Columna I (`COL_ESTADO`):
