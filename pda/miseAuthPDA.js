@@ -256,35 +256,31 @@ function onEdit(e) {
     if (rowInPedido === -1) return;
 
     const lock = LockService.getScriptLock();
-    if (!lock.tryLock(5000)) return;
+    if (!lock.tryLock(10000)) return;
 
     try {
       // 1. Columna F: ✅ COMPLETO
       if (col === 6) {
         const isComp = (e.range.getValue() === true);
         if (isComp) {
-          sheet.getRange(row, 7).setValue(false); // Inexistente = false
-          sheet.getRange(row, 5).setValue(cantPedir); // Escribe número puro en Col E
-          pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue(cantPedir);
-          pSheet.getRange(rowInPedido, COL_ESTADO).setValue("COMPLETO");
+          // Lote atómico continuo en Surtido Rápido (Cols 5 a 7: [CantPed, TRUE, FALSE])
+          sheet.getRange(row, 5, 1, 3).setValues([[cantPedir, true, false]]);
+          // Lote atómico continuo en Pedido Diario (Cols 8 a 9: [CantPed, 'COMPLETO'])
+          pSheet.getRange(rowInPedido, COL_RECIBIDA, 1, 2).setValues([[cantPedir, "COMPLETO"]]);
         } else {
-          sheet.getRange(row, 5).clearContent();
-          pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue("");
-          pSheet.getRange(rowInPedido, COL_ESTADO).setValue("");
+          sheet.getRange(row, 5, 1, 3).setValues([["", false, false]]);
+          pSheet.getRange(rowInPedido, COL_RECIBIDA, 1, 2).setValues([["", ""]]);
         }
       }
       // 2. Columna G: ❌ INEXISTENTE
       else if (col === 7) {
         const isZero = (e.range.getValue() === true);
         if (isZero) {
-          sheet.getRange(row, 6).setValue(false); // Completo = false
-          sheet.getRange(row, 5).setValue(0); // Escribe 0 puro en Col E
-          pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue(0);
-          pSheet.getRange(rowInPedido, COL_ESTADO).setValue("INEXISTENTE");
+          sheet.getRange(row, 5, 1, 3).setValues([[0, false, true]]);
+          pSheet.getRange(rowInPedido, COL_RECIBIDA, 1, 2).setValues([[0, "INEXISTENTE"]]);
         } else {
-          sheet.getRange(row, 5).clearContent();
-          pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue("");
-          pSheet.getRange(rowInPedido, COL_ESTADO).setValue("");
+          sheet.getRange(row, 5, 1, 3).setValues([["", false, false]]);
+          pSheet.getRange(rowInPedido, COL_RECIBIDA, 1, 2).setValues([["", ""]]);
         }
       }
       // 3. Columna E: CANT. RECIBIDA (Manual / Desacoplada sin fórmulas)
@@ -293,40 +289,19 @@ function onEdit(e) {
         if (val !== "" && val !== null && val !== undefined) {
           const num = typeof val === "string" ? parseFloat(val.replace(',', '.')) : Number(val);
           if (!isNaN(num) && num >= 0) {
-            sheet.getRange(row, 5).setValue(num);
-            pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue(num);
-            if (num === cantPedir) {
-              sheet.getRange(row, 6).setValue(true);
-              sheet.getRange(row, 7).setValue(false);
-              pSheet.getRange(rowInPedido, COL_ESTADO).setValue("COMPLETO");
-            } else if (num === 0) {
-              sheet.getRange(row, 6).setValue(false);
-              sheet.getRange(row, 7).setValue(true);
-              pSheet.getRange(rowInPedido, COL_ESTADO).setValue("INEXISTENTE");
-            } else if (num > cantPedir) {
-              sheet.getRange(row, 6).setValue(false);
-              sheet.getRange(row, 7).setValue(false);
-              pSheet.getRange(rowInPedido, COL_ESTADO).setValue("EXCEDENTE");
-            } else {
-              sheet.getRange(row, 6).setValue(false);
-              sheet.getRange(row, 7).setValue(false);
-              pSheet.getRange(rowInPedido, COL_ESTADO).setValue("PARCIAL");
-            }
+            const isComp = (num === cantPedir);
+            const isInex = (num === 0);
+            const estado = isComp ? "COMPLETO" : isInex ? "INEXISTENTE" : (num > cantPedir) ? "EXCEDENTE" : "PARCIAL";
+
+            sheet.getRange(row, 5, 1, 3).setValues([[num, isComp, isInex]]);
+            pSheet.getRange(rowInPedido, COL_RECIBIDA, 1, 2).setValues([[num, estado]]);
           } else {
-            // Entrada inválida: limpiar celda de manera pura sin reinyectar fórmula
-            sheet.getRange(row, 5).clearContent();
-            sheet.getRange(row, 6).setValue(false);
-            sheet.getRange(row, 7).setValue(false);
-            pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue("");
-            pSheet.getRange(rowInPedido, COL_ESTADO).setValue("");
+            sheet.getRange(row, 5, 1, 3).setValues([["", false, false]]);
+            pSheet.getRange(rowInPedido, COL_RECIBIDA, 1, 2).setValues([["", ""]]);
           }
         } else {
-          // Si el usuario borra la celda, mantenerla limpia sin reinyectar fórmulas
-          sheet.getRange(row, 5).clearContent();
-          sheet.getRange(row, 6).setValue(false);
-          sheet.getRange(row, 7).setValue(false);
-          pSheet.getRange(rowInPedido, COL_RECIBIDA).setValue("");
-          pSheet.getRange(rowInPedido, COL_ESTADO).setValue("");
+          sheet.getRange(row, 5, 1, 3).setValues([["", false, false]]);
+          pSheet.getRange(rowInPedido, COL_RECIBIDA, 1, 2).setValues([["", ""]]);
         }
       }
     } finally {
@@ -388,11 +363,37 @@ function onEdit(e) {
     }
   }
 
-  // Si existe la pestaña de Surtido Rápido, actualizarla en segundo plano silenciosamente
+  // Si existe la pestaña de Surtido Rápido, gestionar adiciones y ajustes sin lag
   try {
-    const surtido = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("🚚 SURTIDO RÁPIDO");
-    if (surtido) {
-      generarSurtidoRapidoSilencioso();
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const surtido = ss.getSheetByName("🚚 SURTIDO RÁPIDO");
+    if (surtido && surtido.getLastRow() >= 4) {
+      const prodNo = sheet.getRange(row, 1).getValue();
+      const prodName = String(sheet.getRange(row, 3).getValue() || "").trim();
+      const cantPed = parseFloat(sheet.getRange(row, COL_CANT_PEDIR).getValue()) || 0;
+
+      const sLr = surtido.getLastRow();
+      const sData = surtido.getRange(4, 1, sLr - 3, 4).getValues(); // Cols A-D
+      let foundRow = -1;
+      for (let i = 0; i < sData.length; i++) {
+        if (sData[i][0] === prodNo || String(sData[i][2] || "").trim() === prodName) {
+          foundRow = 4 + i;
+          break;
+        }
+      }
+
+      if (foundRow !== -1) {
+        if (cantPed > 0) {
+          // Actualización quirúrgica O(1) de cantidad pedida sin reconstruir la hoja
+          surtido.getRange(foundRow, 4).setValue(cantPed);
+        } else {
+          // Si el producto se canceló o limpió, regenerar para remover la fila
+          generarSurtidoRapidoSilencioso();
+        }
+      } else if (cantPed > 0) {
+        // Es un producto nuevo (adición real): regenerar para insertarlo en secuencia de picking
+        generarSurtidoRapidoSilencioso();
+      }
     }
   } catch (err) {}
 }

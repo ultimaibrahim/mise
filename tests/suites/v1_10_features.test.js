@@ -35,8 +35,26 @@ function runV110Tests() {
   assert.strictEqual(saldoFinalOrigen, 45, "Origen debe reducir su saldo");
   assert.strictEqual(saldoFinalDestino, 15, "Destino debe aumentar su saldo");
   assert.strictEqual(saldoFinalOrigen + saldoFinalDestino, saldoInicialOrigen + saldoInicialDestino, "La masa total debe conservarse");
-  console.log("  ✓ Conservación de masa en Traspaso Atómico validada");
+  // 5. Doble candado de deducción: Fallo de script en celda pero Checkbox COMPLETO en TRUE
+  function resolverDeduccion(cantPed, cantRec, estado, sInfo) {
+    if (cantRec > 0) return cantRec;
+    if (sInfo && sInfo.sRec > 0) return sInfo.sRec;
+    if (estado.includes("INEXISTENTE") || (sInfo && sInfo.sInex)) return 0;
+    if (estado.includes("COMPLETO") || (sInfo && sInfo.sComp)) return cantPed;
+    if (cantPed > 0) return cantPed;
+    return 0;
+  }
+
+  const casoFalloCeldaVacia = resolverDeduccion(8, 0, "", { sRec: 0, sComp: true, sInex: false });
+  assert.strictEqual(casoFalloCeldaVacia, 8, "Si checkbox de surtido es Completo pero celda quedó en blanco, deduce cantPedida (8)");
+  console.log("  ✓ Doble candado por checkbox COMPLETO validado");
+
+  // 6. Cancelación / Void con INEXISTENTE
+  const casoCancelado = resolverDeduccion(5, 0, "INEXISTENTE", { sRec: 0, sComp: false, sInex: true });
+  assert.strictEqual(casoCancelado, 0, "Si se marca INEXISTENTE, debe deducir exactamente 0");
+  console.log("  ✓ Cancelación / Void mediante INEXISTENTE (0 deducción) validada");
 }
 
 module.exports = { runV110Tests };
+
 

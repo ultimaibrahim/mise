@@ -201,6 +201,27 @@ const MiseSmartSync = {
         // A. Leer pedidos directamente de 📋 PEDIDO DIARIO de la tienda remota
         if (remoteSs) {
           try {
+            // Respaldo de Ground Truth: Leer directamente 🚚 SURTIDO RÁPIDO si está disponible
+            const surtidoMap = {};
+            try {
+              const surtidoSheet = remoteSs.getSheetByName("🚚 SURTIDO RÁPIDO");
+              if (surtidoSheet && surtidoSheet.getLastRow() >= 4) {
+                const sCount = surtidoSheet.getLastRow() - 3;
+                const sData = surtidoSheet.getRange(4, 1, sCount, 7).getValues();
+                sData.forEach(sr => {
+                  const sProd = _norm(sr[2]); // Col C (PRODUCTO)
+                  let sRec = sr[4]; // Col E
+                  if (typeof sRec === "string") sRec = sRec.replace(',', '.').trim();
+                  sRec = parseFloat(sRec) || 0;
+                  const sComp = (sr[5] === true); // Col F (COMPLETO)
+                  const sInex = (sr[6] === true); // Col G (INEXISTENTE)
+                  if (sProd) {
+                    surtidoMap[sProd] = { sRec, sComp, sInex };
+                  }
+                });
+              }
+            } catch(errSurtido) {}
+
             const pedidoSheet = remoteSs.getSheetByName("📋 PEDIDO DIARIO");
             if (pedidoSheet) {
               const plr = pedidoSheet.getLastRow();
@@ -226,13 +247,19 @@ const MiseSmartSync = {
                   const estado = String(row[8] || "").trim().toUpperCase(); // Col I
                   const adicion = String(row[9] || "").trim().toUpperCase(); // Col J
                   const esAdicion = adicion.includes("ADICIÓN") ? "SÍ" : "NO";
+                  const sInfo = surtidoMap[normKey];
 
-                  // Determinar cantidad a descontar (tienda)
+                  // Determinar cantidad a descontar (tienda) con Doble Candado de Respaldo
                   let cantDeducir = 0;
                   if (cantRec > 0) {
                     cantDeducir = cantRec;
-                  } else if (estado.includes("INEXISTENTE")) {
+                  } else if (sInfo && sInfo.sRec > 0) {
+                    cantDeducir = sInfo.sRec;
+                  } else if (estado.includes("INEXISTENTE") || (sInfo && sInfo.sInex)) {
                     cantDeducir = 0;
+                  } else if (estado.includes("COMPLETO") || (sInfo && sInfo.sComp)) {
+                    // Si la celda de cantidad quedó vacía en tienda pero se marcó Completo
+                    cantDeducir = cantPed;
                   } else if (cantPed > 0) {
                     cantDeducir = cantPed;
                   }
@@ -251,15 +278,15 @@ const MiseSmartSync = {
                     }
                   }
 
-                  if (cantPed > 0 || cantRec > 0 || estado.length > 0) {
+                  if (cantPed > 0 || cantRec > 0 || cantDeducir > 0 || estado.length > 0 || (sInfo && (sInfo.sComp || sInfo.sInex))) {
                     itemsAEvidenciarEnLog.push([
                       fechaObjetivoStr,
                       bConfig.nombre,
                       prodName,
                       catName,
                       cantPed,
-                      cantRec > 0 ? cantRec : (estado.includes("INEXISTENTE") ? 0 : cantPed),
-                      estado || "SURTIDO_AUTO",
+                      cantDeducir,
+                      estado || (sInfo && sInfo.sComp ? "COMPLETO" : (sInfo && sInfo.sInex ? "INEXISTENTE" : "SURTIDO_AUTO")),
                       esAdicion
                     ]);
                   }

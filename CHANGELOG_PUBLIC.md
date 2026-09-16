@@ -35,6 +35,8 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
   Se eliminaron las fórmulas incrustadas en la columna de cantidad recibida. Ahora el personal de reparto y los encargados pueden escribir libremente cualquier cantidad parcial o custom sin que el sistema bloquee la edición ni sobreescriba fórmulas rotas. Los botones `✅ Llegó Completo` y `❌ Inexistente` ahora funcionan como interruptores táctiles instantáneos.
 * 🛡️ **Claridad de Unidades en Celular y Blindaje contra Clics Accidentales**:  
   La columna de **UNIDAD** (Domo, Caja, Pieza, Kg) ahora permanece siempre visible en la vista móvil de tiendas junto al producto, eliminando confusiones al capturar el pedido. Asimismo, todos los botones de reseteo, simulación y mantenimiento crítico se aislaron dentro de un submenú restringido de seguridad, protegiendo la operación contra clics accidentales desde computadoras de mostrador.
+* ⚡ **Escritura Instantánea sin Lag y Doble Seguridad de Descuento**:  
+  Al capturar o agregar insumos de último minuto, la aplicación ya no sufre retrasos ni congelamientos: el sistema actualiza directamente la celda en milisegundos. Asimismo, se incorporó un seguro inteligente en Bodega: si por fallas de señal en tienda la celda numérica tardó en sincronizarse pero el botón `✅ Llegó Completo` quedó marcado, el inventario descuenta automáticamente lo pedido sin descuadrar jamás las existencias.
 
 ---
 
