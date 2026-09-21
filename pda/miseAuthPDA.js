@@ -1,5 +1,5 @@
 /**
- * MISE — Pedidos Andares Script v1.10.0 Altair (Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Pedidos Andares Script v1.7.4 Altair (Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Pedidos Andares (Google Sheets de B-Andares)

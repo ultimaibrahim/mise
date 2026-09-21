@@ -29,11 +29,11 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 ---
 
-## Época Altair (v1.0.0 - v1.10.0) [MOTOR GOOGLE APPS SCRIPT V8]
+## Época Altair (v1.0.0 - v1.7.4) [MOTOR GOOGLE APPS SCRIPT V8]
 
-Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, erradicando cuellos de botella de red y cómputo volátil en dispositivos móviles.
+Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
-### Version 1.10.0 Altair — Conversión de Unidades Automática, Sistema de Traspasos Inter-Tiendas & Surtido Numérico Desacoplado (Septiembre 2026) [ACTUAL EN PRODUCCIÓN GAS]
+### Version 1.7.4 Altair — Conversión de Unidades Automática, Sistema de Traspasos Inter-Tiendas & Surtido Numérico Desacoplado (Septiembre 2026) [VERSIÓN FINAL EN PRODUCCIÓN GAS]
 * **Desacoplamiento Total de Fórmulas en `CANT. RECIBIDA` (`pda/miseAuthPDA.js`, `pdm/miseAuthPDM.js`)**:
   - **Erradicación de Fórmulas Volátiles**: Eliminación total de la inyección de `=IF(G{row}=TRUE, 0, IF(F{row}=TRUE, D{row}, ""))` en la columna E de `🚚 SURTIDO RÁPIDO`.
   - **Captura Numérica Pura**: La columna E pasa a ser un campo numérico limpio que acepta valores custom (ej. 17 domos, 1.5 kg) sin que refrescos de página ni limpiezas accidentales restauren fórmulas corruptas.
@@ -55,7 +55,7 @@ Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Go
   - **Escrituras Atómicas en Lote (Anti-Timeout)**: Sustitución de 5 llamadas remotas `.setValue()` por 2 escrituras continuas en bloque (`getRange(row, 5, 1, 3)` y `getRange(rowInPedido, 8, 1, 2)`), erradicando el bug de celdas no inyectadas por saturación de red.
   - **Doble Candado de Ground Truth en Bodega**: El motor de descuento lee directamente la pestaña de Surtido Rápido de la tienda. Si la celda numérica quedó vacía por fallo de script pero el checkbox `COMPLETO` está activo, Bodega deduce la cantidad pedida. Si se marca `INEXISTENTE`, deduce exactamente 0.
 
-### Version 1.9.0 Altair — Optimización Sheets Turbo Sub-Second, Erradicación de VLOOKUP y Blindaje Horario 23:00 hrs (Septiembre 2026)
+### Version 1.7.3 Altair — Optimización Sheets Turbo Sub-Second, Erradicación de VLOOKUP y Blindaje Horario 23:00 hrs (Septiembre 2026)
 * **Erradicación de 858 Evaluaciones Volátiles de Formato Condicional (`pda/miseAuthPDA.js`, `pdm/miseAuthPDM.js`)**:
   - **Diagnóstico de Causa Raíz**: La función `_aplicarFormatosCondicionales()` inyectaba 5 reglas condicionales basadas en `INDIRECT("'🚚 SURTIDO RÁPIDO'!C:G")` con `VLOOKUP`. Con 143 filas por tienda, cada pulsación táctil en la app móvil de Google Sheets disparaba 858 escaneos de rangos externos, provocando congelamientos de 1.2 a 2.0 segundos.
   - **Refactorización Determinista O(1)**: Sustitución total de las fórmulas indirectas por lecturas atómicas de la celda de estado local en Columna I (`COL_ESTADO`):
@@ -88,13 +88,7 @@ Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Go
   - Validación sintáctica al 100% mediante `node -c` (0 errores).
   - Sincronización a producción vía `clasp push` en los 3 proyectos (`bdg`, `pda`, `pdm`).
 
----
-
----
-
-## Época Altair — Historial Previo de Versiones (v1.3.0 - v1.8.0) [REPOSITORIO AUTORITATIVO]
-
-### Version 1.8.0 Altair — Blindaje de Seguridad Integral, Motor Matemático de Alias & Reconstrucción Resiliente (Agosto 2026)
+### Version 1.7.2 Altair — Blindaje de Seguridad Integral, Motor Matemático de Alias & Reconstrucción Resiliente (Agosto 2026)
 * **Blindaje Estructural en Hojas de Inventario**:
   - `MAESTRO`, `KARDEX_BA` y `KARDEX_BM` protegidas a nivel rango y hoja contra alteraciones estructurales, preservando la editabilidad de casillas y celdas de Entrada (`ENT`) y Salida (`SAL`).
   - `📋 PEDIDO DIARIO` (PDA / PDM): Protección estricta dejando editables únicamente la celda táctil `F2` (Surtido Rápido) y la columna `CANT. A PEDIR` (Columna F).
@@ -109,12 +103,19 @@ Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Go
 * **Idempotencia y SmartSync Nocturno**:
   - Deducción nocturna protegida contra doble cobro mediante registro transaccional único y corrección de la ventana de medianoche (01:00 AM).
 
-### Version 1.7.0 - Version 1.7.3 Altair — Suite Powerhouse de Catálogo y Concurrencia Multi-Hilo (Agosto 2026)
-* **Arquitectura Concurrente Multi-Hilo**: Procesamiento paralelo distribuido para operaciones masivas de guardado de catálogo, sincronización de inventarios y propagación a tiendas en tiempo récord.
-* **Modal HTML Powerhouse de Catálogo y Picking (`PickingDialog.html`)**:
-  - Interfaz de 1050×700px con estética Crystal & Squircle para reordenar la secuencia de picking por arrastre atómico (SortableJS).
-  - Módulo de Alta en Lote sin hojas temporales y edición en caliente de mínimos y máximos por tienda.
-  - Selector de zoom persistente en `localStorage` (`mise_picking_zoom`: 100%, 115%, 130%, 145%).
+### Version 1.7.1 Altair — Concurrencia Multi-Hilo, Batch I/O Extremo & Zoom Crystal (Agosto 2026)
+* **Arquitectura Concurrente Multi-Hilo (`Promise.all`)**:
+  - Descomposición en 5 micro-servicios paralelos en contenedores V8 independientes (`workerGuardarMaestro`, `workerSyncKardexYVista` BA/BM, `workerPushTiendaRemota` BA/BM), reduciendo el guardado de 68s a **~3 a 10 segundos**.
+* **Consolidación Batch I/O de 1 Sola Llamada**:
+  - Reescritura matricial unificada reduciendo guardado de catálogo de **103 segundos a <2.5 segundos** y vaciado automático de tabla de altas.
+* **UI Polishing & Zoom Crystal (`PickingDialog.html`)**:
+  - Zoom persistente en `localStorage` (100%, 115% Normal, 130%, 145%), cabecera sin títulos redundantes e inputs numéricos sin spinners nativos.
+
+### Version 1.7.0 Altair — Mise Powerhouse: Suite Unificada de Catálogo & Picking (Agosto 2026)
+* **Suite Unificada Powerhouse (`PickingDialog.html`)**:
+  - Diálogo modal desacoplado de 1050×700px con estética *Crystal Squircle*: Secuencia de picking con drag & drop (SortableJS), Alta en Lote sin pestañas temporales, Edición Rápida en caliente y escáner de duplicados.
+* **Backend Atómico y Push Remoto**:
+  - Endpoints `obtenerDatosPowerhouse` y `guardarPowerhouseBatch` con `LockService` y reordenamiento push en caliente a hojas remotas de tienda.
 
 ### Version 1.6.0 - Version 1.6.4 Altair — Sincronización Remota de Picking y Captura Rápida en PC (Agosto 2026)
 * **Reacomodo de Picking 100% Automático en Tiendas**: Propagación atómica del orden de surtido desde Bodega hacia las hojas satélite de Pedido Diario en PDA y PDM.

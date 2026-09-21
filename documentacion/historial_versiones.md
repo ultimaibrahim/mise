@@ -5,7 +5,40 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
-## ⚡ v1.8.0 Altair (Motor Matemático N-Gram/Token-Sort, Reconstructores en RAM & Blindaje Anti-Manipulación) — 2026-08-27 [ACTUAL]
+## ⚡ v1.7.4 Altair (Conversión de Unidades Automática, Traspasos Inter-Tiendas & Surtido Numérico Desacoplado) — 2026-09-14 [VERSIÓN FINAL GAS]
+
+### 🏬 Bodega General (BDG) & 📱 Tiendas (PDA / PDM)
+* **Desacoplamiento Total de Fórmulas en `CANT. RECIBIDA` (`pda/miseAuthPDA.js`, `pdm/miseAuthPDM.js`)**:
+  * Eliminación de fórmulas volátiles en columna E de `🚚 SURTIDO RÁPIDO`. Captura numérica pura para recibir cualquier cantidad física o parcial.
+  * Checkboxes interactivos `✅ COMPLETO` (Col F) y `❌ INEXISTENTE` (Col G) con interruptor atómico en `onEdit()` hacia columnas H e I de `📋 PEDIDO DIARIO`.
+* **Conversión Dimensional Automática de Unidades (`bdg/miseAuthBDG.js`, `bdg/MiseKardexEngine.js`)**:
+  * Autodetección de columnas `UNIDAD_TIENDA` (Domo, Caja, Paq) y `FACTOR_CONVERSION` en `MAESTRO`.
+  * Las tiendas piden en unidades físicas de mostrador y Bodega deduce en Kardex los kilogramos reales (`12 domos = 5.448 kg`, `2 cajas = 200 piezas`) con precisión a 4 decimales.
+* **Sistema de Traspasos Inter-Tiendas Mobile-First (`Andares ⇄ Mercado`)**:
+  * Modal Crystal & Squircle en tiendas (`TraspasoTiendaDialog.html`) y bodega (`TraspasoDialog.html`).
+  * Deducción y abono simétrico en Kardex con folios inmutables `TRP-YYYYMMDD-HHmmss` y registro en `🔄 TRASPASOS`.
+* **Blindaje y Cuarentena de Menús**:
+  * Aislamiento de funciones de mantenimiento destructivo bajo `⚠️ Mantenimiento Avanzado y Zona de Riesgo`.
+  * Visibilidad permanente de Columna D (`UNIDAD TIENDA`) en celulares junto al insumo y cantidad pedida.
+
+---
+
+## ⚡ v1.7.3 Altair (Optimización Sheets Turbo Sub-Second, Erradicación de VLOOKUP & Blindaje 23:00 hrs) — 2026-09-07
+
+### 🏬 Bodega General (BDG) & 📱 Tiendas (PDA / PDM)
+* **Erradicación de 858 Evaluaciones Volátiles de Formato Condicional**:
+  * Sustitución de `INDIRECT` + `VLOOKUP` por lectura atómica de la celda de estado local en Columna I en $O(1)$ (`COMPLETO`, `INEXISTENTE`, `PARCIAL`, `EXCEDENTE`).
+  * Cero congelamiento táctil en dispositivos móviles iOS y Android.
+* **Cálculo Intra-Fila en Columna G (`DIFERENCIA`)**:
+  * Fórmula optimizada `=IF(OR(F4="", H4=""), "", H4 - F4)` con tiempo de evaluación de 0.0001 ms.
+* **Blindaje de Corte Nocturno a las 23:00 hrs**:
+  * Activadores nocturnos reubicados a las 23:00 hrs del día en curso para erradicar la condición de carrera con el reseteo matutino de tiendas.
+* **Módulo de Reconciliación Determinista**:
+  * Función `reconciliarLunes7Septiembre()` para restaurar 49 insumos de Andares y 2 de Mercado en 1 sola llamada 2D al Kardex.
+
+---
+
+## ⚡ v1.7.2 Altair (Motor Matemático N-Gram/Token-Sort, Reconstructores en RAM & Blindaje Anti-Manipulación) — 2026-08-27
 
 ### 🏬 Bodega General (BDG)
 * **Motor Matemático de Reconciliación Inteligente (`MiseMatchingEngine` en `miseKardexEngine.gs`)**:
@@ -34,62 +67,21 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
-## ⚡ v1.7.3 Altair (Arquitectura Concurrente Multi-Worker & Paralelización con Promise.all) — 2026-08-17
+## ⚡ v1.7.1 Altair (Concurrencia Multi-Worker, Batch I/O Extremo & Zoom Crystal) — 2026-08-16 a 2026-08-17
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
-* **Arquitectura de Micro-Workers Paralelos Concurrente**:
-  * Descomposición de la mega-función monolítica en micro-servicios especializados:
-    1. `workerGuardarMaestro`: Transacción atómica de Altas, Ediciones y Picking en `MAESTRO` (~1.2s).
-    2. `workerSyncKardexYVista("BA")` y `workerSyncKardexYVista("BM")`: Sincronización independiente de Kardex y Vistas Móviles en paralelo (~1.5s).
-    3. `workerPushTiendaRemota("BA")` y `workerPushTiendaRemota("BM")`: Push remoto concurrente a tiendas Andares y Mercado (~1.8s).
-* **Orquestación Multi-Hilo desde el Diálogo (`PickingDialog.html`)**:
-  * Envoltorio con `Promise.all([ ... ])` que dispara múltiples llamadas concurrentes en contenedores V8 independientes de Google Cloud, reduciendo el tiempo total de procesamiento de más de 68s a **~3 a 10 segundos**.
-* **Protección Anti-Colisión (`LockService`)**:
-  * Cerrojos granulares de corta duración (<1.5s) que eliminan timeouts y bloqueos por contención.
-
----
-
-## ⚡ v1.7.2a Altair (Ajustes Visuales de Header & Escala de Zoom de Alta Densidad) — 2026-08-16
-
-### 🏬 Bodega (BDG) — UI Polish en Powerhouse (`PickingDialog.html`)
-* **Remoción de Título Redundante en Header**: Se retiró el título duplicado de la vista HTML para otorgar el 100% del protagonismo a la barra de pestañas y controles de acción, ya que la ventana nativa del modal de Google Sheets ya posee el título de la aplicación.
-* **Escala de Zoom y Densidad Rediseñada**:
-  * Nuevo valor por defecto establecido en **`115% (Normal)`** para una lectura y clicado óptimos en pantallas modernas.
-  * Opciones de escalado calibradas: `100%`, `115% (Normal)`, `130% (Grande)` y `145% (Ultra)`.
-  * Visibilidad y espaciado ampliados en el selector (`.zoom-select` con `min-width: 125px`).
-
----
-
-## ⚡ v1.7.2 Altair (Optimización Ultrarrápida Batch I/O, Vaciado Automático & UI Polishing) — 2026-08-16
-
-### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
-* **Optimización Extrema de Guardado Transaccional (`guardarPowerhouseBatch` & `_ordenarYRenumerarTodo`)**:
-  * **Consolidación Batch I/O de 1 Sola Llamada**: Se eliminaron 28 escrituras redundantes por columnas de días en los Kardex, unificando valores, fórmulas y formatos condicionales en una sola matriz en bloque por hoja (`1 setValues` + `1 setBackgrounds`).
-  * **Reducción de Tiempo**: El tiempo de guardado y reordenamiento de catálogo pasó de **103 segundos a <2.5 segundos**.
-* **Vaciado Automático de Alta en Lote**:
-  * Al completar con éxito el guardado desde el Powerhouse, la lista y tabla dinámica de `➕ Alta en Lote` se vacían y re-renderizan a su estado limpio (`[]`), evitando que el usuario re-agregue accidentalmente los mismos insumos.
-* **Auto-Agrupación por Categoría en `MAESTRO`**:
-  * Los nuevos insumos dados de alta se integran y ordenan alfabéticamente dentro de su respectiva familia/categoría institucional y se re-numeran de forma correlativa (1 a N), preservando de manera intacta sus rankings de picking por sucursal (`PICKING_BA` y `PICKING_BM`).
-* **Correcciones Visuales & Estilo Crystal Squircle (`PickingDialog.html`)**:
-  * **Inputs Numéricos Limpios**: Remoción total de flechas y spinners nativos del navegador (`appearance: textfield`) en todas las tablas de alta y edición para que los números siempre sean 100% legibles.
-  * **Estructura y Alineación de Pestañas**: Navegación multi-tab con separación estructural entre el icono (`.tab-icon`) y el texto (`.tab-text`) en contenedor `inline-flex`.
-  * **Badge de Modificaciones**: Margen y separación visual reforzados para `⚠️ Cambios sin guardar`.
-
----
-
-## ⚡ v1.7.1 Altair (Sincronización Push Integral de Catálogo & Stock de Quiosco en Powerhouse) — 2026-08-16
-
-### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* **Arquitectura de Micro-Workers Paralelos (`Promise.all`)**:
+  * Descomposición de la sincronización en micro-servicios especializados (`workerGuardarMaestro`, `workerSyncKardexYVista`, `workerPushTiendaRemota`), reduciendo el tiempo total de 68s a **~3 a 10 segundos** con bloqueos breves de `LockService`.
+* **Consolidación Batch I/O de 1 Sola Llamada**:
+  * Eliminación de 28 escrituras redundantes por columnas de días en los Kardex, unificando valores, fórmulas y formatos condicionales en una sola matriz en bloque por hoja (`1 setValues` + `1 setBackgrounds`). Tiempo de guardado reducido de **103s a <2.5s**.
+* **Vaciado Automático y Auto-Agrupación**:
+  * Al completar con éxito el guardado desde el Powerhouse, la lista de altas se vacía automáticamente (`[]`) y los nuevos insumos se indexan correlativamente por categoría sin romper las secuencias de picking.
+* **UI Polish & Escala de Zoom Crystal (`PickingDialog.html`)**:
+  * Nuevo valor por defecto establecido en **`115% (Normal)`** con selector persistente en `localStorage`.
+  * Inputs numéricos limpios sin flechas nativas del navegador (`appearance: textfield`) y separación estructural de pestañas.
 * **Auto-Expansión de Catálogo Remoto (`_reordenarPedidoRemotoDirecto`)**:
-  * Al dar de alta nuevos productos en el Powerhouse, el backend no solo actualiza `MAESTRO` y `VISTA_MOVIL`, sino que expande físicamente la tabla `📋 PEDIDO DIARIO` de PDA/PDM agregando las filas faltantes en caliente y recalculando fórmulas sin truncar items.
-* **Mínimos y Máximos de Quiosco (`MÍN_Q_BA`, `MÁX_Q_BA`, `MÍN_Q_BM`, `MÁX_Q_BM`)**:
-  * Integración completa en el backend y en las pestañas `➕ Alta en Lote` y `📝 Edición Rápida` del Powerhouse para editar las metas de stock en quiosco por sucursal.
-* **Micro-Interacciones & UI Polishing en Powerhouse (`PickingDialog.html`)**:
-  * **Segmented Control de Vistas**: Sombreado activo (`#FFFFFF` + elevación) para diferenciar claramente las vistas `Lista` y `Categorías`.
-  * **Botones de Movimiento Directo**: Renombrados a `Inicio` y `Fondo` limpios (sin emojis y sin extranjerismos como Top/Bot).
-  * **Eliminación del Cursor Caret en Spinner**: Adición de `user-select: none` y `pointer-events: none` para evitar la línea de texto parpadeante durante guardados.
-* **Autoconfiguradores de Triggers Nocturnos en 1-Clic**:
-  * Funciones `instalarActivadoresMedianochePDA()`, `instalarActivadoresMedianochePDM()` (00:00 AM - Cierre diario & log) e `instalarActivadoresNocturnosBDG()` (01:00 AM - Descuento automático en Kardex) en el submenú `🧪 Herramientas Experimentales`.
+  * Inserción física en caliente de filas faltantes en `📋 PEDIDO DIARIO` de tiendas sin truncar fórmulas ni datos resguardados.
+  * Inyección y monitoreo de metas de stock en quiosco (`MÍN_Q_BA`, `MÁX_Q_BA`, `MÍN_Q_BM`, `MÁX_Q_BM`).
 
 ---
 

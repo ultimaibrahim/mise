@@ -1,64 +1,72 @@
 # PRD Detallado (Product Requirements Document)
-**Suite MISE v1.0 (Lanzamiento Oficial) — Atelier · La Crêpe Parisienne**
+**Suite MISE v1.7.4 Altair (Versión Final Apps Script) — Atelier · La Crêpe Parisienne**
 
 ---
 
 ## 1. Propósito General del Sistema
-La suite **MISE v1.0** (que consolida y reemplaza la serie de prototipos de prueba v0.5.3) es un ecosistema operativo diseñado para digitalizar y automatizar por completo el flujo de inventario, control de stock y el ciclo diario de abastecimiento de las sucursales de La Crêpe Parisienne (Andares y Mercado). 
+La suite **MISE v1.7.4 Altair** es el ecosistema operativo de alta fidelidad diseñado para digitalizar y automatizar por completo el flujo de inventario, control de stock y el ciclo diario de abastecimiento de las sucursales de La Crêpe Parisienne (Andares y Mercado). 
 
-Antes de MISE, no existía ningún sistema ni control estructurado: las solicitudes se hacían en papeles mojados o a través de mensajes de WhatsApp que se traspapelaban, provocando errores al surtir e incertidumbre sobre las existencias reales. MISE elimina por completo estas fricciones operativas eliminando los errores de dedo al levantar pedidos, ordenando automáticamente los insumos según el recorrido de la bodega física, y asegurando tiempos de respuesta instantáneos sin trabar las computadoras o tablets del personal.
+Antes de MISE, no existía ningún sistema estructurado: las solicitudes se hacían en papeles mojados o a través de mensajes de WhatsApp que se traspapelaban, provocando errores al surtir e incertidumbre sobre las existencias reales. MISE elimina por completo estas fricciones operativas eliminando los errores de dedo al levantar pedidos, ordenando automáticamente los insumos según el recorrido de la bodega física, y asegurando tiempos de respuesta instantáneos sin trabar las computadoras o tablets del personal.
 
 ---
 
 ## 2. Arquitectura de Datos y Componentes
 El sistema se compone de tres libros independientes de Google Sheets interconectados:
 1. **Bodegas (BDG):** El libro maestro que reside en el servidor o cuenta de bodega. Controla el catálogo unificado, las entradas/salidas diarias de insumos y los saldos reales de stock.
-2. **Pedidos Andares (PDA):** Libro operativo de la sucursal Andares para realizar pedidos diarios.
-3. **Pedidos Mercado (PDM):** Libro operativo de la sucursal Mercado para realizar pedidos diarios.
+2. **Pedidos Andares (PDA):** Libro operativo de la sucursal Andares para realizar pedidos diarios y registrar traspasos.
+3. **Pedidos Mercado (PDM):** Libro operativo de la sucursal Mercado para realizar pedidos diarios y registrar traspasos.
 
 ```
-                  ┌──────────────────────────────┐
-                  │          [Bodegas]           │
-                  │   - MAESTRO (Catálogo)       │
-                  │   - KARDEX_BA / KARDEX_BM    │
-                  │   - VISTA_MOVIL_BA / _BM     │
-                  └──────────────┬───────────────┘
-                                 │
-                 ┌───────────────┴───────────────┐
-                 ▼ (IMPORTRANGE en tiempo real)  ▼
-      ┌────────────────────┐          ┌────────────────────┐
-      │ [Pedidos Andares]  │          │ [Pedidos Mercado]  │
-      │   - _SYNC_BA       │          │   - _SYNC_BM       │
-      │   - PEDIDO DIARIO  │          │   - PEDIDO DIARIO  │
-      └────────────────────┘          └────────────────────┘
+                  ┌─────────────────────────────────────────┐
+                  │                [Bodegas]                │
+                  │   - MAESTRO (Catálogo + Conversión)     │
+                  │   - KARDEX_BA / KARDEX_BM               │
+                  │   - VISTA_MOVIL_BA / _BM                │
+                  │   - 🔄 TRASPASOS / 🗒 LOG_SURTIDO        │
+                  └────────────────────┬────────────────────┘
+                                       │
+                       ┌───────────────┴───────────────┐
+                       ▼ (IMPORTRANGE en tiempo real)  ▼
+            ┌────────────────────┐          ┌────────────────────┐
+            │ [Pedidos Andares]  │          │ [Pedidos Mercado]  │
+            │   - _SYNC_BA       │          │   - _SYNC_BM       │
+            │   - PEDIDO DIARIO  │          │   - PEDIDO DIARIO  │
+            │   - SURTIDO RÁPIDO │          │   - SURTIDO RÁPIDO │
+            └─────────┬──────────┘          └──────────┬─────────┘
+                      │       🔄 TRASPASOS P2P         │
+                      └────────────────────────────────┘
 ```
 
 ### Hojas Internas y Estructura en Bodega (`Bodegas`):
 * **`MAESTRO`:** Registro maestro del catálogo de insumos. Columnas:
   * `No`: Identificador único y correlativo incremental.
-  * `ID_FAMILIA`: Código de categoría e insumo (ej: `REF-001`, `FYV-002`).
-  * `CATEGORÍA`: Nombre descriptivo de la categoría.
-  * `PRODUCTO`: Nombre legible.
+  * `CATEGORÍA`: Nombre descriptivo de la familia de insumo.
+  * `PRODUCTO`: Nombre comercial y descriptivo.
   * `PRESENTACION`: Detalle del empaque (ej: `BOL 500 g`).
-  * `UNIDAD`: Medida operativa (`kg`, `lt`, `pza`, etc.).
+  * `UNIDAD`: Medida operativa base en almacén (`kg`, `lt`, `pza`, etc.).
   * `ACTIVO`: Control de estado (`SÍ` o `NO`).
   * `MÍN_BA` / `MÁX_BA` / `STOCK_BA`: Niveles de control de stock y saldos actuales de Andares.
   * `MÍN_BM` / `MÁX_BM` / `STOCK_BM`: Niveles de control de stock y saldos actuales de Mercado.
+  * `UNIDAD_TIENDA`: Unidad de uso en mostrador (ej. `DOMO`, `CAJA`, `PAQ`).
+  * `FACTOR_CONVERSION`: Coeficiente multiplicador a 4 decimales para deducir masa real en Kardex.
   * `SELECCIONAR`: Casilla de verificación para acciones en lote.
-* **`KARDEX_BA` y `KARDEX_BM`:** Hojas de movimientos semanales. El bodeguero captura Entradas (`ENT`) y Salidas (`SAL`) para cada día de la semana. Los saldos se calculan automáticamente (`SLD = Saldo Anterior + ENT - SAL`). Poseen semáforos dinámicos de caducidad por fórmula vinculados a la fecha de vencimiento ingresada en el lote.
+* **`KARDEX_BA` y `KARDEX_BM`:** Hojas de movimientos semanales. El bodeguero captura Entradas (`ENT`) y Salidas (`SAL`) para cada día de la semana. Los saldos se calculan automáticamente (`SLD = Saldo Anterior + ENT - SAL`) con soporte de hasta 4 decimales (`0.####`).
 * **`VISTA_MOVIL_BA` y `VISTA_MOVIL_BM`:** Pestañas de solo lectura optimizadas. Contienen el consolidado de datos requeridos por las sucursales, incluyendo el saldo actual y el estado de activación. Es la fuente origen del `IMPORTRANGE` hacia los libros de pedidos.
-* **`CADUCIDADES`:** Consolidado dinámico que muestra las fechas de vencimiento de lotes en ambas bodegas y calcula automáticamente qué sucursal posee el lote de vencimiento más cercano mediante fórmulas lógicas.
+* **`🔄 TRASPASOS`:** Registro inmutable de transferencias directas entre sucursales con folios `TRP-YYYYMMDD-HHmmss`.
+* **`🗒 LOG_SURTIDO`:** Bitácora inmutable de recepciones y auditorías de inventario.
 
 ### Hojas Internas y Estructura en Pedidos (`Pedidos Andares` / `Pedidos Mercado`):
-* **`📋 PEDIDO DIARIO`:** Interfaz principal para el supervisor y el bodeguero surtidor. Columnas:
+* **`📋 PEDIDO DIARIO`:** Interfaz principal para el supervisor y el bodeguero surtidor. Columnas visibles calibradas:
   * `No` (Columna A): Valor estático (conserva el orden absoluto del catálogo, oculta).
-  * `CATEGORÍA` (Columna B): Prefijo de traducción para ordenamiento.
-  * `PRODUCTO` (Columna C) / `UNIDAD` (Columna D) / `SALDO TEÓRICO` (Columna E): Cargados dinámicamente desde la hoja de sincronización.
-  * `CANT. A PEDIR` (Columna F): Celda editable (supervisor ingresa lo necesario).
-  * `DIFERENCIA` (Columna G): Fórmula automática (`Recibido - Pedido`).
-  * `CANT. RECIBIDA` (Columna H, oculta): Celda editable (bodeguero captura al entregar).
-  * `ESTADO` (Columna I, oculta): Fórmula dinámica que calcula el estatus (`✅ COMPLETO`, `⚠️ PARCIAL`, `⏳ PENDIENTE` o `🚫 INACTIVO`).
-  * `ALERTAS SURTIDO` (Columna J, oculta): Columna inteligente para alertar si falta stock o si es una adición fuera de horario (`🚨 ADICIÓN`).
+  * `CATEGORÍA` (Columna B): Prefijo de ordenamiento.
+  * `PRODUCTO` (Columna C): Descripción visible inmovilizada.
+  * `UNIDAD TIENDA` (Columna D): Unidad física de mostrador visible (Domo, Caja, Kg).
+  * `SALDO TEÓRICO` (Columna E, oculta en móvil): Saldo en bodega.
+  * `CANT. A PEDIR` (Columna F): Celda editable (supervisor ingresa lo necesario con hasta 4 decimales).
+  * `DIFERENCIA` (Columna G): Fórmula optimizada intra-fila `=IF(OR(F4="", H4=""), "", H4 - F4)`.
+  * `CANT. RECIBIDA` (Columna H, oculta): Celda vinculada a la entrega.
+  * `ESTADO` (Columna I, oculta): Estado evaluado en $O(1)$ (`COMPLETO`, `INEXISTENTE`, `PARCIAL`, `EXCEDENTE`).
+* **`🚚 SURTIDO RÁPIDO`:** Hoja efímera de recepción táctil con captura numérica pura en Col E y checkboxes instantáneos `✅ COMPLETO` (Col F) y `❌ INEXISTENTE` (Col G).
 * **`_SYNC_BA` / `_SYNC_BM`:** Hoja oculta que importa en bruto la información de la bodega mediante la fórmula `=IMPORTRANGE()`. Es el puente de datos desacoplado.
 
 ---

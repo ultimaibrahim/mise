@@ -23,7 +23,7 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.10.0 Altair — Conversión de Unidades Automática, Traspasos entre Tiendas y Recepción Numérica Libre (Septiembre 2026) [ACTUAL EN PRODUCCIÓN GAS]
+## Versión 1.7.4 Altair — Conversión de Unidades Automática, Traspasos entre Tiendas y Recepción Numérica Libre (Septiembre 2026) [VERSIÓN FINAL GAS]
 
 * 🍓 **Fin a los Cálculos Mentales (Conversión Automática de Domos y Cajas)**:  
   Se implementó el sistema de equivalencias automáticas entre tiendas y almacén. En sucursal, el encargado pide en su unidad física habitual (*12 domos de fresa*, *2 cajas de guantes*). Bodega Central descuenta automáticamente los kilos y piezas exactas en el Kardex (`12 domos = 5.448 kg`, `2 cajas = 200 piezas`), eliminando para siempre las discrepancias de inventario y los errores de cálculo mental en el mostrador.
@@ -40,7 +40,7 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.9.0 Altair — Fluidez Móvil Inmediata, Blindaje Nocturno y Cero Congelamientos (Septiembre 2026)
+## Versión 1.7.3 Altair — Fluidez Móvil Inmediata, Blindaje Nocturno y Cero Congelamientos (Septiembre 2026)
 
 * ⚡ **Eliminación Total del Congelamiento en Celulares (Andares y Mercado)**:  
   Se reestructuró por completo el motor de colores e indicadores visuales de la hoja `📋 PEDIDO DIARIO`. Se eliminaron cientos de cálculos ocultos que sobrecargaban la aplicación de Google Sheets en iPhone y Android. Ahora, al tocar una celda o escribir una cantidad, la pantalla responde al instante y sin retrasos.
@@ -57,7 +57,7 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.8.0 Altair - Blindaje de Seguridad Integral, Motor Matemático de Alias & Reconstrucción Resiliente (Agosto 2026)
+## Versión 1.7.2 Altair — Blindaje de Seguridad Integral, Motor Matemático de Alias & Reconstrucción Resiliente (Agosto 2026)
 * 🔒 **Blindaje de Seguridad Integral y Bloqueo Anti-Manipulación**:
   * **Bodega General**: Las hojas `MAESTRO`, `KARDEX_BA` y `KARDEX_BM` quedan 100% blindadas contra modificaciones accidentales, alteraciones de nombres o borrado de fórmulas de inventario (`SLD`). Los encargados pueden interactuar fluidamente con los checkboxes y capturar en Entrada (`ENT`) y Salida (`SAL`).
   * **Tiendas Andares & Mercado (`PDA` / `PDM`)**:

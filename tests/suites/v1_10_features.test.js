@@ -1,7 +1,7 @@
 const assert = require("assert");
 
 function runV110Tests() {
-  console.log("\n🧪 [TEST SUITE] MISE v1.10.0 Altair — Features & Conversion");
+  console.log("\n🧪 [TEST SUITE] MISE v1.7.4 Altair — Features & Conversion");
 
   // 1. Factor de conversión para Fresas (1 Domo = 0.454 Kg)
   const factorDomoFresa = 0.454;
