@@ -1,18 +1,19 @@
 # PRD Simplificado / Ejecutivo
-**Suite MISE v1.0 (Lanzamiento Oficial) — Atelier · La Crêpe Parisienne**
+**Suite MISE v1.7.4 Altair (Versión Final Apps Script) — Atelier · La Crêpe Parisienne**
 
 ---
 
 ## 1. Resumen de Negocio
-La suite MISE v1.0 (que consolida y reemplaza la serie de prototipos de prueba v0.5.3) digitaliza por completo el control de inventario de insumos en bodega y automatiza la generación de pedidos diarios para las sucursales de La Crêpe Parisienne (Andares y Mercado). Antes de MISE, no existía un sistema estructurado para esta operación. MISE optimiza el proceso reduciendo las diferencias entre lo pedido y lo entregado, alertando sobre adiciones tardías y ocultando del catálogo operativo todo producto dado de baja en Bodega.
+La suite **MISE v1.7.4 Altair** digitaliza por completo el control de inventario de insumos en bodega, automatiza la generación de pedidos diarios en unidades de mostrador para las sucursales de La Crêpe Parisienne (Andares y Mercado) y permite la transferencia directa de insumos entre tiendas mediante traspasos P2P. MISE optimiza el proceso reduciendo las diferencias entre lo pedido y lo entregado, garantizando que el personal de mostrador capture en unidades intuitivas (Domo, Caja, Paq) mientras Bodega deduce automáticamente la masa neta en kilogramos en el Kardex.
 
 ---
 
 ## 2. Historias de Usuario
-* **Como Supervisor de Tienda:** Quiero que la lista de pedidos diarios muestre únicamente los productos activos y los agrupe por su recorrido de categoría para levantar mi pedido en menos de 10 minutos desde mi teléfono o tablet.
-* **Como Supervisor de Tienda:** Quiero poder agregar productos a mi pedido ordenado y que el sistema los marque como "Adiciones" en color naranja para que el bodeguero los surta de inmediato como urgencia.
-* **Como Administrador de Bodega:** Quiero poder desactivar insumos del catálogo o modificarlos masivamente en una interfaz rápida sin ralentizar el sistema ni descuadrar los pedidos en curso de las tiendas.
-* **Como Bodeguero (Surtidor):** Quiero registrar las cantidades entregadas en la columna de cantidades recibidas directamente al surtir, viendo de forma automática en color verde o naranja si el surtido fue completo o parcial.
+* **Como Supervisor de Tienda:** Quiero capturar mi pedido diario en unidades físicas de mostrador (ej. 12 domos de fresa) sin tener que calcular mentalmente conversiones a kilogramos.
+* **Como Supervisor de Tienda:** Quiero poder registrar préstamos o traspasos urgentes de producto hacia la otra sucursal en 3 toques desde mi celular con folio digital inmutable.
+* **Como Bodeguero (Surtidor):** Quiero registrar la recepción física en `🚚 SURTIDO RÁPIDO` escribiendo libremente cantidades parciales o tocando `✅ Llegó Completo` / `❌ Inexistente` con respuesta visual instantánea sin congelamientos en la app móvil.
+* **Como Administrador de Bodega:** Quiero organizar la ruta de picking por arrastre visual en el Powerhouse y que el nuevo orden se propague automáticamente a las tiendas en menos de 3 segundos sin desfasar inventarios.
+* **Como Dirección / Supervisión:** Quiero que el inventario se descuente de forma segura y autónoma a las 23:00 hrs aplicando factores de conversión precisos a 4 decimales (`0.####`).
 
 ---
 
@@ -20,7 +21,7 @@ La suite MISE v1.0 (que consolida y reemplaza la serie de prototipos de prueba v
 
 ```
 [Administrador de Bodega]
-   │ (Marca productos / edita catálogo)
+   │ (Edita catálogo, unidades y orden de picking en Powerhouse)
    ▼
 [Bodega: Hoja MAESTRO] ───► [Vistas Móviles BA/BM] 
                                   │
@@ -31,8 +32,8 @@ La suite MISE v1.0 (que consolida y reemplaza la serie de prototipos de prueba v
                                   ├─► (Sincronización en Tiendas)
                                   ▼
                             [📋 PEDIDO DIARIO (Visible)]
-                                  │ (Herencia de visibilidad física)
+                                  │
+                                  ├─► [🚚 SURTIDO RÁPIDO] (Captura Numérica Libre)
                                   ▼
-                            - Oculta inactivos
-                            - Formatea estados (Verde/Gris/Amarillo)
+                            [🔄 TRASPASOS P2P (Andares ⇄ Mercado)]
 ```

@@ -1,6 +1,6 @@
 # Plan de Estudio y Ruta de Aprendizaje
-**Suite MISE v1.0 (Lanzamiento Oficial) — Atelier · La Crêpe Parisienne**
-*(Basado en la evolución de prototipos desde v0.5.3)*
+**Suite MISE · Época Altair (v1.7.4 Final) — Atelier · La Crêpe Parisienne**
+*(Basado en la evolución arquitectónica de Google Apps Script V8 y Batch 2D)*
 
 Para aprender a construir soluciones empresariales como la Suite MISE, se requiere dominar tres pilares fundamentales: **JavaScript Moderno**, **Desarrollo en Google Apps Script (APIs de Sheets, Drive, Gmail)**, y **Arquitectura de Base de Datos y Optimización en Lote**.
 

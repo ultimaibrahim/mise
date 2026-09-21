@@ -1,4 +1,4 @@
-# Presentación de Producto — Suite MISE v1.0
+# Presentación de Producto — Suite MISE v1.7.4 Altair
 <!-- slide -->
 <!--
 theme: gaia
@@ -8,12 +8,12 @@ backgroundColor: #2a3f32
 color: #F5EFE6
 -->
 
-# MISE v1.0
-### Control de Inventarios y Pedidos Inteligentes
+# MISE v1.7.4 Altair
+### Control de Inventarios, Picking y Pedidos Inteligentes
 **Suite ATELIER — La Crêpe Parisienne**
 
-*Lanzamiento Oficial v1.0*
-*El sistema unificado de control de existencias, cálculo de diferencias y optimización de pedidos diarios para bodega y sucursales.*
+*Versión Final de Producción GAS*
+*El sistema unificado de control de existencias, conversión de unidades, picking por arrastre y traspasos entre sucursales.*
 
 *Diseñado para: Surtidores, Encargados de Tienda y Coordinador Regional (Oliver)*
 
