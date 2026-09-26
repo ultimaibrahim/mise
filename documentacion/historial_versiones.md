@@ -5,6 +5,30 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.5c Altair (Surtido Rápido con CANT. FINAL) — 2026-09-26 [EN PRUEBAS · DEV]
+
+### 📱 Tiendas (PDA / PDM) & 🏬 Bodega (BDG)
+* `🚚 SURTIDO RÁPIDO`: columna H `CANT. FINAL` (fórmula), captura libre en E con una sola fuente activa por fila (E / ✅ / ❌), coloreado de fila completa por H vs D (5 estados), resumen en J:K, columnas congeladas A:D.
+* Bodega prioriza `CANT. FINAL` al descontar; doble candado anterior como respaldo.
+
+---
+
+## ⚡ v1.7.5b Altair (Auto-Avance Semanal Confiable) — 2026-09-25 [EN PRUEBAS]
+
+### 🏬 Bodega General (BDG)
+* Candado reentrante (`hasLock`) en el avance silencioso, sin avances contados que no ocurrieron, presupuesto de 18 s en `onOpen` para no dejar una bodega a medias y corrección de la `ReferenceError` del mantenimiento dominical.
+
+---
+
+## ⚡ v1.7.5a Altair (Hoja de Entradas Móvil hacia Kardex) — 2026-09-24 [EN PRUEBAS]
+
+### 🏬 Bodega General (BDG)
+* **Hoja persistente `📥 ENTRADAS`**: captura móvil de ENT para Andares y Mercado en unidad de Kardex, selector de día (HOY por default + LUN..DOM de la semana activa) y checkbox `D2` para enviar; estado en `A3` sin `toast`/`alert`.
+* **`procesarEntradasKardex()`**: validación todo-o-nada, suma sobre la ENT del día, escritura en bloque por Kardex con `LockService`, bloqueo si HOY no cae en la semana activa, registro en `🗒 LOG`.
+* **Menú**: `⚙️ Mise ➔ 📥 Preparar hoja de Entradas (móvil)`.
+
+---
+
 ## ⚡ v1.7.4 Altair (Conversión de Unidades Automática, Traspasos Inter-Tiendas & Surtido Numérico Desacoplado) — 2026-09-14 [VERSIÓN FINAL GAS]
 
 ### 🏬 Bodega General (BDG) & 📱 Tiendas (PDA / PDM)

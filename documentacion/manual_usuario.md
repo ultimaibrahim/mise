@@ -43,7 +43,13 @@
    - **📝 Edición Rápida:** Ajustar nombres, unidades de tienda (`DOMO`, `CAJA`), factores de conversión y mínimos/máximos.
 4. Al hacer clic en **Guardar**, el backend propaga atómicamente los cambios a las hojas de tienda en menos de 3 segundos mediante micro-workers paralelos.
 
-### Paso 2: Cargar Inventarios con Soporte de 4 Decimales en KARDEX
+### Paso 2: Registrar Entradas de Mercancía desde el Celular (📥 ENTRADAS)
+1. La primera vez, desde computadora: **`⚙️ Mise ➔ 📥 Preparar hoja de Entradas (móvil)`**. La hoja queda fija en el archivo.
+2. En el celular abre la pestaña **📥 ENTRADAS**. Escribe la cantidad recibida en la columna de **ANDARES** y/o **MERCADO**, en la unidad que aparece junto al producto (kg, lt, pza).
+3. El día por default es **HOY**. Si registras una entrega atrasada, cambia el día en la celda **B2**.
+4. Marca la casilla **Enviar ➜** (D2). En la fila 3 verás la confirmación (✅) o qué corregir (❌, celdas en rojo). Si ya había entradas ese día, se suman.
+
+### Paso 3: Cargar Inventarios con Soporte de 4 Decimales en KARDEX
 1. En las pestañas de **KARDEX**, registra entradas y salidas con precisión de hasta 4 decimales (`0.####`).
 2. A las **23:00 hrs**, el activador nocturno autónomo toma las recepciones confirmadas por las tiendas, aplica el factor de conversión (`Domo ➔ Kg`) y descuenta las salidas reales automáticamente.
 

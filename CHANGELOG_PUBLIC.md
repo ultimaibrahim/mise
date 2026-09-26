@@ -23,6 +23,37 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.5c Altair — Surtido Rápido Más Claro: Cantidad Final y Colores por Fila (Septiembre 2026) [EN PRUEBAS]
+
+* 🚚 **Escribe lo que llegó, sin trucos**:  
+  En Surtido Rápido se escribe directo la cantidad recibida. Si llegó completo basta marcar ✅, y si no llegó, ❌. Solo cuenta una de las tres opciones por producto, así que ya no hay datos contradictorios.
+* 🎯 **Nueva columna CANT. FINAL**:  
+  Al final de la tabla aparece la cantidad que el sistema tomará como recibida. Es la misma que usa Bodega para descontar el inventario, así que lo que ves es lo que se descuenta.
+* 🎨 **Toda la fila se pinta según lo que llegó**:  
+  Verde si llegó exacto, naranja si llegó de menos, azul si llegó de más, rojo si no llegó y amarillo si todavía no se registra. El resumen de la derecha cuenta cuántos productos hay en cada caso.
+* 📌 **Producto y cantidad pedida siempre a la vista**:  
+  Al deslizar la tabla en el celular, el nombre del producto y lo que se pidió se quedan fijos.
+
+---
+
+## Versión 1.7.5b Altair — Cambio de Semana Automático en Ambas Tiendas (Septiembre 2026) [EN PRUEBAS]
+
+* 📅 **El Kardex de Mercado ya cambia de semana solo**:  
+  Se corrigió la causa por la que uno de los inventarios (normalmente Mercado) se quedaba en la semana anterior y había que avanzarlo a mano con la casilla. Ahora el cierre del domingo a las 23:00 avanza Andares y Mercado juntos, y si algo lo impide, el sistema lo deja registrado y lo completa en la siguiente oportunidad sin dejar la semana a medias.
+
+---
+
+## Versión 1.7.5a Altair — Registro de Entradas desde el Celular (Septiembre 2026) [EN PRUEBAS]
+
+* 📥 **Nueva hoja de Entradas para Bodega**:  
+  Cuando llega mercancía, ahora se puede registrar desde el celular en una sola lista: cada producto con su unidad y dos columnas, una para **Andares** y otra para **Mercado**. Se escribe la cantidad, se marca la casilla **Enviar ➜** y el inventario de ambas tiendas se actualiza al instante, sin buscar filas ni días en el Kardex.
+* 📅 **Día automático con opción de corregir**:  
+  Por default se registra en el día de hoy. Si una entrega se quedó sin capturar, se puede elegir otro día de la semana antes de enviar.
+* 🛡️ **Sin errores a medias**:  
+  Si alguna cantidad está mal escrita, se marca en rojo y no se envía nada hasta corregirla. Las entregas múltiples del mismo día se suman, nunca se sobrescriben.
+
+---
+
 ## Versión 1.7.4 Altair — Conversión de Unidades Automática, Traspasos entre Tiendas y Recepción Numérica Libre (Septiembre 2026) [VERSIÓN FINAL GAS]
 
 * 🍓 **Fin a los Cálculos Mentales (Conversión Automática de Domos y Cajas)**:  

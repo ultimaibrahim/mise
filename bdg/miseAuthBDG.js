@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.4 Altair (Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.5c Altair (CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -131,7 +131,7 @@ const C = {
 function onOpen() {
   try {
     migrarEstructuraMaestro13Cols();
-    _autoVerificarYAvanzarSemanaSilencioso();
+    _autoVerificarYAvanzarSemanaSilencioso(true, 18000);
     _ensureTriggersBDG();
   } catch(e) {}
   try {
@@ -140,6 +140,7 @@ function onOpen() {
       // Operación Diaria y Supervisión Rápida
       .addItem("🚚 Descontar Pedidos de Hoy (Cierre diario)", "descontarSurtidoAutomaticoManualmente")
       .addItem("🔄 Registrar Traspaso entre Sucursales",  "abrirDialogoTraspasoBDGHTML")
+      .addItem("📥 Preparar hoja de Entradas (móvil)",   "prepararHojaEntradasManualmente")
       .addItem("⚡ Mise Powerhouse (Catálogo & Picking)", "abrirConstructorPickingHTML")
       .addItem("📅 Sincronizar semana actual (Ambas bodegas)", "configurarSemanaAmbas")
       .addSeparator()
@@ -334,6 +335,15 @@ function onEdit(e) {
         e.range.setValue(false); // Reset inmediato preventivo contra dobles ejecuciones
         procesarEdicionMasiva();
       }
+    }
+    return;
+  }
+
+  // 1.7 Hoja de Entradas móvil (Checkbox Enviar en D2)
+  if (name === SHEET_ENTRADAS) {
+    if (row === 2 && col === 4 && e.range.getValue() === true) {
+      e.range.setValue(false); // Reset inmediato preventivo contra dobles ejecuciones
+      procesarEntradasKardex();
     }
     return;
   }
@@ -4853,9 +4863,12 @@ function _obtenerLunesSemanaActual() {
 }
 
 // Auto-Verificador Silencioso de Cierre Semanal (Lunes por la mañana o domingos noche)
-function _autoVerificarYAvanzarSemanaSilencioso(silent = true) {
+// presupuestoMs: tope de tiempo (onOpen simple = 30 s). Si se agota, la bodega pendiente se deja
+// completa para la siguiente corrida en vez de quedar a medio avanzar (historial sin G4 movido).
+function _autoVerificarYAvanzarSemanaSilencioso(silent = true, presupuestoMs = null) {
   let bodegasAvanzadas = 0;
   const detalles = [];
+  const t0 = Date.now();
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const hoy = new Date();
@@ -4881,8 +4894,15 @@ function _autoVerificarYAvanzarSemanaSilencioso(silent = true) {
       // Si ya pasó el fin de semana (Domingo >= 22:00 o posterior a nextMondayTime):
       let iteraciones = 0;
       while ((hoy.getTime() >= nextMondayTime - 2 * 60 * 60 * 1000) && iteraciones < 4) {
+        if (presupuestoMs && Date.now() - t0 > presupuestoMs) {
+          MiseLogger.warn("_autoVerificarYAvanzarSemanaSilencioso", `${bodega.nombre}: sin tiempo en esta corrida; se avanzará en la siguiente.`);
+          break;
+        }
         const semAnterior = sheet.getRange("E4").getValue() || _isoWeek(d4);
-        _ejecutarAvanzarSemanaSilencioso(key, sheet, d4);
+        if (!_ejecutarAvanzarSemanaSilencioso(key, sheet, d4)) {
+          MiseLogger.warn("_autoVerificarYAvanzarSemanaSilencioso", `${bodega.nombre}: no se obtuvo el candado; semana NO avanzada.`);
+          break;
+        }
         bodegasAvanzadas++;
         iteraciones++;
         d4 = sheet.getRange("G4").getValue();
@@ -4916,6 +4936,7 @@ function _autoVerificarYAvanzarSemanaSilencioso(silent = true) {
       SpreadsheetApp.getUi().alert("❌ Error", `Error al verificar semanas: ${e.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
     }
   }
+  return bodegasAvanzadas;
 }
 
 function _actualizarBadgeEstadoSemana(sheet, key, actualizada) {
@@ -4951,11 +4972,12 @@ function _actualizarBadgeEstadoSemana(sheet, key, actualizada) {
 
 function _ejecutarAvanzarSemanaSilencioso(key, sheet, d4) {
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(15000)) return;
+  const yaTeniaCandado = lock.hasLock();
+  if (!yaTeniaCandado && !lock.tryLock(15000)) return false;
   try {
     const lr = sheet.getLastRow();
     const numRows = lr - KARDEX_START + 1;
-    if (numRows < 1) return;
+    if (numRows < 1) return false;
 
     const sem = sheet.getRange("E4").getValue() || _isoWeek(d4);
 
@@ -4986,8 +5008,9 @@ function _ejecutarAvanzarSemanaSilencioso(key, sheet, d4) {
 
     _actualizarBadgeEstadoSemana(sheet, key, true);
     _log("autoAvanzarSemanaSilencioso", `${BODEGAS[key].nombre} | Semana ${sem} avanzada automáticamente al ${_fmt(nuevoLunes)}.`);
+    return true;
   } finally {
-    lock.releaseLock();
+    if (!yaTeniaCandado) lock.releaseLock();
   }
 }
 
@@ -5139,6 +5162,266 @@ function registrarMovimientoRapidoKardex(payload) {
       nuevoSaldo: nuevoSld,
       mensaje: `Movimiento registrado en ${BODEGAS[key].nombre}`
     };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ── 📥 ENTRADAS DE STOCK MÓVIL (AMBAS TIENDAS → KARDEX) ──────────────────────
+// Hoja persistente optimizada para la app nativa de Sheets: sin menús ni alerts.
+// Captura en UNIDAD de Kardex, suma a la ENT del día elegido (HOY por default)
+// y confirma con el checkbox de D2. El resultado se escribe en la fila 3.
+const SHEET_ENTRADAS   = "📥 ENTRADAS";
+const ENTRADAS_START   = 5;      // primera fila de productos
+const ENTRADAS_HOY     = "HOY (automático)";
+
+function prepararHojaEntradasManualmente() {
+  const sheet = _prepararHojaEntradas();
+  SpreadsheetApp.setActiveSheet(sheet);
+  SpreadsheetApp.getActive().toast("Hoja 📥 ENTRADAS lista para capturar desde el celular ✓", "⚙️ Mise", 5);
+}
+
+// Devuelve el lunes de la semana activa del Kardex (G4) a las 00:00
+function _lunesSemanaActivaKardex(ss) {
+  const kBA = ss.getSheetByName(BODEGAS.BA.kardex);
+  let monday = kBA ? kBA.getRange("G4").getValue() : null;
+  if (!monday || !(monday instanceof Date) || isNaN(monday.getTime())) {
+    monday = _obtenerLunesSemanaActual();
+  }
+  return new Date(monday.getFullYear(), monday.getMonth(), monday.getDate(), 0, 0, 0);
+}
+
+// Opciones del selector de día: HOY + LUN..DOM con fecha de la semana activa
+function _opcionesDiaEntradas(monday) {
+  const opts = [ENTRADAS_HOY];
+  for (let d = 0; d < KARDEX_DAYS; d++) {
+    const f = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + d);
+    opts.push(`${DIAS[d]} ${String(f.getDate()).padStart(2, "0")}/${String(f.getMonth() + 1).padStart(2, "0")}`);
+  }
+  return opts;
+}
+
+// Crea (o re-sincroniza) la hoja. Conserva cantidades capturadas si keepQty = true.
+function _prepararHojaEntradas(keepQty = false) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const kBA = ss.getSheetByName(BODEGAS.BA.kardex);
+  if (!kBA) throw new Error("No existe KARDEX_BA.");
+
+  let sheet = ss.getSheetByName(SHEET_ENTRADAS);
+  const esNueva = !sheet;
+  if (esNueva) sheet = ss.insertSheet(SHEET_ENTRADAS, 0);
+
+  // Respaldo de cantidades ya capturadas (por nombre de producto)
+  const prevQty = {};
+  if (keepQty && !esNueva && sheet.getLastRow() >= ENTRADAS_START) {
+    sheet.getRange(ENTRADAS_START, 1, sheet.getLastRow() - ENTRADAS_START + 1, 4).getValues().forEach(r => {
+      const n = String(r[0]).trim().toUpperCase();
+      if (n && (r[2] !== "" || r[3] !== "")) prevQty[n] = [r[2], r[3]];
+    });
+  }
+
+  // Productos activos en el orden del Kardex (agrupado por categoría)
+  const klr = kBA.getLastRow();
+  const kData = klr >= KARDEX_START ? kBA.getRange(KARDEX_START, 1, klr - KARDEX_START + 1, 5).getValues() : [];
+  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  const inactivos = new Set();
+  if (maestro && maestro.getLastRow() >= MAESTRO_START) {
+    const map = _getMaestroHeaderMap(maestro);
+    const cProd = map["PRODUCTO"] ? map["PRODUCTO"].index : 2;
+    const cAct  = map["ACTIVO"] ? map["ACTIVO"].index : 5;
+    maestro.getRange(MAESTRO_START, 1, maestro.getLastRow() - MAESTRO_START + 1, maestro.getLastColumn()).getValues()
+      .forEach(r => { if (String(r[cAct]).trim().toUpperCase() === "NO") inactivos.add(String(r[cProd]).trim().toUpperCase()); });
+  }
+  const prods = kData
+    .filter(r => r[0] !== "" && String(r[2]).trim() && !inactivos.has(String(r[2]).trim().toUpperCase()))
+    .map(r => {
+      const nombre = String(r[2]).trim();
+      const q = prevQty[nombre.toUpperCase()] || ["", ""];
+      return [nombre, String(r[4] || "").trim(), q[0], q[1]];
+    });
+
+  // Limpieza de la zona de datos
+  const maxRows = sheet.getMaxRows();
+  if (maxRows >= ENTRADAS_START) {
+    sheet.getRange(ENTRADAS_START, 1, maxRows - ENTRADAS_START + 1, 4).clearContent().setBackground(null);
+  }
+  const needed = ENTRADAS_START + prods.length;
+  if (maxRows < needed) sheet.insertRowsAfter(maxRows, needed - maxRows);
+
+  if (esNueva) {
+    sheet.getRange("A1:D1").merge().setValue("📥 ENTRADAS DE STOCK · Andares & Mercado")
+      .setBackground(C.dark).setFontColor("#FFFFFF").setFontWeight("bold").setFontSize(11)
+      .setHorizontalAlignment("center").setVerticalAlignment("middle");
+    sheet.setRowHeight(1, 32);
+
+    sheet.getRange("A2").setValue("📅 Día de carga:").setFontWeight("bold").setHorizontalAlignment("right");
+    sheet.getRange("C2").setValue("Enviar ➜").setFontWeight("bold").setHorizontalAlignment("right");
+    sheet.getRange("D2").insertCheckboxes().setValue(false);
+    sheet.getRange("A2:D2").setBackground(C.cream).setVerticalAlignment("middle");
+    sheet.getRange("B2").setBackground(C.yellow);
+    sheet.getRange("D2").setBackground(C.yellow);
+    sheet.setRowHeight(2, 36);
+
+    sheet.getRange("A3:D3").merge().setBackground("#FFFFFF").setFontSize(9)
+      .setHorizontalAlignment("center").setVerticalAlignment("middle").setWrap(true);
+    sheet.setRowHeight(3, 30);
+
+    sheet.getRange(4, 1, 1, 4).setValues([["PRODUCTO", "UNIDAD", "ENT ANDARES", "ENT MERCADO"]])
+      .setBackground(C.sage).setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center");
+
+    sheet.setFrozenRows(4);
+    sheet.setFrozenColumns(1);
+    sheet.setColumnWidth(1, 200);
+    sheet.setColumnWidth(2, 60);
+    sheet.setColumnWidth(3, 100);
+    sheet.setColumnWidth(4, 100);
+  }
+
+  // Selector de día (se refresca siempre para reflejar las fechas de la semana activa)
+  const opts = _opcionesDiaEntradas(_lunesSemanaActivaKardex(ss));
+  const dayCell = sheet.getRange("B2");
+  const prevDay = String(dayCell.getValue() || "");
+  const prevIdx = DIAS.indexOf(prevDay.substring(0, 3));
+  dayCell.setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(opts, true).setAllowInvalid(false).build())
+    .setValue(keepQty && prevIdx !== -1 ? opts[prevIdx + 1] : ENTRADAS_HOY);
+
+  if (prods.length > 0) {
+    const rng = sheet.getRange(ENTRADAS_START, 1, prods.length, 4);
+    rng.setValues(prods);
+    rng.setBackgrounds(prods.map((_, i) => {
+      const base = i % 2 === 0 ? C.rowA : C.rowB;
+      return [base, base, C.entBg, C.entBg];
+    }));
+    sheet.getRange(ENTRADAS_START, 2, prods.length, 1).setHorizontalAlignment("center").setFontColor("#757575");
+    sheet.getRange(ENTRADAS_START, 3, prods.length, 2).setNumberFormat("0.####").setHorizontalAlignment("center");
+  }
+
+  if (esNueva) _estadoEntradas(sheet, "Captura en la unidad del Kardex (kg, lt, pza) y marca Enviar ➜", "info");
+  return sheet;
+}
+
+function _estadoEntradas(sheet, msg, tipo) {
+  const colores = { ok: ["#E8F5E9", "#1B5E20"], error: ["#FFEBEE", "#B71C1C"], info: ["#FFFFFF", "#546E7A"] };
+  const c = colores[tipo] || colores.info;
+  sheet.getRange("A3").setValue(msg).setBackground(c[0]).setFontColor(c[1]);
+}
+
+// Resuelve el índice de día (0 = LUN) a partir del selector; valida que HOY caiga en la semana activa
+function _resolverDiaEntradas(ss, seleccion) {
+  if (seleccion && seleccion !== ENTRADAS_HOY) {
+    const idx = DIAS.indexOf(String(seleccion).substring(0, 3));
+    if (idx === -1) throw new Error("Día no válido en B2. Elige uno de la lista.");
+    return idx;
+  }
+  const monday = _lunesSemanaActivaKardex(ss);
+  const hoy = new Date();
+  const hoyClean = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 0, 0, 0);
+  const diff = Math.round((hoyClean.getTime() - monday.getTime()) / 86400000);
+  if (diff < 0 || diff > 6) {
+    throw new Error("La semana activa del Kardex no incluye hoy. Avanza la semana antes de enviar.");
+  }
+  return diff;
+}
+
+function procesarEntradasKardex() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_ENTRADAS);
+  if (!sheet) return;
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) {
+    _estadoEntradas(sheet, "⏳ Bodega ocupada por otro proceso. Vuelve a marcar Enviar en unos segundos.", "error");
+    return;
+  }
+
+  try {
+    const lr = sheet.getLastRow();
+    if (lr < ENTRADAS_START) {
+      _estadoEntradas(sheet, "No hay productos en la lista.", "error");
+      return;
+    }
+    const dIdx = _resolverDiaEntradas(ss, sheet.getRange("B2").getValue());
+    const entCol = 10 + dIdx * 3; // Col 10 = ENT LUN
+
+    const rows = sheet.getRange(ENTRADAS_START, 1, lr - ENTRADAS_START + 1, 4).getValues();
+    const pedidos = { BA: {}, BM: {} };
+    const invalidas = [];
+    let capturadas = 0;
+
+    const _num = (v) => {
+      if (v === "" || v === null) return null;
+      const n = typeof v === "number" ? v : Number(String(v).replace(",", ".").trim());
+      return (isNaN(n) || n < 0) ? NaN : Math.round(n * 10000) / 10000;
+    };
+
+    rows.forEach((r, i) => {
+      const nombre = String(r[0]).trim().toUpperCase();
+      if (!nombre) return;
+      [["BA", r[2], 3], ["BM", r[3], 4]].forEach(([key, raw, col]) => {
+        const n = _num(raw);
+        if (n === null || n === 0) return;
+        if (isNaN(n)) { invalidas.push([ENTRADAS_START + i, col]); return; }
+        pedidos[key][nombre] = (pedidos[key][nombre] || 0) + n;
+        capturadas++;
+      });
+    });
+
+    if (invalidas.length > 0) {
+      invalidas.forEach(([row, col]) => sheet.getRange(row, col).setBackground("#FFCDD2"));
+      _estadoEntradas(sheet, `❌ ${invalidas.length} celda(s) en rojo no son números ≥ 0. Corrige y vuelve a enviar. No se envió nada.`, "error");
+      return;
+    }
+    if (capturadas === 0) {
+      _estadoEntradas(sheet, "No hay cantidades capturadas para enviar.", "info");
+      return;
+    }
+
+    // Validar que todos los productos existan en su Kardex antes de escribir (todo o nada)
+    const planes = {};
+    const faltantes = [];
+    Object.keys(pedidos).forEach(key => {
+      const nombres = Object.keys(pedidos[key]);
+      if (nombres.length === 0) return;
+      const kSheet = ss.getSheetByName(BODEGAS[key].kardex);
+      if (!kSheet) throw new Error(`No existe ${BODEGAS[key].kardex}.`);
+      const klr = kSheet.getLastRow();
+      const count = klr - KARDEX_START + 1;
+      const kProds = kSheet.getRange(KARDEX_START, 3, count, 1).getValues();
+      const idxMap = {};
+      kProds.forEach((p, i) => { const n = String(p[0]).trim().toUpperCase(); if (n) idxMap[n] = i; });
+      nombres.forEach(n => { if (idxMap[n] === undefined) faltantes.push(`${n} (${BODEGAS[key].nombre})`); });
+      planes[key] = { kSheet, count, idxMap, nombres };
+    });
+
+    if (faltantes.length > 0) {
+      _estadoEntradas(sheet, `❌ No están en el Kardex: ${faltantes.slice(0, 3).join(", ")}${faltantes.length > 3 ? "…" : ""}. No se envió nada.`, "error");
+      return;
+    }
+
+    // Escritura en bloque: 1 lectura + 1 escritura de la columna ENT del día por Kardex
+    const resumen = [];
+    Object.keys(planes).forEach(key => {
+      const { kSheet, count, idxMap, nombres } = planes[key];
+      const rng = kSheet.getRange(KARDEX_START, entCol, count, 1);
+      const vals = rng.getValues();
+      nombres.forEach(n => {
+        const i = idxMap[n];
+        const prev = parseFloat(vals[i][0]) || 0;
+        vals[i][0] = Math.round((prev + pedidos[key][n]) * 10000) / 10000;
+      });
+      rng.setValues(vals);
+      resumen.push(`${BODEGAS[key].nombre} ${nombres.length}`);
+      _log("procesarEntradasKardex", `${BODEGAS[key].kardex} ENT ${DIAS[dIdx]}: ` +
+        nombres.map(n => `${n}+${pedidos[key][n]}`).join(", "));
+    });
+
+    // Limpiar capturas y re-sincronizar la lista con el catálogo vigente
+    _prepararHojaEntradas(false);
+    const hora = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "HH:mm");
+    _estadoEntradas(sheet, `✅ ${capturadas} entrada(s) enviadas a ${DIAS[dIdx]} · ${hora} (${resumen.join(" · ")})`, "ok");
+  } catch (err) {
+    MiseLogger.error("procesarEntradasKardex", err.message || String(err), err);
+    _estadoEntradas(sheet, `❌ ${err.message || err}`, "error");
   } finally {
     lock.releaseLock();
   }
@@ -5717,6 +6000,7 @@ function ejecutarMantenimientoSemanalBDG() {
     // ── FASE 3: AUTO-AVANCE AUTÓNOMO DE SEMANA (ÚNICAMENTE SI ES DOMINGO O FORZADO) ─
     const hoy = new Date();
     const esDomingo = hoy.getDay() === 0; // 0 = Domingo
+    let semanasAvanzadas = 0;
 
     if (esDomingo) {
       // 1. Descontar pedidos de hoy domingo antes de avanzar la semana
@@ -5727,7 +6011,7 @@ function ejecutarMantenimientoSemanalBDG() {
       }
 
       // 2. Auto-avanzar semana silenciosamente
-      _autoVerificarYAvanzarSemanaSilencioso(true);
+      semanasAvanzadas = _autoVerificarYAvanzarSemanaSilencioso(true);
     }
 
     // ── FASE 4: RECONSTRUCCIÓN DE VISTAS Y RE-APLICACIÓN DE BLINDAJE ──────────

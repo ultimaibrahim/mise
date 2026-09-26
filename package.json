@@ -1,12 +1,17 @@
 {
   "name": "mise",
-  "version": "1.8.0",
+  "version": "1.7.4",
   "description": "Enterprise Inventory & Supply Chain Engine for Retail and Hospitality",
   "main": "tests/run_all.js",
   "type": "commonjs",
   "scripts": {
     "test": "node tests/run_all.js",
-    "check:syntax": "node tests/check_syntax.js"
+    "check:syntax": "node tests/check_syntax.js",
+    "env:gen": "node scripts/mise-env.js gen",
+    "env:status": "node scripts/mise-env.js status",
+    "push:dev": "node scripts/mise-env.js push dev",
+    "push:prod": "node scripts/mise-env.js push prod",
+    "env:verify": "node scripts/mise-env.js verify prod"
   },
   "keywords": [
     "google-apps-script",

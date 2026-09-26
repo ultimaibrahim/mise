@@ -1,0 +1,12 @@
+{
+  "prod": {
+    "BDG": { "sheetId": "<ID del libro de Google Sheets>", "scriptId": "<ID del proyecto Apps Script>" },
+    "PDA": { "sheetId": "<ID del libro de Google Sheets>", "scriptId": "<ID del proyecto Apps Script>" },
+    "PDM": { "sheetId": "<ID del libro de Google Sheets>", "scriptId": "<ID del proyecto Apps Script>" }
+  },
+  "dev": {
+    "BDG": { "sheetId": "<ID del libro de Google Sheets>", "scriptId": "<ID del proyecto Apps Script>" },
+    "PDA": { "sheetId": "<ID del libro de Google Sheets>", "scriptId": "<ID del proyecto Apps Script>" },
+    "PDM": { "sheetId": "<ID del libro de Google Sheets>", "scriptId": "<ID del proyecto Apps Script>" }
+  }
+}

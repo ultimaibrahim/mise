@@ -1,12 +1,13 @@
 # ⚡ Suite MISE · Enterprise Inventory & Supply Chain Engine
 > **Plataforma Integral de Telemetría de Inventarios, Reconciliación Inteligente de Insumos, Picking Dinámico y Sincronización Asíncrona para Cadenas Retail y Restauración.**
 
-[![Version](https://img.shields.io/badge/version-1.8.0--Altair-2E7D32.svg?style=flat-square)](CHANGELOG_PUBLIC.md)
+[![Version](https://img.shields.io/badge/version-1.7.4--Altair-2E7D32.svg?style=flat-square)](CHANGELOG_PUBLIC.md)
 [![Runtime](https://img.shields.io/badge/runtime-Google%20Apps%20Script%20V8-4285F4.svg?style=flat-square&logo=google&logoColor=white)](https://developers.google.com/apps-script)
 [![Management](https://img.shields.io/badge/managed%20with-Google%20Clasp-34A853.svg?style=flat-square)](https://github.com/google/clasp)
 [![Tests](https://img.shields.io/badge/tests-100%25%20passing%20%28Node%20V8%20VM%29-388E3C.svg?style=flat-square)](tests/)
 [![Architecture](https://img.shields.io/badge/architecture-Multi--Worker%20Concurrent%20%7C%20Hub--and--Spoke-5C6BC0.svg?style=flat-square)](#-arquitectura-del-sistema)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg?style=flat-square)](LICENSE)
+[![AI-Driven Development](https://img.shields.io/badge/AI--Driven-Development-7A9E8A.svg?style=flat-square)](#)
 
 ---
 

@@ -207,7 +207,7 @@ const MiseSmartSync = {
               const surtidoSheet = remoteSs.getSheetByName("🚚 SURTIDO RÁPIDO");
               if (surtidoSheet && surtidoSheet.getLastRow() >= 4) {
                 const sCount = surtidoSheet.getLastRow() - 3;
-                const sData = surtidoSheet.getRange(4, 1, sCount, 7).getValues();
+                const sData = surtidoSheet.getRange(4, 1, sCount, 8).getValues();
                 sData.forEach(sr => {
                   const sProd = _norm(sr[2]); // Col C (PRODUCTO)
                   let sRec = sr[4]; // Col E
@@ -215,8 +215,10 @@ const MiseSmartSync = {
                   sRec = parseFloat(sRec) || 0;
                   const sComp = (sr[5] === true); // Col F (COMPLETO)
                   const sInex = (sr[6] === true); // Col G (INEXISTENTE)
+                  // Col H (CANT. FINAL, fórmula de tienda v1.7.5+): fuente de verdad si trae número
+                  const sFinal = (sr[7] !== "" && sr[7] !== null && !isNaN(Number(sr[7]))) ? Number(sr[7]) : null;
                   if (sProd) {
-                    surtidoMap[sProd] = { sRec, sComp, sInex };
+                    surtidoMap[sProd] = { sRec, sComp, sInex, sFinal };
                   }
                 });
               }
@@ -251,7 +253,9 @@ const MiseSmartSync = {
 
                   // Determinar cantidad a descontar (tienda) con Doble Candado de Respaldo
                   let cantDeducir = 0;
-                  if (cantRec > 0) {
+                  if (sInfo && sInfo.sFinal !== null && sInfo.sFinal !== undefined) {
+                    cantDeducir = sInfo.sFinal;
+                  } else if (cantRec > 0) {
                     cantDeducir = cantRec;
                   } else if (sInfo && sInfo.sRec > 0) {
                     cantDeducir = sInfo.sRec;

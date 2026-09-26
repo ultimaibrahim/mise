@@ -33,6 +33,33 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.5c Altair — Surtido Rápido con CANT. FINAL y Coloreado por Fila (Septiembre 2026) [EN PRUEBAS · DEV]
+* **Nueva columna H `CANT. FINAL` en `🚚 SURTIDO RÁPIDO` (`pda`, `pdm`)**: fórmula por fila `=IF($G=TRUE,0,IF($E<>"",$E,IF($F=TRUE,$D,"")))`. Es la fuente de verdad de lo recibido y no depende de que `onEdit()` inyecte valores (raíz del bug de fila pintada sin cantidad).
+* **Una sola fuente activa por fila en `onEdit()`**: escribir en `CANT. RECIBIDA` (E) desmarca ✅/❌; marcar ✅ o ❌ limpia E y desmarca la otra casilla. Se conserva el sincronizado de `CANT. RECIBIDA`/`ESTADO` (H/I) en `📋 PEDIDO DIARIO` vía `_estadoRecepcion()`.
+* **Coloreado de fila completa (A:H) según `CANT. FINAL` vs `CANT. PEDIDA`**: exacto (verde), no llegó = 0 (rojo), de menos (naranja), de más (azul), sin registrar (amarillo). Resumen reubicado a `J:K` con 5 conteos `SUMPRODUCT` sobre H.
+* **Columnas congeladas A:D** (hasta `CANT. PEDIDA`); anchos ajustados para móvil (PRODUCTO 170 px, CANT. PEDIDA 70 px).
+* **Bodega (`bdg/MiseKardexEngine.js`)**: el descuento lee 8 columnas del Surtido remoto y prioriza `CANT. FINAL` cuando trae número; conserva el doble candado anterior como respaldo para tiendas sin la columna.
+* **Testing**: `tests/suites/surtido.test.js` ejecuta el código real de PDA y PDM en VM (estructura, fórmula, reglas de color, protección y captura/sincronizado).
+
+### Version 1.7.5b Altair — Auto-Avance Semanal Confiable en ambos Kardex (Septiembre 2026) [EN PRUEBAS · SOLO BDG]
+* **Candado reentrante en `_ejecutarAvanzarSemanaSilencioso()`**: usa `lock.hasLock()`; si el llamador (mantenimiento dominical) ya tiene el candado no lo re-adquiere ni lo libera. Devuelve `true/false`.
+* **Sin avances fantasma en `_autoVerificarYAvanzarSemanaSilencioso()`**: antes, si `tryLock` fallaba, el avance se contaba como hecho y el bucle repetía hasta 4 veces sin avanzar. Ahora corta, registra `WARN` en `🗒 LOG` y devuelve el número real de bodegas avanzadas.
+* **Presupuesto de tiempo en `onOpen()` (trigger simple de 30 s)**: tope de 18 s; si se agota tras Andares, Mercado se deja intacta para la siguiente corrida en lugar de quedar a medias (historial archivado sin mover `G4`).
+* **`ejecutarMantenimientoSemanalBDG()`**: corregida la `ReferenceError` por `semanasAvanzadas` no declarada, que hacía terminar cada mantenimiento dominical en error.
+* **Testing**: `tests/suites/semana.test.js` (candado del mantenimiento, candado ocupado, presupuesto de onOpen) + helper `tests/mocks/bdgVm.js`.
+
+### Version 1.7.5a Altair — Hoja de Entradas Móvil hacia Kardex (Septiembre 2026) [EN PRUEBAS · SOLO BDG]
+* **Nueva hoja persistente `📥 ENTRADAS` (`bdg/miseAuthBDG.js`)**:
+  - Lista de productos activos en el orden del Kardex (A: PRODUCTO congelada, B: UNIDAD de Kardex, C: ENT ANDARES, D: ENT MERCADO). Captura en unidad de Kardex (kg, lt, pza), sin conversión.
+  - Selector de día en `B2` con `HOY (automático)` por default más `LUN..DOM` con fechas de la semana activa (`KARDEX_BA!G4`). Tras cada envío regresa a HOY.
+  - Checkbox `D2` "Enviar ➜" procesado en `onEdit()` (reset inmediato anti doble ejecución). Sin `toast`/`alert`: el resultado se escribe en `A3`, compatible con la app nativa de Sheets.
+* **`procesarEntradasKardex()` — escritura atómica todo-o-nada**:
+  - Valida todas las celdas (acepta coma decimal, rechaza negativos/texto marcándolos en rojo) y que cada producto exista en su Kardex antes de escribir.
+  - Suma sobre la `ENT` existente del día (`col 10 + día×3`) con 1 lectura + 1 escritura por Kardex, redondeo a 4 decimales, `LockService` y registro en `🗒 LOG`.
+  - Si HOY no pertenece a la semana activa del Kardex, bloquea el envío y pide avanzar semana (evita escribir en la columna de otra semana).
+* **Menú**: `⚙️ Mise ➔ 📥 Preparar hoja de Entradas (móvil)` crea o re-sincroniza la hoja con el catálogo vigente.
+* **Testing**: nueva suite `tests/suites/entradas.test.js` que ejecuta el código real de `miseAuthBDG.js` en VM (5 casos: generación, suma a HOY, día manual, todo-o-nada, semana vencida).
+
 ### Version 1.7.4 Altair — Conversión de Unidades Automática, Sistema de Traspasos Inter-Tiendas & Surtido Numérico Desacoplado (Septiembre 2026) [VERSIÓN FINAL EN PRODUCCIÓN GAS]
 * **Desacoplamiento Total de Fórmulas en `CANT. RECIBIDA` (`pda/miseAuthPDA.js`, `pdm/miseAuthPDM.js`)**:
   - **Erradicación de Fórmulas Volátiles**: Eliminación total de la inyección de `=IF(G{row}=TRUE, 0, IF(F{row}=TRUE, D{row}, ""))` en la columna E de `🚚 SURTIDO RÁPIDO`.

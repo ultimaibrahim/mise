@@ -2,3 +2,15 @@ node_modules/
 .DS_Store
 .clasp.json
 .clasprc.json
+
+# Local Netlify folder
+.netlify
+.env
+*.env
+dist/
+
+
+# Entornos GAS (IDs de producción / generados por scripts/mise-env.js)
+scripts/mise-env.config.json
+**/MiseDevEnv.js
+**/.clasp.dev.json
