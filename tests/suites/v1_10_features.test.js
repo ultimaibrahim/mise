@@ -41,8 +41,7 @@ function runV110Tests() {
     if (sInfo && sInfo.sRec > 0) return sInfo.sRec;
     if (estado.includes("INEXISTENTE") || (sInfo && sInfo.sInex)) return 0;
     if (estado.includes("COMPLETO") || (sInfo && sInfo.sComp)) return cantPed;
-    if (cantPed > 0) return cantPed;
-    return 0;
+    return 0; // Sin cantidad, sin ✅ y sin ❌ → no se descuenta nada
   }
 
   const casoFalloCeldaVacia = resolverDeduccion(8, 0, "", { sRec: 0, sComp: true, sInex: false });
@@ -53,6 +52,11 @@ function runV110Tests() {
   const casoCancelado = resolverDeduccion(5, 0, "INEXISTENTE", { sRec: 0, sComp: false, sInex: true });
   assert.strictEqual(casoCancelado, 0, "Si se marca INEXISTENTE, debe deducir exactamente 0");
   console.log("  ✓ Cancelación / Void mediante INEXISTENTE (0 deducción) validada");
+
+  // 7. Sin registro (ni cantidad, ni ✅, ni ❌) → no se descuenta nada aunque haya pedido
+  const casoSinRegistro = resolverDeduccion(6, 0, "", { sRec: 0, sComp: false, sInex: false });
+  assert.strictEqual(casoSinRegistro, 0, "Sin registro de recepción no debe descontar lo pedido");
+  console.log("  ✓ Sin registro de recepción: 0 deducción (sin descuento fantasma)");
 }
 
 module.exports = { runV110Tests };

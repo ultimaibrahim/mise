@@ -5,6 +5,7 @@
  *   node scripts/mise-env.js gen          Genera .clasp.dev.json, MiseDevEnv.js y los .claspignore
  *   node scripts/mise-env.js push dev     gen + validación + clasp push a los proyectos [DEV]
  *   node scripts/mise-env.js push prod    clasp push a PRODUCCIÓN (MiseDevEnv.js queda excluido)
+ *   node scripts/mise-env.js push prod bdg   Solo un proyecto (bdg | pda | pdm), en cualquier entorno
  *   node scripts/mise-env.js status       Muestra qué archivos subiría cada entorno
  *   node scripts/mise-env.js verify dev|prod  Verifica que cada script esté vinculado a su libro (API)
  *
@@ -161,7 +162,7 @@ function verificarContenedores(cfg, env) {
   console.log(`✓ Contenedores ${env.toUpperCase()} verificados (cada script pertenece a su libro)`);
 }
 
-function push(cfg, env) {
+function push(cfg, env, solo) {
   if (env === "dev") {
     gen(cfg);
     const faltan = Object.keys(PROYECTOS).filter(k => !cfg.dev[k].scriptId);
@@ -169,7 +170,7 @@ function push(cfg, env) {
     execSync("node tests/run_all.js", { cwd: ROOT, stdio: "inherit" });
   }
   verificarContenedores(cfg, env);
-  Object.entries(PROYECTOS).forEach(([k, dir]) => {
+  Object.entries(PROYECTOS).filter(([, dir]) => !solo || dir === solo).forEach(([k, dir]) => {
     const args = env === "dev"
       ? `-P ${path.join(ROOT, dir, ".clasp.dev.json")} -I ${path.join(ROOT, dir, ".claspignore.dev")} push --force`
       : "push --force";
@@ -187,10 +188,11 @@ function status(cfg) {
 }
 
 try {
-  const [cmd, env] = process.argv.slice(2);
+  const [cmd, env, solo] = process.argv.slice(2);
+  if (solo && !Object.values(PROYECTOS).includes(solo)) throw new Error(`Proyecto desconocido: ${solo} (usa bdg, pda o pdm)`);
   const cfg = cargarConfig();
   if (cmd === "gen") gen(cfg);
-  else if (cmd === "push" && (env === "dev" || env === "prod")) push(cfg, env);
+  else if (cmd === "push" && (env === "dev" || env === "prod")) push(cfg, env, solo);
   else if (cmd === "status") status(cfg);
   else if (cmd === "verify" && (env === "dev" || env === "prod")) verificarContenedores(cfg, env);
   else console.log("Uso: node scripts/mise-env.js gen | push dev | push prod | status | verify dev|prod");

@@ -2,84 +2,10 @@
  * Suite de Pruebas: 🚚 SURTIDO RÁPIDO v1.7.5 (CANT. FINAL + coloreado por fila) — código real de pda/ y pdm/ en VM
  */
 const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-const { MockSpreadsheetApp, MockLockService, MockScriptApp, MockHtmlService } = require("../mocks/gasMocks");
+const { crearContextoTienda } = require("../mocks/tiendaVm");
 
 // Los arreglos creados dentro de la VM tienen otro prototipo: comparar por valor
 const eq = (a, b, msg) => assert.deepStrictEqual(JSON.parse(JSON.stringify(a)), JSON.parse(JSON.stringify(b)), msg);
-
-function _contextoTienda(dir, archivo) {
-  const base = MockSpreadsheetApp.getActiveSpreadsheet();
-  const ss = new base.constructor();
-  const probe = ss.insertSheet("__probe__");
-  const sheetProto = Object.getPrototypeOf(probe);
-  const rangeProto = Object.getPrototypeOf(probe.getRange(1, 1));
-  ss.deleteSheet(probe);
-
-  ["merge", "breakApart", "setFontFamily", "setFontStyle", "clearFormat", "clearDataValidations"]
-    .forEach(m => { if (!rangeProto[m]) rangeProto[m] = function() { return this; }; });
-  const _checks = {};
-  rangeProto.insertCheckboxes = function() {
-    for (let r = 0; r < this.numRows; r++) _checks[`${this.sheet.name}!${this.row + r},${this.col}`] = true;
-    return this;
-  };
-  rangeProto.setBorder = function() { return this; };
-  if (!rangeProto.getSheet) rangeProto.getSheet = function() { return this.sheet; };
-  if (!rangeProto.getRow) rangeProto.getRow = function() { return this.row; };
-  if (!rangeProto.getColumn) rangeProto.getColumn = function() { return this.col; };
-  if (!rangeProto.getBackgrounds) rangeProto.getBackgrounds = function() { return Array.from({ length: this.numRows }, () => Array(this.numCols).fill("#ffffff")); };
-  const _formulas = {};
-  rangeProto.setFormulas = function(m) {
-    m.forEach((fila, r) => fila.forEach((f, c) => { _formulas[`${this.sheet.name}!${this.row + r},${this.col + c}`] = f; }));
-    return this;
-  };
-  sheetProto.hideColumns = function() { return this; };
-  sheetProto.getProtections = function() { return []; };
-  sheetProto.protect = function() {
-    const p = { setDescription: () => p, setWarningOnly: () => p, canDomainEdit: () => false, setDomainEdit: () => p,
-      removeEditors: () => p, addEditor: () => p, getEditors: () => [], setUnprotectedRanges: (r) => { p.libres = r; return p; } };
-    this._proteccion = p;
-    return p;
-  };
-  sheetProto.clearConditionalFormatRules = function() { this._cf = []; return this; };
-  sheetProto.setConditionalFormatRules = function(r) { this._cf = r; return this; };
-
-  const props = { BODEGA_KEY: "BA", BODEGA_NOMBRE: "Andares" };
-  const reglaBuilder = () => {
-    const regla = {};
-    const b = {
-      whenFormulaSatisfied(f) { regla.formula = f; return b; },
-      setBackground(c) { regla.color = c; return b; },
-      setRanges(r) { regla.ranges = r; return b; },
-      build() { return regla; }
-    };
-    return b;
-  };
-  const valBuilder = () => { const b = { requireNumberGreaterThanOrEqualTo: () => b, setAllowInvalid: () => b, setHelpText: () => b, build: () => ({}) }; return b; };
-
-  const sandbox = {
-    console: { log() {}, warn() {}, error() {} },
-    SpreadsheetApp: Object.assign({}, MockSpreadsheetApp, {
-      getActiveSpreadsheet: () => ss, getActive: () => ss,
-      newConditionalFormatRule: reglaBuilder, newDataValidation: valBuilder,
-      ProtectionType: { SHEET: "SHEET", RANGE: "RANGE" }, BorderStyle: { SOLID: "SOLID" }
-    }),
-    LockService: MockLockService,
-    PropertiesService: { getScriptProperties: () => ({
-      getProperty: (k) => (k in props ? props[k] : null), setProperty: (k, v) => { props[k] = String(v); },
-      getProperties: () => Object.assign({}, props), deleteProperty: (k) => { delete props[k]; } }) },
-    ScriptApp: MockScriptApp, HtmlService: MockHtmlService,
-    Session: { getActiveUser: () => ({ getEmail: () => "t@lcp.mx" }), getEffectiveUser: () => ({ getEmail: () => "t@lcp.mx" }),
-      getScriptTimeZone: () => "America/Mexico_City" },
-    Utilities: { formatDate: (d) => d.toISOString() }
-  };
-  vm.createContext(sandbox);
-  const code = fs.readFileSync(path.join(__dirname, "..", "..", dir, archivo), "utf8");
-  vm.runInContext(code, sandbox);
-  return { ss, sandbox, _formulas, _checks };
-}
 
 function _sembrarPedido(ss) {
   const p = ss.insertSheet("📋 PEDIDO DIARIO");
@@ -105,7 +31,7 @@ function runSurtidoTests() {
 
   [["pda", "miseAuthPDA.js"], ["pdm", "miseAuthPDM.js"]].forEach(([dir, archivo]) => {
     const tag = dir.toUpperCase();
-    const { ss, sandbox, _formulas } = _contextoTienda(dir, archivo);
+    const { ss, sandbox, _formulas } = crearContextoTienda(dir, archivo);
     const pedido = _sembrarPedido(ss);
     sandbox._generarSurtidoRapidoInternal(false);
     const s = ss.getSheetByName("🚚 SURTIDO RÁPIDO");

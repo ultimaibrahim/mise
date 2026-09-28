@@ -5,6 +5,20 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.5e Altair (Migración Automática de Estructura) — 2026-09-26 [EN PRUEBAS · DEV]
+
+### 📱 Tiendas (PDA / PDM)
+* Motor `_migrarEsquemaTienda()` con esquema versionado, respaldo nativo + RAM, reintento seguro y verificación; corre en los activadores nocturnos. `repararSistemaTienda()` refactorizada sobre `_reconstruirPedidoDiarioCore()`. Reinicio total de activadores en los 3 libros.
+
+---
+
+## ⚡ v1.7.5d Altair (Sin Descuento Fantasma) — 2026-09-26 [EN PRUEBAS]
+
+### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* Sin registro de recepción → 0 descuento (Bodega y logs de tienda homologados). `📥 ENTRADAS` se crea y re-sincroniza sola. `diagnosticarActivadores()`.
+
+---
+
 ## ⚡ v1.7.5c Altair (Surtido Rápido con CANT. FINAL) — 2026-09-26 [EN PRUEBAS · DEV]
 
 ### 📱 Tiendas (PDA / PDM) & 🏬 Bodega (BDG)

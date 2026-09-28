@@ -264,9 +264,8 @@ const MiseSmartSync = {
                   } else if (estado.includes("COMPLETO") || (sInfo && sInfo.sComp)) {
                     // Si la celda de cantidad quedó vacía en tienda pero se marcó Completo
                     cantDeducir = cantPed;
-                  } else if (cantPed > 0) {
-                    cantDeducir = cantPed;
                   }
+                  // Sin cantidad, sin ✅ y sin ❌: la tienda no registró recepción → no se descuenta nada
 
                   if (cantDeducir > 0) {
                     // Normalización automática de unidades: Si el insumo tiene factor de conversión (ej. Domo -> Kg), deducir la masa real
@@ -290,7 +289,7 @@ const MiseSmartSync = {
                       catName,
                       cantPed,
                       cantDeducir,
-                      estado || (sInfo && sInfo.sComp ? "COMPLETO" : (sInfo && sInfo.sInex ? "INEXISTENTE" : "SURTIDO_AUTO")),
+                      estado || (sInfo && sInfo.sComp ? "COMPLETO" : (sInfo && sInfo.sInex ? "INEXISTENTE" : "SIN_REGISTRO")),
                       esAdicion
                     ]);
                   }

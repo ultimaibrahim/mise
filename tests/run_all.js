@@ -8,6 +8,7 @@ const { runEntradasTests } = require('./suites/entradas.test');
 const { runDevEnvTests } = require('./suites/dev_env.test');
 const { runSemanaTests } = require('./suites/semana.test');
 const { runSurtidoTests } = require('./suites/surtido.test');
+const { runMigracionTests } = require('./suites/migracion.test');
 const { execSync } = require('child_process');
 
 console.log("═════════════════════════════════════════════════════════════════");
@@ -27,6 +28,7 @@ try {
   runEntradasTests();
   runSemanaTests();
   runSurtidoTests();
+  runMigracionTests();
   runDevEnvTests();
 
   console.log("\n═════════════════════════════════════════════════════════════════");

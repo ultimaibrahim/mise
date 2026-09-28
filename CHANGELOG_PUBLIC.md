@@ -23,6 +23,24 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.5e Altair — Las Tiendas se Actualizan Solas por la Noche (Septiembre 2026) [EN PRUEBAS]
+
+* 🌙 **Actualizaciones sin interrumpir la operación**:  
+  Cuando una mejora requiere cambiar la estructura de las hojas de tienda, el sistema la aplica solo durante la noche, después del cierre del día. Nadie tiene que abrir la hoja ni presionar nada.
+* 💾 **Nada se pierde**:  
+  Antes de actualizar, el sistema guarda una copia completa de las hojas del día y vuelve a colocar cada cantidad capturada en su producto. Si algo fallara, lo reintenta a la noche siguiente usando la copia original.
+
+---
+
+## Versión 1.7.5d Altair — Solo se Descuenta lo que Realmente se Recibió (Septiembre 2026) [EN PRUEBAS]
+
+* 🛡️ **Adiós a los descuentos fantasma**:  
+  Si en la tienda no se registró la recepción de un producto (ni cantidad, ni ✅, ni ❌), el inventario de Bodega ya **no** lo descuenta. Antes se descontaba lo pedido como si hubiera llegado, lo que descuadraba el stock.
+* 📥 **La hoja de Entradas aparece sola**:  
+  Ya no hay que crearla desde el menú; el sistema la prepara y la mantiene al día con el catálogo cada noche.
+
+---
+
 ## Versión 1.7.5c Altair — Surtido Rápido Más Claro: Cantidad Final y Colores por Fila (Septiembre 2026) [EN PRUEBAS]
 
 * 🚚 **Escribe lo que llegó, sin trucos**:  

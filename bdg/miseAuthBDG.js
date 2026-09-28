@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.5c Altair (CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.5d Altair (Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -133,6 +133,7 @@ function onOpen() {
     migrarEstructuraMaestro13Cols();
     _autoVerificarYAvanzarSemanaSilencioso(true, 18000);
     _ensureTriggersBDG();
+    if (!SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_ENTRADAS)) _prepararHojaEntradas();
   } catch(e) {}
   try {
     const ui = SpreadsheetApp.getUi();
@@ -177,7 +178,8 @@ function onOpen() {
           .addItem("🧠 Reconciliador Inteligente de Huérfanos", "abrirReconciliadorInteligenteHTML"))
         .addSubMenu(ui.createMenu("⚙️ Automatizaciones y Triggers")
           .addItem("🚚 Descontar pedidos de ayer (Manual)", "descontarSurtidoHoyManualmente")
-          .addItem("⏰ Reinstalar activadores automáticos (23:00 hrs)", "instalarActivadoresNocturnosBDG")
+          .addItem("🩺 Diagnosticar activadores", "diagnosticarActivadores")
+          .addItem("⏰ Reiniciar activadores (23:00 diario y domingo)", "instalarActivadoresNocturnosBDG")
           .addItem("🔗 Configurar conexión con Logs (IMPORTRANGE)", "configurarConexionLogTiendas")
           .addItem("🛡️ Ejecutar mantenimiento semanal (Manual)", "ejecutarMantenimientoSemanalBDG"))
         .addSubMenu(ui.createMenu("🔒 Protección y Seguridad Crítica")
@@ -5167,6 +5169,30 @@ function registrarMovimientoRapidoKardex(payload) {
   }
 }
 
+// ── 🩺 DIAGNÓSTICO DE ACTIVADORES ─────────────────────────────────────────────
+// Apps Script no expone la hora programada de un activador; se listan función, tipo y id.
+// Solo aparecen los activadores instalados por la cuenta que ejecuta el diagnóstico.
+const ACTIVADORES_ESPERADOS_BDG = ["descontarSurtidoAutomatico", "ejecutarMantenimientoSemanalBDG"];
+
+function diagnosticarActivadores() {
+  const trig = ScriptApp.getProjectTriggers();
+  const lineas = trig.map(t => `• ${t.getHandlerFunction()} — ${t.getEventType()} (${t.getUniqueId()})`);
+  const presentes = new Set(trig.map(t => t.getHandlerFunction()));
+  const faltantes = ACTIVADORES_ESPERADOS_BDG.filter(f => !presentes.has(f));
+  const conteo = {};
+  trig.forEach(t => { conteo[t.getHandlerFunction()] = (conteo[t.getHandlerFunction()] || 0) + 1; });
+  const duplicados = Object.keys(conteo).filter(f => conteo[f] > 1);
+
+  const resumen = `${trig.length} activador(es) · faltan: ${faltantes.join(", ") || "ninguno"} · duplicados: ${duplicados.join(", ") || "ninguno"}`;
+  MiseLogger.info("diagnosticarActivadores", `${resumen} | ${lineas.join(" ")}`);
+  try {
+    SpreadsheetApp.getUi().alert("🩺 Activadores de Bodega", `${resumen}\n\n${lineas.join("\n") || "(ninguno)"}\n\n` +
+      (faltantes.length ? "Usa ⚙️ Mise → Automatizaciones → Reinstalar activadores." : "Todo en orden."),
+      SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch(e) {}
+  return { total: trig.length, faltantes, duplicados, lineas };
+}
+
 // ── 📥 ENTRADAS DE STOCK MÓVIL (AMBAS TIENDAS → KARDEX) ──────────────────────
 // Hoja persistente optimizada para la app nativa de Sheets: sin menús ni alerts.
 // Captura en UNIDAD de Kardex, suma a la ENT del día elegido (HOY por default)
@@ -5816,6 +5842,13 @@ function descontarSurtidoAutomatico(silent = true) {
   } catch(e) {
     MiseLogger.warn("descontarSurtidoAutomatico", `Error en auto-avance: ${e.message}`);
   }
+
+  // 3. Hoja 📥 ENTRADAS: crearla si falta y re-sincronizarla con el catálogo vigente (conserva capturas)
+  try {
+    _prepararHojaEntradas(true);
+  } catch(e) {
+    MiseLogger.warn("descontarSurtidoAutomatico", `Error preparando 📥 ENTRADAS: ${e.message}`);
+  }
 }
 
 /**
@@ -6036,37 +6069,23 @@ function ejecutarMantenimientoSemanalBDG() {
  * 2. Mantenimiento, purga y avance semanal de catálogo (Domingos 11:00 PM)
  */
 function instalarActivadoresNocturnosBDG() {
-  const triggers = ScriptApp.getProjectTriggers();
-  let countBorrados = 0;
+  // Reinicio TOTAL: borra todos los activadores del proyecto (incluidos viejos, duplicados o de funciones
+  // que ya no existen) y crea exactamente el juego esperado. Apps Script no expone la hora de un activador,
+  // así que recrearlos es la única forma de garantizar el horario correcto.
+  const borrados = ScriptApp.getProjectTriggers().map(t => { const h = t.getHandlerFunction(); ScriptApp.deleteTrigger(t); return h; });
 
-  // Eliminar activadores previos para evitar duplicados
-  triggers.forEach(t => {
-    const h = t.getHandlerFunction();
-    if (h === "descontarSurtidoAutomatico" || h === "descontarSurtidoAutomaticoManualmente" || h === "ejecutarMantenimientoSemanalBDG") {
-      ScriptApp.deleteTrigger(t);
-      countBorrados++;
-    }
-  });
+  // 1. Descuento diario (23:00 hrs del día en curso)
+  ScriptApp.newTrigger("descontarSurtidoAutomatico").timeBased().everyDays(1).atHour(23).create();
+  // 2. Mantenimiento y avance de semana (Domingos 23:00 hrs)
+  ScriptApp.newTrigger("ejecutarMantenimientoSemanalBDG").timeBased().everyWeeks(1)
+    .onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(23).create();
 
-  // 1. Trigger Diario de Descuento (11:00 PM / 23:00 hrs del día en curso)
-  ScriptApp.newTrigger("descontarSurtidoAutomatico")
-    .timeBased()
-    .everyDays(1)
-    .atHour(23)
-    .create();
-
-  // 2. Trigger Semanal de Mantenimiento y Avance de Semana (Domingos 11:00 PM / 23:00 hrs)
-  ScriptApp.newTrigger("ejecutarMantenimientoSemanalBDG")
-    .timeBased()
-    .everyWeeks(1)
-    .onWeekDay(ScriptApp.WeekDay.SUNDAY)
-    .atHour(23)
-    .create();
-
-  MiseLogger.info("instalarActivadoresNocturnosBDG", `Activadores automáticos configurados: Descuento diario (23:00 hrs) y Mantenimiento/Avance semanal (Domingos 23:00 hrs). Se renovaron ${countBorrados} activadores previos.`);
+  MiseLogger.info("instalarActivadoresNocturnosBDG", `Activadores reiniciados. Borrados (${borrados.length}): [${borrados.join(", ")}]. ` +
+    `Creados: descontarSurtidoAutomatico (diario 23:00), ejecutarMantenimientoSemanalBDG (domingo 23:00).`);
   SpreadsheetApp.getUi().alert(
-    "⏰ Activadores Automáticos Configurados",
-    `Se han programado con éxito los siguientes procesos autónomos desatendidos:\n\n1. 🚚 Descuento diario de inventario: Todos los días a las 11:00 PM (cierre del día en curso).\n2. 🛡️ Mantenimiento, purga y auto-avance de semana: Todos los Domingos a las 11:00 PM.\n\nEl sistema operará en segundo plano sin requerir que nadie abra la hoja.`,
+    "⏰ Activadores Reiniciados",
+    `Se borraron ${borrados.length} activador(es) previos:\n${borrados.join("\n") || "(ninguno)"}\n\n` +
+    `Quedaron exactamente:\n1. 🚚 Descuento diario — todos los días 23:00\n2. 🛡️ Mantenimiento y avance de semana — domingos 23:00`,
     SpreadsheetApp.getUi().ButtonSet.OK
   );
 }

@@ -1,5 +1,5 @@
 /**
- * MISE — Pedidos Mercado Script v1.7.5c Altair (Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Pedidos Mercado Script v1.7.5e Altair (Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Pedidos Mercado (Google Sheets de B-Mercado)
@@ -59,12 +59,13 @@ function onOpen() {
       .addItem("🖐️ Reordenar lista por picking",          "ordenarPedido")
       .addSeparator()
       .addItem("🔧 Sincronizar catálogo y reparar formato", "repararSistemaTienda")
+      .addItem("🔄 Aplicar actualización de estructura pendiente", "aplicarActualizacionPendienteManualmente")
       .addSeparator()
       // Submenú Cuarentena / Zona Avanzada
       .addSubMenu(ui.createMenu("⚠️ Mantenimiento Avanzado y Zona de Riesgo")
         .addSubMenu(ui.createMenu("🚨 Reseteo y Cierre Manual")
           .addItem("🗑️ Limpiar / Reiniciar pedido de hoy", "resetearPedidoManualmente")
-          .addItem("⏰ Reinstalar activador nocturno (23:00 hrs)", "instalarActivadoresMedianochePDM"))
+          .addItem("⏰ Reiniciar activadores (00:00 y 04:00)", "instalarActivadoresMedianochePDM"))
         .addSubMenu(ui.createMenu("🔒 Blindaje y Permisos")
           .addItem("🔒 Proteger Pedido Diario", "protegerPedidoSeguro")
           .addItem("🛡️ Blindar Pedido y Surtido (Total)", "protegerTodasLasHojasTiendaSeguras"))
@@ -730,7 +731,7 @@ function resetearPedidoManualmente() {
   }
 }
 
-function _resetearPedidoSilencioso() {
+function _resetearPedidoSilencioso(e) {
   const tId = "_resetearPedidoSilencioso_" + Date.now();
   MiseLogger.time(tId);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -782,6 +783,9 @@ function _resetearPedidoSilencioso() {
   
   const dur = MiseLogger.timeEnd(tId);
   MiseLogger.info("_resetearPedidoSilencioso", `Pedido diario reseteado (${count} productos limpiados).`, dur);
+
+  // Actualización de estructura pendiente: justo después del reset (sin capturas del día en juego)
+  _migrarSiEsActivador(e);
 }
 
 /**
@@ -816,15 +820,19 @@ function _registrarLogSurtidoDiario(ss, sheet) {
     const alerta   = String(row[9] || "").trim();
     const esAdicion = alerta.includes("ADICIÓN") ? "SÍ" : "NO";
 
-    if (prodName && (estado.includes("COMPLETO") || estado.includes("PARCIAL") || cantRec > 0)) {
+    // Misma regla que el descuento de Bodega: solo cuenta lo registrado (número, ✅ o ❌). Sin registro → 0.
+    if (prodName && (cantPed > 0 || cantRec > 0 || estado)) {
+      const cantEfectiva = (estado === "INEXISTENTE") ? 0
+        : (cantRec > 0) ? cantRec
+        : (estado === "COMPLETO") ? cantPed : 0;
       logRows.push([
         fechaStr,
         BODEGA_NOMBRE,
         prodName,
         catName,
         cantPed,
-        cantRec,
-        estado,
+        cantEfectiva,
+        estado || "SIN_REGISTRO",
         esAdicion
       ]);
     }
@@ -836,7 +844,7 @@ function _registrarLogSurtidoDiario(ss, sheet) {
   }
 }
 
-function _checkAutoResetNuevoDia() {
+function _checkAutoResetNuevoDia(e) {
   try {
     const todayStr = _fmtDate(new Date());
     const props = PropertiesService.getScriptProperties();
@@ -845,7 +853,9 @@ function _checkAutoResetNuevoDia() {
       _resetearPedidoSilencioso();
       props.setProperty("LAST_AUTO_RESET_DATE", todayStr);
     }
-  } catch(e) {}
+  } catch(err) {}
+  // Respaldo de las 04:00: reintenta una actualización de estructura pendiente
+  _migrarSiEsActivador(e);
 }
 
 function _fmtDate(date) {
@@ -861,14 +871,6 @@ function repararSistemaTienda() {
   const tId = "repararSistemaTienda_" + Date.now();
   MiseLogger.time(tId);
   const ui = SpreadsheetApp.getUi();
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const pedido = ss.getSheetByName(SHEET_PEDIDO);
-  const sync = ss.getSheetByName(SHEET_SYNC);
-  if (!pedido || !sync) {
-    ui.alert("❌ Error", "No se encontraron las pestañas necesarias del sistema.", ui.ButtonSet.OK);
-    return;
-  }
-
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(15000)) {
     ui.alert("El archivo está ocupado. Intenta de nuevo.");
@@ -877,93 +879,8 @@ function repararSistemaTienda() {
 
   try {
     SpreadsheetApp.getActive().toast("⏳ Reconstruyendo fórmulas, sincronizando productos y protegiendo celdas...", "🔧 Reparar Sistema", 5);
-    
-    // 1. Asegurar la conexión IMPORTRANGE en _SYNC
-    const url = PropertiesService.getScriptProperties().getProperty(`BODEGA_URL_${BODEGA_KEY}`);
-    if (!url) {
-      ui.alert("❌ Error de Conexión", `No se ha configurado la propiedad BODEGA_URL_${BODEGA_KEY} en las Propiedades del Script.\n\nVe al menú ⚙️ Mise -> Configurar Bodega para enlazar el archivo.`, ui.ButtonSet.OK);
-      return;
-    }
-    const syncFormula = '=IMPORTRANGE("' + url + '", "'  + VISTA_MOVIL + '!A4:L")';
-    sync.getRange(4, 1).clearContent();
-    sync.getRange(4, 1).setFormula(syncFormula);
-    
-    // 2. Obtener conteo de productos sincronizados
-    const syncCount = Math.max(0, sync.getLastRow() - 3);
-    if (syncCount < 1) {
-      ui.alert("⚠️ Advertencia", "No se detectaron productos sincronizados desde Bodega. Revisa el enlace con Bodega.", ui.ButtonSet.OK);
-      return;
-    }
-    
-    // 3. Resguardo de cantidades existentes (CANT. A PEDIR en Col F y RECIBIDA en Col H por Nombre de Producto)
-    const currentCount = _getProductCount();
-    const DR = DATA_START_ROW;
-    const backupData = {};
-    
-    if (currentCount > 0) {
-      const prodNames = pedido.getRange(DR, 3, currentCount, 1).getValues();
-      const cantsPedir = pedido.getRange(DR, COL_CANT_PEDIR, currentCount, 1).getValues();
-      const cantsRecibida = pedido.getRange(DR, COL_RECIBIDA, currentCount, 1).getValues();
-      
-      for (let i = 0; i < currentCount; i++) {
-        const name = String(prodNames[i][0] || "").trim();
-        if (name) {
-          backupData[name] = {
-            pedir: cantsPedir[i][0],
-            recibida: cantsRecibida[i][0]
-          };
-        }
-      }
-    }
-
-    // 4. Reconstrucción Total Limpia de la Hoja (Destruye formatos grises corruptos y regenera estructura)
-    _buildPedidoDiario(pedido);
-    PropertiesService.getScriptProperties().setProperty("PRODUCT_COUNT", String(syncCount));
-
-    // 5. Ensamblado y escritura en matriz 2D unificada (<100ms)
-    const sRef = "'" + SHEET_SYNC + "'";
-    const syncNames = ss.getSheetByName(SHEET_SYNC).getRange(4, 3, syncCount, 1).getValues();
-    const outputGrid = [];
-    const cleanBgs = [];
-
-    for (let i = 0; i < syncCount; i++) {
-      const r = DR + i;
-      const sr = 4 + i;
-      const pName = String(syncNames[i][0] || "").trim();
-      const b = backupData[pName] || null;
-
-      outputGrid.push([
-        i + 1,                                        // Col A (No)
-        '=' + sRef + '!B' + sr,                       // Col B (CATEGORÍA)
-        '=' + sRef + '!C' + sr,                       // Col C (PRODUCTO)
-        '=' + sRef + '!D' + sr,                       // Col D (UNIDAD)
-        '=IFERROR(' + sRef + '!E' + sr + '*1, 0) & IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "", IF(' + sRef + '!E' + sr + '<' + sRef + '!J' + sr + ', " (-" & (' + sRef + '!J' + sr + '-' + sRef + '!E' + sr + ') & ")", IF(' + sRef + '!E' + sr + '>' + sRef + '!K' + sr + ', " (+" & (' + sRef + '!E' + sr + '-' + sRef + '!K' + sr + ') & ")", " (-)")))', // Col E
-        b && b.pedir !== "" && b.pedir !== null ? b.pedir : "", // Col F (CANT. A PEDIR)
-        '=IF(OR(F' + r + '="", H' + r + '=""), "", H' + r + ' - F' + r + ')', // Col G (DIFERENCIA)
-        b && b.recibida !== "" && b.recibida !== null ? b.recibida : "", // Col H (RECIBIDA)
-        "",                                           // Col I (ESTADO)
-        "",                                           // Col J (ADICIÓN)
-        '=IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "—", ' + sRef + '!J' + sr + ' & "  |  " & ' + sRef + '!K' + sr + ')' // Col K (MÍN | MÁX QUIOSCO)
-      ]);
-
-      const rowBg = Array(NUM_COLS).fill(i % 2 === 0 ? COLORS.neutral_a : COLORS.neutral_b);
-      rowBg[4] = COLORS.blue;                    // Col E (Saldo Teórico)
-      rowBg[COL_CANT_PEDIR - 1] = COLORS.yellow; // Col F (Cant a pedir)
-      cleanBgs.push(rowBg);
-    }
-
-    // Inyectar en una sola llamada Batch 2D atómica
-    const rangeData = pedido.getRange(DR, 1, syncCount, NUM_COLS);
-    rangeData.clearContent();
-    rangeData.setBackgrounds(cleanBgs);
-    rangeData.setFormulas(outputGrid);
-
-    // 6. Aplicar visibilidad, formatos condicionales y protecciones anti-dummies
-    _aplicarFormatosCondicionales(pedido);
-    _actualizarVisibilidadInactivos(pedido);
-    _protegerPedidoDiario(pedido, syncCount);
-
-    SpreadsheetApp.flush();
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const syncCount = _reconstruirPedidoDiarioCore(_leerCapturasTienda(ss.getSheetByName(SHEET_PEDIDO), ss.getSheetByName(SHEET_SURTIDO)));
     const dur = MiseLogger.timeEnd(tId);
     MiseLogger.info("repararSistemaTienda", `Reconstrucción limpia completada: ${syncCount} productos sincronizados y fórmulas reestablecidas.`, dur);
     SpreadsheetApp.getActive().toast("✅ Reconstrucción Limpia Completada", "🔧 Reparar Sistema", 4);
@@ -971,10 +888,220 @@ function repararSistemaTienda() {
   } catch (err) {
     const dur = MiseLogger.timeEnd(tId);
     MiseLogger.error("repararSistemaTienda", err.message, err, dur);
-    SpreadsheetApp.getActive().toast("❌ Error en reparación: " + err.message, "🔧 Reparar Sistema", 5);
+    ui.alert("❌ Error en reparación", err.message, ui.ButtonSet.OK);
   } finally {
     lock.releaseLock();
   }
+}
+
+// Captura en RAM (por nombre de producto) todo lo que el usuario o el sistema escribió en el día:
+// PEDIDO DIARIO F (pedir), H (recibida), I (estado), J (adición) + lo marcado en SURTIDO RÁPIDO (E/F/G),
+// que tiene prioridad porque es la captura directa del surtidor.
+function _leerCapturasTienda(pedido, surtido) {
+  const capturas = {};
+  if (pedido && pedido.getLastRow() >= DATA_START_ROW) {
+    const n = pedido.getLastRow() - DATA_START_ROW + 1;
+    pedido.getRange(DATA_START_ROW, 1, n, 10).getValues().forEach(r => {
+      const name = String(r[2] || "").trim();
+      if (!name) return;
+      const c = { pedir: r[COL_CANT_PEDIR - 1], recibida: r[COL_RECIBIDA - 1], estado: r[COL_ESTADO - 1], adicion: r[9] };
+      if ([c.pedir, c.recibida, c.estado, c.adicion].some(v => v !== "" && v !== null)) capturas[name] = c;
+    });
+  }
+  if (surtido && surtido.getLastRow() >= 4) {
+    surtido.getRange(4, 1, surtido.getLastRow() - 3, 7).getValues().forEach(r => {
+      const name = String(r[2] || "").trim();
+      if (!name) return;
+      const ped = parseFloat(r[3]) || 0;
+      let recibida = "", estado = "";
+      if (r[6] === true) { recibida = 0; estado = "INEXISTENTE"; }
+      else if (r[4] !== "" && r[4] !== null && !isNaN(parseFloat(String(r[4]).replace(",", ".")))) {
+        recibida = parseFloat(String(r[4]).replace(",", ".")); estado = _estadoRecepcion(recibida, ped);
+      } else if (r[5] === true) { recibida = ped; estado = "COMPLETO"; }
+      if (estado) {
+        const c = capturas[name] || { pedir: ped, recibida: "", estado: "", adicion: "" };
+        c.recibida = recibida; c.estado = estado;
+        capturas[name] = c;
+      }
+    });
+  }
+  return capturas;
+}
+
+// Reconstrucción limpia de 📋 PEDIDO DIARIO sin UI (la usan la reparación manual y el motor de migración).
+// El llamador debe tener el candado. Lanza Error si la conexión con Bodega no está lista.
+function _reconstruirPedidoDiarioCore(backupData) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const pedido = ss.getSheetByName(SHEET_PEDIDO);
+  const sync = ss.getSheetByName(SHEET_SYNC);
+  if (!pedido || !sync) throw new Error("No se encontraron las pestañas necesarias del sistema.");
+
+  // 1. Asegurar la conexión IMPORTRANGE en _SYNC
+  const url = PropertiesService.getScriptProperties().getProperty(`BODEGA_URL_${BODEGA_KEY}`);
+  if (!url) throw new Error(`Falta la propiedad BODEGA_URL_${BODEGA_KEY}. Ve a ⚙️ Mise → Configurar Bodega.`);
+  const syncFormula = '=IMPORTRANGE("' + url + '", "'  + VISTA_MOVIL + '!A4:L")';
+  if (sync.getRange(4, 1).getFormula() !== syncFormula) {
+    sync.getRange(4, 1).clearContent();
+    sync.getRange(4, 1).setFormula(syncFormula);
+  }
+
+  // 2. Conteo de productos sincronizados
+  const syncCount = Math.max(0, sync.getLastRow() - 3);
+  if (syncCount < 1) throw new Error("No se detectaron productos sincronizados desde Bodega.");
+
+  // 3. Reconstrucción total limpia de la hoja
+  _buildPedidoDiario(pedido);
+  PropertiesService.getScriptProperties().setProperty("PRODUCT_COUNT", String(syncCount));
+
+  // 4. Ensamblado en matriz 2D unificada, restaurando capturas por nombre de producto
+  const DR = DATA_START_ROW;
+  const sRef = "'" + SHEET_SYNC + "'";
+  const syncNames = sync.getRange(4, 3, syncCount, 1).getValues();
+  const outputGrid = [];
+  const cleanBgs = [];
+  const _v = (x) => (x !== "" && x !== null && x !== undefined) ? x : "";
+
+  for (let i = 0; i < syncCount; i++) {
+    const r = DR + i;
+    const sr = 4 + i;
+    const pName = String(syncNames[i][0] || "").trim();
+    const b = (backupData && backupData[pName]) || {};
+
+    outputGrid.push([
+      i + 1,                                        // Col A (No)
+      '=' + sRef + '!B' + sr,                       // Col B (CATEGORÍA)
+      '=' + sRef + '!C' + sr,                       // Col C (PRODUCTO)
+      '=' + sRef + '!D' + sr,                       // Col D (UNIDAD)
+      '=IFERROR(' + sRef + '!E' + sr + '*1, 0) & IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "", IF(' + sRef + '!E' + sr + '<' + sRef + '!J' + sr + ', " (-" & (' + sRef + '!J' + sr + '-' + sRef + '!E' + sr + ') & ")", IF(' + sRef + '!E' + sr + '>' + sRef + '!K' + sr + ', " (+" & (' + sRef + '!E' + sr + '-' + sRef + '!K' + sr + ') & ")", " (-)")))', // Col E
+      _v(b.pedir),                                  // Col F (CANT. A PEDIR)
+      '=IF(OR(F' + r + '="", H' + r + '=""), "", H' + r + ' - F' + r + ')', // Col G (DIFERENCIA)
+      _v(b.recibida),                               // Col H (RECIBIDA)
+      _v(b.estado),                                 // Col I (ESTADO)
+      _v(b.adicion),                                // Col J (ADICIÓN)
+      '=IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "—", ' + sRef + '!J' + sr + ' & "  |  " & ' + sRef + '!K' + sr + ')' // Col K (MÍN | MÁX QUIOSCO)
+    ]);
+
+    const rowBg = Array(NUM_COLS).fill(i % 2 === 0 ? COLORS.neutral_a : COLORS.neutral_b);
+    rowBg[4] = COLORS.blue;                    // Col E (Saldo Teórico)
+    rowBg[COL_CANT_PEDIR - 1] = COLORS.yellow; // Col F (Cant a pedir)
+    cleanBgs.push(rowBg);
+  }
+
+  const rangeData = pedido.getRange(DR, 1, syncCount, NUM_COLS);
+  rangeData.clearContent();
+  rangeData.setBackgrounds(cleanBgs);
+  rangeData.setFormulas(outputGrid);
+
+  // 5. Visibilidad, formatos condicionales y protecciones
+  _aplicarFormatosCondicionales(pedido);
+  _actualizarVisibilidadInactivos(pedido);
+  _protegerPedidoDiario(pedido, syncCount);
+  SpreadsheetApp.flush();
+  return syncCount;
+}
+
+// ── 🔄 MOTOR DE MIGRACIÓN DE ESQUEMA (automático en los activadores nocturnos) ──────────
+// Cuando un cambio requiere re-armar hojas, se sube MISE_SCHEMA_TIENDA y el libro se actualiza solo
+// en la siguiente corrida nocturna (00:00 reset o 04:00 respaldo), abra o no abra alguien la hoja.
+//  • Respaldo doble: copia nativa oculta de cada hoja (_RESPALDO_*) + capturas en RAM por producto.
+//  • Reintento seguro: si una corrida falla, la siguiente lee las capturas del respaldo original,
+//    no de la hoja a medio reconstruir.
+//  • Idempotente: solo corre si la versión guardada es menor que la del código.
+//  • Compatible: mientras no migra, el código nuevo opera sobre la estructura vieja sin romperla.
+const MISE_SCHEMA_TIENDA = 2; // 2 = v1.7.5 (DIFERENCIA intra-fila, Surtido Rápido con CANT. FINAL)
+const PROP_SCHEMA        = "MISE_SCHEMA_VERSION";
+const PROP_MIGRANDO      = "MISE_SCHEMA_MIGRANDO";
+const SHEET_SURTIDO      = "🚚 SURTIDO RÁPIDO";
+
+function _respaldoMigracion(ss, sheet, etiqueta, reutilizar) {
+  const nombre = `_RESPALDO_${etiqueta}_v${MISE_SCHEMA_TIENDA}`;
+  const previo = ss.getSheetByName(nombre);
+  if (previo && reutilizar) return previo;
+  if (previo) ss.deleteSheet(previo);
+  if (!sheet) return null;
+  const copia = sheet.copyTo(ss).setName(nombre);
+  try { copia.hideSheet(); } catch(e) {}
+  return copia;
+}
+
+function _migrarEsquemaTienda() {
+  const props = PropertiesService.getScriptProperties();
+  const actual = parseInt(props.getProperty(PROP_SCHEMA) || "1", 10);
+  if (actual >= MISE_SCHEMA_TIENDA) return false;
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) {
+    MiseLogger.warn("_migrarEsquemaTienda", "Candado ocupado; se reintentará en la siguiente corrida.");
+    return false;
+  }
+  const tId = "_migrarEsquemaTienda_" + Date.now();
+  MiseLogger.time(tId);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const pedido = ss.getSheetByName(SHEET_PEDIDO);
+    if (!pedido) return false;
+    const surtido = ss.getSheetByName(SHEET_SURTIDO);
+
+    // Reintento tras un fallo: capturas desde el respaldo original, no desde la hoja a medias
+    const reintento = props.getProperty(PROP_MIGRANDO) === String(MISE_SCHEMA_TIENDA);
+    const respPedido = _respaldoMigracion(ss, pedido, "PEDIDO", reintento);
+    const respSurtido = _respaldoMigracion(ss, surtido, "SURTIDO", reintento);
+    props.setProperty(PROP_MIGRANDO, String(MISE_SCHEMA_TIENDA));
+    const capturas = _leerCapturasTienda(respPedido, respSurtido);
+
+    const n = _reconstruirPedidoDiarioCore(capturas);
+    if (surtido || respSurtido) _generarSurtidoRapidoInternal(false);
+
+    // Verificación: toda captura de un producto vigente debe estar de vuelta en su lugar
+    const vigentes = {};
+    pedido.getRange(DATA_START_ROW, 1, n, 10).getValues().forEach(r => { vigentes[String(r[2] || "").trim()] = r; });
+    const perdidas = [], descontinuados = [];
+    Object.keys(capturas).forEach(name => {
+      const r = vigentes[name];
+      if (!r) { descontinuados.push(name); return; }
+      const c = capturas[name];
+      if (String(r[COL_CANT_PEDIR - 1]) !== String(c.pedir) || String(r[COL_RECIBIDA - 1]) !== String(c.recibida)) perdidas.push(name);
+    });
+
+    props.setProperty(PROP_SCHEMA, String(MISE_SCHEMA_TIENDA));
+    props.deleteProperty(PROP_MIGRANDO);
+    const dur = MiseLogger.timeEnd(tId);
+    MiseLogger.info("_migrarEsquemaTienda", `Esquema ${actual} → ${MISE_SCHEMA_TIENDA}: ${n} productos, ` +
+      `${Object.keys(capturas).length} capturas respaldadas, ${perdidas.length} sin restaurar, ` +
+      `${descontinuados.length} de productos ya no vigentes. Respaldo en _RESPALDO_*_v${MISE_SCHEMA_TIENDA}.`, dur);
+    if (perdidas.length || descontinuados.length) {
+      MiseLogger.warn("_migrarEsquemaTienda", `Revisar contra _RESPALDO_PEDIDO_v${MISE_SCHEMA_TIENDA}: ` +
+        `sin restaurar [${perdidas.join(", ")}] · no vigentes [${descontinuados.join(", ")}]`);
+    }
+    return true;
+  } catch (err) {
+    const dur = MiseLogger.timeEnd(tId);
+    MiseLogger.error("_migrarEsquemaTienda", `Migración a esquema ${MISE_SCHEMA_TIENDA} falló; se reintentará: ${err.message}`, err, dur);
+    return false;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Solo en activadores de tiempo (traen triggerUid): el onOpen simple tiene 30 s y no debe migrar
+function _migrarSiEsActivador(e) {
+  if (e && e.triggerUid) {
+    try { _migrarEsquemaTienda(); } catch (err) {}
+  }
+}
+
+function aplicarActualizacionPendienteManualmente() {
+  const ui = SpreadsheetApp.getUi();
+  const props = PropertiesService.getScriptProperties();
+  const actual = parseInt(props.getProperty(PROP_SCHEMA) || "1", 10);
+  if (actual >= MISE_SCHEMA_TIENDA) {
+    ui.alert("✅ Al día", `La estructura ya está en la versión ${actual}.`, ui.ButtonSet.OK);
+    return;
+  }
+  const ok = _migrarEsquemaTienda();
+  ui.alert(ok ? "✅ Estructura actualizada" : "⚠️ No se pudo actualizar",
+    ok ? `Versión ${actual} → ${MISE_SCHEMA_TIENDA}. Tus capturas se respaldaron y restauraron; revisa 🗒 LOG para el detalle.`
+       : "Revisa 🗒 LOG. Se reintentará automáticamente esta noche.", ui.ButtonSet.OK);
 }
 
 function _protegerPedidoDiario(sheet, count) {
@@ -1330,7 +1457,7 @@ function _generarSurtidoRapidoInternal(activateSheet) {
   }
 
   // Buscar o crear la pestaña de Surtido Rápido
-  const sheetName = "🚚 SURTIDO RÁPIDO";
+  const sheetName = SHEET_SURTIDO;
   let sSheet = ss.getSheetByName(sheetName);
   if (sSheet) {
     sSheet.clear();
@@ -1755,29 +1882,20 @@ function registrarLog(accion, estado, detalle) {
  * todos los días entre 00:00 y 01:00 AM.
  */
 function instalarActivadoresMedianochePDM() {
-  const funcionTarget = "_resetearPedidoSilencioso";
-  const triggers = ScriptApp.getProjectTriggers();
-  let countBorrados = 0;
+  // Reinicio TOTAL: borra todos los activadores del proyecto (viejos, duplicados, "sincronizarEstados"
+  // cada 10 min, funciones que ya no existen) y crea exactamente el juego esperado.
+  const borrados = ScriptApp.getProjectTriggers().map(t => { const h = t.getHandlerFunction(); ScriptApp.deleteTrigger(t); return h; });
 
-  // Eliminar activadores previos para evitar duplicados
-  triggers.forEach(t => {
-    if (t.getHandlerFunction() === funcionTarget || t.getHandlerFunction() === "resetearPedidoManualmente") {
-      ScriptApp.deleteTrigger(t);
-      countBorrados++;
-    }
-  });
+  // 1. Reset diario + LOG_SURTIDO + migración de estructura pendiente (00:00 - 01:00)
+  ScriptApp.newTrigger("_resetearPedidoSilencioso").timeBased().everyDays(1).atHour(0).create();
+  // 2. Respaldo del reset y reintento de migración (04:00 - 05:00)
+  ScriptApp.newTrigger("_checkAutoResetNuevoDia").timeBased().everyDays(1).atHour(4).create();
 
-  // Crear nuevo trigger programado a medianoche (00:00 - 01:00 AM)
-  ScriptApp.newTrigger(funcionTarget)
-    .timeBased()
-    .everyDays(1)
-    .atHour(0)
-    .create();
-
-  registrarLog("instalarActivadores", "SUCCESS", `Activador nocturno instalado (00:00 AM). Se eliminaron ${countBorrados} activadores viejos.`);
+  registrarLog("instalarActivadores", "SUCCESS", `Activadores reiniciados. Borrados (${borrados.length}): [${borrados.join(", ")}]. Creados: reset 00:00 y respaldo 04:00.`);
   SpreadsheetApp.getUi().alert(
-    "⏰ Activador Automático Configurado",
-    `Se ha programado el reseteo diario y guardado en LOG_SURTIDO para ejecutarse automáticamente todos los días entre 00:00 y 01:00 AM.\n\nNo necesitas dejar ninguna pestaña abierta.`,
+    "⏰ Activadores Reiniciados",
+    `Se borraron ${borrados.length} activador(es) previos:\n${borrados.join("\n") || "(ninguno)"}\n\n` +
+    `Quedaron exactamente:\n1. 🌙 Reset diario, log de surtido y actualización de estructura — 00:00\n2. 🔁 Respaldo del reset — 04:00`,
     SpreadsheetApp.getUi().ButtonSet.OK
   );
 }

@@ -11,7 +11,8 @@
     "env:status": "node scripts/mise-env.js status",
     "push:dev": "node scripts/mise-env.js push dev",
     "push:prod": "node scripts/mise-env.js push prod",
-    "env:verify": "node scripts/mise-env.js verify prod"
+    "env:verify": "node scripts/mise-env.js verify prod",
+    "push:prod:bdg": "node scripts/mise-env.js push prod bdg"
   },
   "keywords": [
     "google-apps-script",

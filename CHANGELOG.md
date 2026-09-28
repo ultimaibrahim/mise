@@ -33,6 +33,22 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.5e Altair — Motor de Migración Automática de Estructura en Tiendas (Septiembre 2026) [EN PRUEBAS · DEV]
+* **`_migrarEsquemaTienda()` (`pda`, `pdm`)**: versión de estructura en la propiedad `MISE_SCHEMA_VERSION` vs constante `MISE_SCHEMA_TIENDA` (= 2: DIFERENCIA intra-fila + Surtido con CANT. FINAL). Corre sola en los activadores nocturnos (`_resetearPedidoSilencioso` 00:00 y `_checkAutoResetNuevoDia` 04:00) detectando `e.triggerUid`; nunca en `onOpen` (límite 30 s).
+* **Respaldo doble**: copia nativa oculta (`sheet.copyTo`) de `📋 PEDIDO DIARIO` y `🚚 SURTIDO RÁPIDO` como `_RESPALDO_*_v2` + capturas en RAM por nombre de producto (F pedir, H recibida, I estado, J adición; SURTIDO E/F/G con prioridad por ser captura directa).
+* **Reintento seguro**: bandera `MISE_SCHEMA_MIGRANDO`; si una corrida falla, la siguiente toma las capturas del respaldo original y no de la hoja a medio reconstruir. Idempotente.
+* **Verificación post-migración**: compara capturas respaldadas vs restauradas y registra en `🗒 LOG` las no restauradas y las de productos ya no vigentes.
+* **Refactor**: `repararSistemaTienda()` delega en `_reconstruirPedidoDiarioCore()` (sin UI) y ahora respalda también ESTADO y ADICIÓN (antes se perdían al reparar). Menú: `🔄 Aplicar actualización de estructura pendiente`.
+* **Reinicio total de activadores** (`instalarActivadoresNocturnosBDG`, `instalarActivadoresMedianochePDA/PDM`): borran TODOS los activadores del proyecto (viejos, duplicados, `sincronizarEstados` cada 10 min, funciones inexistentes) y crean exactamente el juego esperado — BDG: descuento diario 23:00 + mantenimiento domingo 23:00; tiendas: reset 00:00 + respaldo 04:00. Menú corregido (decía "23:00" en tiendas pero instalaba 00:00).
+* **Testing**: `tests/suites/migracion.test.js` + helper `tests/mocks/tiendaVm.js` (estructura vieja con capturas, respaldo, restauración, idempotencia y reintento).
+
+### Version 1.7.5d Altair — Sin Descuento Fantasma, Entradas Automáticas y Diagnóstico de Activadores (Septiembre 2026) [EN PRUEBAS]
+* **Fix crítico en `MiseSmartSync` (`bdg/MiseKardexEngine.js`)**: eliminado el fallback `else if (cantPed > 0) cantDeducir = cantPed`. Si la tienda no registró recepción (sin cantidad, sin ✅, sin ❌) **no se descuenta nada**; el log remoto marca `SIN_REGISTRO` en lugar de `SURTIDO_AUTO`.
+* **`_registrarLogSurtidoDiario()` homologado en PDA y PDM**: misma regla que el descuento (PDA registraba lo pedido como recibido con estado `PEDIDO`; PDM omitía filas). Ahora ambos registran todo lo pedido con la cantidad realmente recibida y estado `SIN_REGISTRO` cuando aplica.
+* **`📥 ENTRADAS` automática**: se crea en `onOpen()` si falta y el cierre diario (`descontarSurtidoAutomatico`) la re-sincroniza con el catálogo conservando capturas; ya no requiere menú.
+* **`diagnosticarActivadores()`**: lista los activadores instalados, faltantes y duplicados (menú Automatizaciones y `🗒 LOG`).
+* **`scripts/mise-env.js push <env> <proyecto>`**: despliegue de un solo proyecto (`npm run push:prod:bdg`).
+
 ### Version 1.7.5c Altair — Surtido Rápido con CANT. FINAL y Coloreado por Fila (Septiembre 2026) [EN PRUEBAS · DEV]
 * **Nueva columna H `CANT. FINAL` en `🚚 SURTIDO RÁPIDO` (`pda`, `pdm`)**: fórmula por fila `=IF($G=TRUE,0,IF($E<>"",$E,IF($F=TRUE,$D,"")))`. Es la fuente de verdad de lo recibido y no depende de que `onEdit()` inyecte valores (raíz del bug de fila pintada sin cantidad).
 * **Una sola fuente activa por fila en `onEdit()`**: escribir en `CANT. RECIBIDA` (E) desmarca ✅/❌; marcar ✅ o ❌ limpia E y desmarca la otra casilla. Se conserva el sincronizado de `CANT. RECIBIDA`/`ESTADO` (H/I) en `📋 PEDIDO DIARIO` vía `_estadoRecepcion()`.
