@@ -5,6 +5,14 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.5f Altair (Enlaces por Producto) — 2026-09-28 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* Tiendas: columnas auxiliares `L:O` por nombre (una `ARRAYFORMULA`) y reglas de formato sin `INDIRECT(ROW())`; reconstrucción en orden de picking.
+* Bodega: `_buildVista`, `onEdit` de ACTIVO y `anularProducto` enlazan MAESTRO ↔ KARDEX por nombre de producto.
+
+---
+
 ## ⚡ v1.7.5e Altair (Migración Automática de Estructura) — 2026-09-26 [EN PRUEBAS · DEV]
 
 ### 📱 Tiendas (PDA / PDM)

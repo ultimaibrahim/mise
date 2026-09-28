@@ -23,6 +23,17 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.5f Altair — Orden de Picking y Productos Desactivados, Corregidos (Septiembre 2026) [EN PRUEBAS]
+
+* 🎯 **Desactivar un producto ya apaga ESE producto**:  
+  Antes, al desactivar un insumo en Bodega, en las tiendas se marcaba en gris otro producto que estaba en la misma posición. Ahora cada tienda identifica el producto por su nombre, sin importar el orden de la lista.
+* 🖐️ **El orden de recorrido personalizado se respeta**:  
+  El orden de picking definido en Bodega vuelve a aplicarse correctamente en Andares y Mercado, incluso después de actualizaciones o reparaciones del sistema.
+* 🚦 **Semáforo de existencias en el producto correcto**:  
+  Los colores de saldo bajo, en rango o excedido ahora corresponden siempre al producto de esa fila.
+
+---
+
 ## Versión 1.7.5e Altair — Las Tiendas se Actualizan Solas por la Noche (Septiembre 2026) [EN PRUEBAS]
 
 * 🌙 **Actualizaciones sin interrumpir la operación**:  

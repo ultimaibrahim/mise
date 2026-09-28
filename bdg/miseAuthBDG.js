@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.5d Altair (Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.5f Altair (Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -46,6 +46,17 @@ function _colToLetter(col) {
     temp = Math.floor((temp - rem) / 26);
   }
   return letter;
+}
+
+// Mapa NOMBRE (mayúsculas) → fila, para enlazar MAESTRO ↔ KARDEX por producto y no por posición
+function _mapaFilasPorProducto(sheet, startRow, colProd) {
+  const mapa = {};
+  if (!sheet || sheet.getLastRow() < startRow) return mapa;
+  sheet.getRange(startRow, colProd, sheet.getLastRow() - startRow + 1, 1).getValues().forEach((r, i) => {
+    const n = String(r[0] || "").trim().toUpperCase();
+    if (n && mapa[n] === undefined) mapa[n] = startRow + i;
+  });
+  return mapa;
 }
 
 function _getMaestroHeaderMap(sheet) {
@@ -297,10 +308,12 @@ function onEdit(e) {
       if (!lock.tryLock(15000)) return;
       try {
         const ss = SpreadsheetApp.getActiveSpreadsheet();
-        const kardexRow = row - MAESTRO_START + KARDEX_START;
+        const cProdM = map["PRODUCTO"] ? map["PRODUCTO"].col : 3;
+        const prodKey = String(sheet.getRange(row, cProdM).getValue() || "").trim().toUpperCase();
         Object.values(BODEGAS).forEach(b => {
           const kSheet = ss.getSheetByName(b.kardex);
-          if (kSheet) {
+          const kardexRow = _mapaFilasPorProducto(kSheet, KARDEX_START, 3)[prodKey];
+          if (kSheet && kardexRow) {
             if (val === "NO") {
               kSheet.hideRows(kardexRow);
             } else {
@@ -308,10 +321,12 @@ function onEdit(e) {
             }
           }
         });
-        // Recrear vistas móviles para reflejar altas/bajas en tiendas
+        // Recrear vistas móviles: las tiendas reciben ACTIVO vía IMPORTRANGE y lo pintan por producto
         _buildVista("BA");
         _buildVista("BM");
-        sincronizarRemotamenteTiendasPush();
+        // El push remoto requiere permisos que un onEdit simple no tiene; si falla, las tiendas
+        // ocultan el producto en su siguiente reordenamiento o reset nocturno.
+        try { sincronizarRemotamenteTiendasPush(); } catch (ePush) {}
       } finally {
         lock.releaseLock();
       }
@@ -997,6 +1012,8 @@ function _buildVista(key) {
   const cMinQ = (key === "BA") ? (map["MÍN_Q_BA"] ? map["MÍN_Q_BA"].index : -1) : (map["MÍN_Q_BM"] ? map["MÍN_Q_BM"].index : -1);
   const cMaxQ = (key === "BA") ? (map["MÁX_Q_BA"] ? map["MÁX_Q_BA"].index : -1) : (map["MÁX_Q_BM"] ? map["MÁX_Q_BM"].index : -1);
 
+  const maestroRowMap = {};
+  mData.forEach((r, i) => { const n = String(r[cProd]).trim().toUpperCase(); if (n && !maestroRowMap[n]) maestroRowMap[n] = MAESTRO_START + i; });
   const maestroCatMap = {};
   const maestroUnidadTiendaMap = {};
   const minStockMap = {};
@@ -1056,7 +1073,7 @@ function _buildVista(key) {
   for (let i = 0; i < count; i++) {
     const p = prods[i];
     const kr = p.srcRow;
-    const mr = kr - KARDEX_START + MAESTRO_START;
+    const mr = maestroRowMap[p.nombre.toUpperCase()] || (kr - KARDEX_START + MAESTRO_START);
     
     // Semáforo estático
     const saldo = p.saldo;
@@ -1749,11 +1766,16 @@ function anularProducto() {
   try {
     SpreadsheetApp.getActive().toast("⏳ Desactivando y ocultando producto...", "⚙️ Mise", 5);
     const lr = maestro.getLastRow();
-    const data = maestro.getRange(MAESTRO_START, 1, lr - MAESTRO_START + 1, 4).getValues(); // No, ID, CAT, PRODUCTO
+    const hmap = _getMaestroHeaderMap(maestro);
+    const iNo = hmap["NO"] ? hmap["NO"].index : 0;
+    const iProd = hmap["PRODUCTO"] ? hmap["PRODUCTO"].index : 2;
+    const data = maestro.getRange(MAESTRO_START, 1, lr - MAESTRO_START + 1, maestro.getLastColumn()).getValues();
     let foundRow = -1;
+    let prodKey = "";
     for (let i = 0; i < data.length; i++) {
-      if (String(data[i][0]) === input || String(data[i][3]).toLowerCase() === input.toLowerCase()) {
+      if (String(data[i][iNo]) === input || String(data[i][iProd]).trim().toLowerCase() === input.toLowerCase()) {
         foundRow = MAESTRO_START + i;
+        prodKey = String(data[i][iProd]).trim().toUpperCase();
         break;
       }
     }
@@ -1763,14 +1785,14 @@ function anularProducto() {
       return;
     }
 
-    // Cambiar columna ACTIVO (col 7) a NO
-    maestro.getRange(foundRow, 7).setValue("NO");
+    // Cambiar columna ACTIVO (por encabezado) a NO
+    maestro.getRange(foundRow, hmap["ACTIVO"] ? hmap["ACTIVO"].col : 6).setValue("NO");
     
-    // Ocultar en Kardex
-    const kardexRow = foundRow - MAESTRO_START + KARDEX_START;
+    // Ocultar en Kardex la fila de ESE producto
     Object.values(BODEGAS).forEach(b => {
       const kSheet = ss.getSheetByName(b.kardex);
-      if (kSheet) {
+      const kardexRow = _mapaFilasPorProducto(kSheet, KARDEX_START, 3)[prodKey];
+      if (kSheet && kardexRow) {
         kSheet.hideRows(kardexRow);
       }
     });

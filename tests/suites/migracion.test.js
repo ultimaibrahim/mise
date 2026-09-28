@@ -30,7 +30,7 @@ function _preparar(ctx) {
   ["showRows", "hideRows", "showColumns", "setHiddenGridlines", "setTabColor", "autoResizeColumns"]
     .forEach(m => { if (!sheetProto[m]) sheetProto[m] = function() { return this; }; });
   ["setWrap", "setNote", "clearNote", "setFontSize"].forEach(m => { if (!rangeProto[m]) rangeProto[m] = function() { return this; }; });
-  if (!rangeProto.getFormula) rangeProto.getFormula = function() { return ctx._formulas[`${this.sheet.name}!${this.row},${this.col}`] || ""; };
+  rangeProto.getFormula = function() { return ctx._formulas[`${this.sheet.name}!${this.row},${this.col}`] || ""; };
   const setFormulasBase = rangeProto.setFormulas;
   rangeProto.setFormulas = function(m) {
     setFormulasBase.call(this, m);
@@ -45,9 +45,9 @@ function _preparar(ctx) {
   // _SYNC con el catálogo vigente (Harina sigue; "Descontinuado" ya no existe)
   const sync = ss.insertSheet("_SYNC_BA");
   sync.getRange(4, 1, 3, 12).setValues([
-    [1, "REF", "Fresa",  "DOMO", 10, "🟢", 0, 0, "SÍ", 1, 5, 1],
-    [2, "LAC", "Leche",  "LT",   8,  "🟢", 0, 0, "SÍ", 1, 5, 2],
-    [3, "ABA", "Harina", "KG",   3,  "🟢", 0, 0, "SÍ", 1, 5, 3]
+    [1, "REF", "Fresa",  "DOMO", 10, "🟢", 0, 0, "SÍ", 1, 5, 3],
+    [2, "LAC", "Leche",  "LT",   8,  "🟢", 0, 0, "NO", 1, 5, 1],
+    [3, "ABA", "Harina", "KG",   3,  "🟢", 0, 0, "SÍ", 1, 5, 2]
   ]);
 
   // PEDIDO DIARIO con estructura vieja y capturas
@@ -78,6 +78,7 @@ function runMigracionTests() {
     const { ss, sandbox, props } = ctx;
     const { pedido } = _preparar(ctx);
     const pedidoFila = (r) => pedido.getRange(r, 1, 1, 10).getValues()[0];
+    const filaDe = (nombre) => { for (let r = 4; r <= 6; r++) if (String(pedido.getRange(r, 3).getValue()).includes(`!C${ {Fresa: 4, Leche: 5, Harina: 6}[nombre] }`)) return r; return -1; };
 
     // 1. Onopen / edición normal (sin triggerUid) no migra
     sandbox._migrarSiEsActivador(undefined);
@@ -87,15 +88,23 @@ function runMigracionTests() {
     sandbox._migrarSiEsActivador({ triggerUid: "t-1" });
     assert.strictEqual(props.MISE_SCHEMA_VERSION, "2", `${tag}: esquema actualizado`);
     assert.ok(!("MISE_SCHEMA_MIGRANDO" in props), `${tag}: bandera de reintento limpia`);
-    eq(pedidoFila(4).slice(5, 10), [5, "ƒ=IF(OR(F4=\"\", H4=\"\"), \"\", H4 - F4)", 5, "COMPLETO", ""], `${tag}: Fresa restaurada con DIFERENCIA intra-fila`);
-    eq(pedidoFila(5).slice(5, 10), [4, "ƒ=IF(OR(F5=\"\", H5=\"\"), \"\", H5 - F5)", 2, "PARCIAL", "🚨 ADICIÓN"], `${tag}: Leche toma la captura de SURTIDO y conserva la adición`);
-    eq(pedidoFila(6).slice(5, 10)[0], "", `${tag}: Harina sin captura`);
+    // Orden de picking (Leche, Harina, Fresa) y cada captura en SU producto
+    eq([filaDe("Leche"), filaDe("Harina"), filaDe("Fresa")], [4, 5, 6], `${tag}: reconstruye en orden de picking, no de _SYNC`);
+    eq(pedidoFila(6).slice(5, 10), [5, "ƒ=IF(OR(F6=\"\", H6=\"\"), \"\", H6 - F6)", 5, "COMPLETO", ""], `${tag}: Fresa restaurada con DIFERENCIA intra-fila`);
+    eq(pedidoFila(4).slice(5, 10), [4, "ƒ=IF(OR(F4=\"\", H4=\"\"), \"\", H4 - F4)", 2, "PARCIAL", "🚨 ADICIÓN"], `${tag}: Leche toma la captura de SURTIDO y conserva la adición`);
+    eq(pedidoFila(5).slice(5, 10)[0], "", `${tag}: Harina sin captura`);
+    // Inactivo y semáforo por producto (columnas auxiliares por nombre), sin INDIRECT(ROW())
+    assert.ok(String(ctx._formulas["📋 PEDIDO DIARIO!4,12"]).startsWith("=ARRAYFORMULA(IF(C4:C=\"\",,IFERROR(VLOOKUP(C4:C,'_SYNC_BA'!C4:K,{7,3,8,9},FALSE)"), `${tag}: auxiliares L:O por nombre`);
+    const reglas = pedido._cf.map(r => r.formula);
+    assert.ok(reglas.includes('=$L4="NO"'), `${tag}: gris de inactivo por la fila del propio producto`);
+    assert.ok(reglas.every(f => !f.includes("INDIRECT")), `${tag}: sin reglas INDIRECT(ROW())`);
     assert.ok(ss.getSheetByName("_RESPALDO_PEDIDO_v2"), `${tag}: respaldo nativo de PEDIDO`);
     assert.ok(ss.getSheetByName("_RESPALDO_SURTIDO_v2"), `${tag}: respaldo nativo de SURTIDO`);
     assert.strictEqual(ss.getSheetByName("_RESPALDO_PEDIDO_v2").getRange(7, 3).getValue(), "Descontinuado", `${tag}: el respaldo conserva todo`);
     const surtido = ss.getSheetByName("🚚 SURTIDO RÁPIDO");
     assert.strictEqual(surtido.getRange(3, 8).getValue(), "CANT. FINAL", `${tag}: Surtido regenerado con estructura nueva`);
     console.log(`  ✓ ${tag}: activador nocturno migra, respalda (copia nativa + RAM) y restaura F/H/I/J`);
+    console.log(`  ✓ ${tag}: reconstrucción respeta el picking custom; inactivo/semáforo pintan al producto correcto`);
 
     // 3. Idempotente
     assert.strictEqual(sandbox._migrarEsquemaTienda(), false, `${tag}: no re-migra`);
@@ -105,7 +114,7 @@ function runMigracionTests() {
     props.MISE_SCHEMA_MIGRANDO = "2";
     pedido.getRange(4, 6, 3, 1).clearContent();           // la corrida fallida dejó F vacía
     assert.strictEqual(sandbox._migrarEsquemaTienda(), true, `${tag}: reintento`);
-    eq([pedidoFila(4)[5], pedidoFila(5)[5]], [5, 4], `${tag}: cantidades recuperadas del respaldo original`);
+    eq([pedidoFila(6)[5], pedidoFila(4)[5]], [5, 4], `${tag}: cantidades recuperadas del respaldo original`);
     console.log(`  ✓ ${tag}: idempotente y reintento seguro desde el respaldo original`);
   });
 }

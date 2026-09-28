@@ -20,6 +20,10 @@ function crearContextoBDG(opts = {}) {
   if (!rangeProto.breakApart) rangeProto.breakApart = function() { return this; };
   if (!sheetProto.getMaxRows) sheetProto.getMaxRows = function() { return Math.max(this.getLastRow(), 200); };
   ["setFontFamily", "breakAtMerge", "setFontStyle"].forEach(m => { if (!rangeProto[m]) rangeProto[m] = function() { return this; }; });
+  ["clearConditionalFormatRules", "setConditionalFormatRules", "setHiddenGridlines", "showRows", "hideRows", "hideColumns", "showColumns"]
+    .forEach(m => { if (!sheetProto[m]) sheetProto[m] = function() { return this; }; });
+  if (!sheetProto.getConditionalFormatRules) sheetProto.getConditionalFormatRules = function() { return []; };
+  if (!sheetProto.getMaxColumns) sheetProto.getMaxColumns = function() { return Math.max(this.getLastColumn(), 30); };
   const validaciones = {};
   rangeProto.setDataValidation = function(rule) { validaciones[`${this.sheet.name}!${this.row},${this.col}`] = rule; return this; };
 
@@ -29,6 +33,10 @@ function crearContextoBDG(opts = {}) {
       getActiveSpreadsheet: () => ss,
       getActive: () => ss,
       setActiveSheet: () => {},
+      newConditionalFormatRule: () => {
+        const b = new Proxy({}, { get: (_, prop) => prop === "build" ? () => ({}) : () => b });
+        return b;
+      },
       newDataValidation: () => {
         const rule = { values: null };
         const b = {

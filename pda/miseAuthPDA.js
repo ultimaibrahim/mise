@@ -1,5 +1,5 @@
 /**
- * MISE — Pedidos Andares Script v1.7.5e Altair (Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Pedidos Andares Script v1.7.5f Altair (Picking y Colores por Producto · Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Pedidos Andares (Google Sheets de B-Andares)
@@ -956,15 +956,16 @@ function _reconstruirPedidoDiarioCore(backupData) {
   // 4. Ensamblado en matriz 2D unificada, restaurando capturas por nombre de producto
   const DR = DATA_START_ROW;
   const sRef = "'" + SHEET_SYNC + "'";
-  const syncNames = sync.getRange(4, 3, syncCount, 1).getValues();
+  const syncVals = sync.getRange(4, 1, syncCount, 12).getValues();
+  const orden = _ordenPickingSync(syncVals);
   const outputGrid = [];
   const cleanBgs = [];
   const _v = (x) => (x !== "" && x !== null && x !== undefined) ? x : "";
 
   for (let i = 0; i < syncCount; i++) {
     const r = DR + i;
-    const sr = 4 + i;
-    const pName = String(syncNames[i][0] || "").trim();
+    const sr = 4 + orden[i];
+    const pName = String(syncVals[orden[i]][2] || "").trim();
     const b = (backupData && backupData[pName]) || {};
 
     outputGrid.push([
@@ -998,6 +999,17 @@ function _reconstruirPedidoDiarioCore(backupData) {
   _protegerPedidoDiario(pedido, syncCount);
   SpreadsheetApp.flush();
   return syncCount;
+}
+
+// Índices de _SYNC ordenados como ordenarPedido(): PICKING (col L) → CATEGORÍA → No
+function _ordenPickingSync(syncVals) {
+  return syncVals.map((_, i) => i).sort((a, b) => {
+    const ra = parseInt(syncVals[a][11]) || 9999, rb = parseInt(syncVals[b][11]) || 9999;
+    if (ra !== rb) return ra - rb;
+    const ca = String(syncVals[a][1] || ""), cb = String(syncVals[b][1] || "");
+    if (ca !== cb) return ca.localeCompare(cb);
+    return (parseInt(syncVals[a][0]) || 0) - (parseInt(syncVals[b][0]) || 0);
+  });
 }
 
 // ── 🔄 MOTOR DE MIGRACIÓN DE ESQUEMA (automático en los activadores nocturnos) ──────────
@@ -1245,14 +1257,31 @@ function _buildPedidoDiario(sheet) {
   _actualizarAvisoPedido();
 }
 
+// Columnas auxiliares ocultas L:O (ACTIVO, SALDO, MÍN, MÁX) buscadas por NOMBRE en _SYNC.
+// Una sola ARRAYFORMULA en L4: ningún escritor de A:K la pisa y siempre corresponde al producto
+// de la fila, sin importar el orden de picking. Reemplaza las reglas INDIRECT(... & ROW()).
+const COL_AUX = 12; // L
+function _asegurarColumnasAuxiliaresPedido(sheet) {
+  if (sheet.getMaxColumns() < COL_AUX + 3) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), COL_AUX + 3 - sheet.getMaxColumns());
+  }
+  const formula = `=ARRAYFORMULA(IF(C${DATA_START_ROW}:C="",,IFERROR(VLOOKUP(C${DATA_START_ROW}:C,'${SHEET_SYNC}'!C4:K,{7,3,8,9},FALSE))))`;
+  if (sheet.getRange(DATA_START_ROW, COL_AUX).getFormula() !== formula) {
+    const maxRows = sheet.getMaxRows();
+    if (maxRows >= DATA_START_ROW) sheet.getRange(DATA_START_ROW, COL_AUX, maxRows - DATA_START_ROW + 1, 4).clearContent();
+    sheet.getRange(3, COL_AUX, 1, 4).setValues([["_ACTIVO", "_SALDO", "_MÍN", "_MÁX"]]);
+    sheet.getRange(DATA_START_ROW, COL_AUX).setFormula(formula);
+  }
+  sheet.hideColumns(COL_AUX, 4);
+}
+
 function _aplicarFormatosCondicionales(sheet) {
+  _asegurarColumnasAuxiliaresPedido(sheet);
   sheet.clearConditionalFormatRules();
   const count = _getProductCount();
   if (count < 1) return;
   const range = sheet.getRange(DATA_START_ROW, 1, count, NUM_COLS);
   const rangeE = sheet.getRange(DATA_START_ROW, 5, count, 1);
-  const syncName = SHEET_SYNC;
-  
   // Regla 1: Alerta adición de última hora (naranja brillante)
   const ruleAdicion = SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied('=$J4="🚨 ADICIÓN"')
@@ -1262,7 +1291,7 @@ function _aplicarFormatosCondicionales(sheet) {
       
   // Regla 1.5: Inactivos (gris)
   const ruleInactivo = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied(`=INDIRECT("'${SHEET_SYNC}'!$I" & ROW())="NO"`)
+    .whenFormulaSatisfied('=$L4="NO"')
     .setBackground("#EEEEEE")
     .setFontColor("#9E9E9E")
     .setItalic(true)
@@ -1306,26 +1335,14 @@ function _aplicarFormatosCondicionales(sheet) {
 
   const rules = [ruleCompleto, ruleParcial, ruleExcedente, ruleAdicion, ruleInexistente, rulePendiente, ruleInactivo];
   
-  // Reglas Semáforo en Columna E (SALDO TEÓRICO)
-  rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied(`=AND(INDIRECT("'${syncName}'!J" & ROW())>0, INDIRECT("'${syncName}'!E" & ROW()) < 0.5*INDIRECT("'${syncName}'!J" & ROW()))`)
-    .setBackground("#FFCDD2").setFontColor("#B71C1C").setRanges([rangeE]).build());
-    
-  rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied(`=AND(INDIRECT("'${syncName}'!J" & ROW())>0, INDIRECT("'${syncName}'!E" & ROW()) < INDIRECT("'${syncName}'!J" & ROW()), INDIRECT("'${syncName}'!E" & ROW()) >= 0.5*INDIRECT("'${syncName}'!J" & ROW()))`)
-    .setBackground("#FFE0B2").setFontColor("#BF360C").setRanges([rangeE]).build());
-    
-  rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied(`=AND(OR(INDIRECT("'${syncName}'!J" & ROW())>0, INDIRECT("'${syncName}'!K" & ROW())>0), INDIRECT("'${syncName}'!E" & ROW()) >= INDIRECT("'${syncName}'!J" & ROW()), INDIRECT("'${syncName}'!E" & ROW()) <= INDIRECT("'${syncName}'!K" & ROW()))`)
-    .setBackground("#C8E6C9").setFontColor("#1B5E20").setRanges([rangeE]).build());
-    
-  rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied(`=AND(INDIRECT("'${syncName}'!K" & ROW())>0, INDIRECT("'${syncName}'!E" & ROW()) > INDIRECT("'${syncName}'!K" & ROW()))`)
-    .setBackground("#B3E5FC").setFontColor("#0D47A1").setRanges([rangeE]).build());
-    
-  rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied(`=AND(INDIRECT("'${syncName}'!J" & ROW())=0, INDIRECT("'${syncName}'!K" & ROW())=0)`)
-    .setBackground("#CFD8DC").setFontColor("#37474F").setRanges([rangeE]).build());
+  // Reglas Semáforo en Columna E (SALDO TEÓRICO) — leen L:O de su propia fila (M saldo, N mín, O máx)
+  const _sem = (f, bg, fg) => rules.push(SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied(f).setBackground(bg).setFontColor(fg).setRanges([rangeE]).build());
+  _sem('=AND($N4>0, $M4<0.5*$N4)',                    "#FFCDD2", "#B71C1C");
+  _sem('=AND($N4>0, $M4<$N4, $M4>=0.5*$N4)',          "#FFE0B2", "#BF360C");
+  _sem('=AND(OR($N4>0, $O4>0), $M4>=$N4, $M4<=$O4)',  "#C8E6C9", "#1B5E20");
+  _sem('=AND($O4>0, $M4>$O4)',                        "#B3E5FC", "#0D47A1");
+  _sem('=AND($C4<>"", $N4=0, $O4=0)',                 "#CFD8DC", "#37474F");
       
   sheet.setConditionalFormatRules(rules);
 }
