@@ -53,7 +53,7 @@ function _preparar(ctx) {
   // PEDIDO DIARIO con estructura vieja y capturas
   const pedido = ss.insertSheet("📋 PEDIDO DIARIO");
   pedido.getRange(4, 1, 4, 11).setValues([
-    [1, "REF", "Fresa",         "DOMO", 10, 5, "VLOOKUP-viejo", 5,  "COMPLETO", "",           ""],
+    [1, "REF", "Fresa",         "DOMO", 10, 5, "VLOOKUP-viejo", 5,  "✅ Completo", "",        ""],
     [2, "LAC", "Leche",         "LT",   8,  4, "VLOOKUP-viejo", "", "",         "🚨 ADICIÓN", ""],
     [3, "ABA", "Harina",        "KG",   3,  "", "VLOOKUP-viejo", "", "",        "",           ""],
     [4, "ABA", "Descontinuado", "KG",   3,  3, "VLOOKUP-viejo", "", "",         "",           ""]

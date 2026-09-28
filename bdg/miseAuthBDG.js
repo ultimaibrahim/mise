@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.5i Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.5j Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -5370,7 +5370,10 @@ function _prepararHojaEntradas(keepQty = false) {
     sheet.getRange(ENTRADAS_START, 3, prods.length, 2).setNumberFormat("0.####").setHorizontalAlignment("center");
   }
 
-  if (esNueva) _estadoEntradas(sheet, "Captura en la unidad del Kardex (kg, lt, pza) y marca Enviar ➜", "info");
+  // Fila 3 = línea de estado: si está vacía, mostrar la instrucción en lugar de una fila en blanco
+  if (esNueva || !String(sheet.getRange("A3").getValue()).trim()) {
+    _estadoEntradas(sheet, "ℹ️ Captura en la unidad del Kardex (kg, lt, pza) y marca Enviar ➜. Aquí verás el resultado.", "info");
+  }
   return sheet;
 }
 

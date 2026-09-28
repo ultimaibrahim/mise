@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.5j Altair (Aviso fuera de la tabla) — 2026-09-28 [PROD]
+
+### 📱 Tiendas (PDA / PDM) & 🏬 Bodega (BDG)
+* Aviso de conexión en `D2` (antes borraba `H4` = CANT. RECIBIDA del primer producto en cada apertura). Estados normalizados. Fila de estado de `📥 ENTRADAS` con instrucción.
+
+---
+
 ## ⚡ v1.7.5i Altair (Apertura tolerante y Entradas táctil) — 2026-09-28 [PROD]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)

@@ -1,5 +1,5 @@
 /**
- * MISE — Pedidos Mercado Script v1.7.5i Altair (Configuración en un Clic · Picking y Colores por Producto · Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Pedidos Mercado Script v1.7.5j Altair (Configuración en un Clic · Picking y Colores por Producto · Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Pedidos Mercado (Google Sheets de B-Mercado)
@@ -110,8 +110,9 @@ function _actualizarAvisoPedido() {
     }
   }
 
+  // Aviso en D2 (barra de acciones, visible en celular). NUNCA en H4: es CANT. RECIBIDA del 1er producto.
   if (!syncActivo) {
-    pedido.getRange("H4")
+    pedido.getRange("D2")
       .setValue("⚠️ CONECTAR BDG")
       .setFontColor("#C62828")
       .setFontSize(9)
@@ -121,8 +122,8 @@ function _actualizarAvisoPedido() {
     return;
   }
 
-  // Limpiar advertencia en H4
-  pedido.getRange("H4").clearContent();
+  // Limpiar advertencia (D2); H4 pertenece a la tabla y no se toca
+  if (String(pedido.getRange("D2").getValue()).indexOf("CONECTAR") !== -1) pedido.getRange("D2").clearContent();
 
   const count  = sync.getLastRow() - 3; 
   if (count < 1) return;
@@ -899,6 +900,12 @@ function repararSistemaTienda() {
   }
 }
 
+// Estado canónico sin emojis ni variantes de mayúsculas (lo que esperan las reglas de color)
+function _normalizarEstado(v) {
+  const t = String(v || "").toUpperCase();
+  return ["INEXISTENTE", "EXCEDENTE", "PARCIAL", "COMPLETO"].find(k => t.indexOf(k) !== -1) || "";
+}
+
 // Captura en RAM (por nombre de producto) todo lo que el usuario o el sistema escribió en el día:
 // PEDIDO DIARIO F (pedir), H (recibida), I (estado), J (adición) + lo marcado en SURTIDO RÁPIDO (E/F/G),
 // que tiene prioridad porque es la captura directa del surtidor.
@@ -909,7 +916,7 @@ function _leerCapturasTienda(pedido, surtido) {
     pedido.getRange(DATA_START_ROW, 1, n, 10).getValues().forEach(r => {
       const name = String(r[2] || "").trim();
       if (!name) return;
-      const c = { pedir: r[COL_CANT_PEDIR - 1], recibida: r[COL_RECIBIDA - 1], estado: r[COL_ESTADO - 1], adicion: r[9] };
+      const c = { pedir: r[COL_CANT_PEDIR - 1], recibida: r[COL_RECIBIDA - 1], estado: _normalizarEstado(r[COL_ESTADO - 1]), adicion: r[9] };
       if ([c.pedir, c.recibida, c.estado, c.adicion].some(v => v !== "" && v !== null)) capturas[name] = c;
     });
   }

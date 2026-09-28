@@ -33,6 +33,11 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.5j Altair — Aviso de Conexión fuera de la Tabla y Estados Normalizados (Septiembre 2026) [PROD]
+* **Bug heredado en `_actualizarAvisoPedido()` (`pda`, `pdm`, corre en cada `onOpen`)**: usaba `H4` como celda de aviso, pero `H4` es `CANT. RECIBIDA` del primer producto de la lista. Cada apertura la borraba y, sin enlace con Bodega, escribía "⚠️ CONECTAR BDG" en ella. El aviso pasa a `D2` (barra de acciones) y la tabla ya no se toca.
+* **Estados normalizados al restaurar** (`_normalizarEstado`): cualquier variante (`✅ COMPLETO`, minúsculas, etc.) se guarda como `COMPLETO` / `PARCIAL` / `EXCEDENTE` / `INEXISTENTE`, que es lo que leen las reglas de color de PEDIDO DIARIO.
+* **`📥 ENTRADAS`**: la fila 3 (línea de estado) muestra la instrucción cuando no hay un resultado reciente, en lugar de quedar en blanco.
+
 ### Version 1.7.5i Altair — Apertura de Libros Tolerante y Entradas Táctil (Septiembre 2026) [PROD]
 * **Fix diagnóstico de conexión en tiendas**: `openByUrl` rechaza URLs que `IMPORTRANGE` sí acepta (`/u/0/`, `?usp=`, `#gid=`); el diagnóstico reportaba "No se pudo abrir el libro de Bodega" aunque el enlace funcionaba. Nuevo `_abrirLibro(ref)` (BDG, PDA, PDM) extrae el ID de cualquier formato y usa `openById`; el mensaje de error ahora incluye la causa real. Aplicado también a traspasos (tienda → Bodega), descuento nocturno y push (Bodega → tiendas).
 * **`📥 ENTRADAS` táctil**: PRODUCTO 205 px con ajuste de texto y fuente 11, UNIDAD 40 px (2–3 caracteres), cantidades 72 px con fuente 12, filas de 38 px; los anchos se actualizan también en hojas ya creadas.
