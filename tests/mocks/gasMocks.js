@@ -204,6 +204,7 @@ class MockSheet {
   }
   setColumnWidth(col, width) { this.colWidths[col] = width; return this; }
   setRowHeight(row, height) { this.rowHeights[row] = height; return this; }
+  setRowHeights(row, n, height) { for (let i = 0; i < n; i++) this.rowHeights[row + i] = height; return this; }
   hideSheet() { this.hidden = true; return this; }
   showSheet() { this.hidden = false; return this; }
   deleteRows(row, count = 1) {}

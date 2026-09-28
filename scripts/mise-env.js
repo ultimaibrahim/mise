@@ -167,8 +167,9 @@ function push(cfg, env, solo) {
     gen(cfg);
     const faltan = Object.keys(PROYECTOS).filter(k => !cfg.dev[k].scriptId);
     if (faltan.length) throw new Error(`Falta scriptId DEV para: ${faltan.join(", ")}`);
-    execSync("node tests/run_all.js", { cwd: ROOT, stdio: "inherit" });
   }
+  // Candado: ningún entorno recibe código con pruebas en rojo (execSync lanza si el runner sale ≠ 0)
+  execSync("node tests/run_all.js", { cwd: ROOT, stdio: "inherit" });
   verificarContenedores(cfg, env);
   Object.entries(PROYECTOS).filter(([, dir]) => !solo || dir === solo).forEach(([k, dir]) => {
     const args = env === "dev"
