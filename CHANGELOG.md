@@ -33,6 +33,10 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.5k Altair — Acerca de con Versión Única y Estado del Sistema (Septiembre 2026) [PROD]
+* **Versión única por libro**: `const MISE_VERSION` (BDG, PDA, PDM) alimenta `acercaDe()`; antes el texto estaba escrito a mano y mostraba `v1.5.0` (BDG) y `v1.6.0` (tiendas). Nueva suite `tests/suites/version.test.js` falla si la cabecera (línea 2) y `MISE_VERSION` divergen o si queda una versión literal en el diálogo.
+* **`acercaDe()` = Acerca de + estado**: entorno (PROD/DEV), activadores (faltantes según `ACTIVADORES_ESPERADOS_BDG` / conteo en tiendas), conexiones por nombre (`_diagnosticarConexionesBDG` / `_diagnosticarConexionTienda`), estructura de tienda (`MISE_SCHEMA_VERSION` vs `MISE_SCHEMA_TIENDA`), último cierre nocturno (nueva propiedad `ULTIMO_CIERRE` escrita por `descontarSurtidoAutomatico`) o último reinicio diario (`LAST_AUTO_RESET_DATE`) y novedades de la versión (`MISE_NOVEDADES`).
+
 ### Version 1.7.5j Altair — Aviso de Conexión fuera de la Tabla y Estados Normalizados (Septiembre 2026) [PROD]
 * **Bug heredado en `_actualizarAvisoPedido()` (`pda`, `pdm`, corre en cada `onOpen`)**: usaba `H4` como celda de aviso, pero `H4` es `CANT. RECIBIDA` del primer producto de la lista. Cada apertura la borraba y, sin enlace con Bodega, escribía "⚠️ CONECTAR BDG" en ella. El aviso pasa a `D2` (barra de acciones) y la tabla ya no se toca.
 * **Estados normalizados al restaurar** (`_normalizarEstado`): cualquier variante (`✅ COMPLETO`, minúsculas, etc.) se guarda como `COMPLETO` / `PARCIAL` / `EXCEDENTE` / `INEXISTENTE`, que es lo que leen las reglas de color de PEDIDO DIARIO.

@@ -1,5 +1,5 @@
 /**
- * MISE — Pedidos Mercado Script v1.7.5j Altair (Configuración en un Clic · Picking y Colores por Producto · Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Pedidos Mercado Script v1.7.5k Altair (Configuración en un Clic · Picking y Colores por Producto · Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Pedidos Mercado (Google Sheets de B-Mercado)
@@ -1359,8 +1359,39 @@ function _aplicarFormatosCondicionales(sheet) {
   sheet.setConditionalFormatRules(rules);
 }
 
+const MISE_VERSION = "1.7.5k";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_EPOCA   = "Altair";
+const MISE_NOVEDADES = [
+  "Surtido Rápido: escribe lo recibido y la fila completa se pinta sola",
+  "CANT. FINAL: lo que ves es lo que Bodega descuenta",
+  "Producto y cantidad pedida fijos al deslizar en el celular",
+  "El orden de picking y los productos desactivados se aplican correctamente",
+  "La hoja se actualiza sola por la noche, sin perder capturas"
+];
+
 function acercaDe() {
-  SpreadsheetApp.getUi().alert("⚙️ Mise — v1.6.0 Altair", `Suite Atelier · La Crêpe Parisienne · ${BODEGA_NOMBRE}\n\nQuiosco de Picking · Vista Móvil 3-Cols · Stock de Quiosco · Diseñado para celulares.`, SpreadsheetApp.getUi().ButtonSet.OK);
+  const ui = SpreadsheetApp.getUi();
+  const props = PropertiesService.getScriptProperties();
+  const entorno = props.getProperty("MISE_ENV") === "DEV" ? "🧪 DEV (pruebas)" : "🟢 PRODUCCIÓN";
+  const esquema = parseInt(props.getProperty(PROP_SCHEMA) || "1", 10);
+  const estructura = esquema >= MISE_SCHEMA_TIENDA ? `✅ al día (v${esquema})` : `⏳ se actualiza esta noche (v${esquema} → v${MISE_SCHEMA_TIENDA})`;
+  let activadores = "no disponible";
+  try {
+    const n = ScriptApp.getProjectTriggers().length;
+    activadores = n >= 2 ? `✅ ${n} activos` : `⚠️ ${n} (usa 🚀 Configurar)`;
+  } catch (e) {}
+  let conexion = "";
+  try { conexion = _diagnosticarConexionTienda().linea; } catch (e) {}
+  const ultimoReset = props.getProperty("LAST_AUTO_RESET_DATE") || "sin registro aún";
+
+  ui.alert(`⚙️ Mise v${MISE_VERSION} · ${MISE_EPOCA}`,
+    `Tienda ${BODEGA_NOMBRE} · La Crêpe Parisienne · Grupo MYT\n` +
+    `Entorno: ${entorno}\n\n` +
+    `🩺 Estado\n• Estructura: ${estructura}\n• Activadores: ${activadores}\n• Último reinicio diario: ${ultimoReset}\n` +
+    (conexion ? `• ${conexion.replace(/\n/g, "\n• ")}\n` : "") +
+    `\n✨ Novedades\n• ${MISE_NOVEDADES.join("\n• ")}\n\n` +
+    `Arquitectura y desarrollo: Ibrahim García (@ultimaibrahim)`,
+    ui.ButtonSet.OK);
 }
 
 function _actualizarVisibilidadInactivos(sheet) {

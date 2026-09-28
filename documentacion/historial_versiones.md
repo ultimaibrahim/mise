@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.5k Altair (Acerca de con estado) — 2026-09-28 [PROD]
+
+### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* `MISE_VERSION` única por libro y prueba que la amarra a la cabecera; `acercaDe()` con entorno, activadores, conexiones, estructura, último cierre y novedades.
+
+---
+
 ## ⚡ v1.7.5j Altair (Aviso fuera de la tabla) — 2026-09-28 [PROD]
 
 ### 📱 Tiendas (PDA / PDM) & 🏬 Bodega (BDG)

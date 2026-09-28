@@ -23,6 +23,15 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.5k Altair — "Acerca de" Muestra el Estado Real del Sistema (Septiembre 2026) [PROD]
+
+* ℹ️ **Versión correcta en pantalla**:  
+  `⚙️ Mise ➔ Acerca de` ahora muestra siempre la versión que realmente está instalada (antes mostraba versiones viejas).
+* 🩺 **Revisión rápida del sistema**:  
+  La misma ventana indica si el archivo está en producción o en pruebas, si las tareas automáticas están activas, con qué archivos está conectado, cuándo fue el último cierre nocturno y qué hay de nuevo en la versión.
+
+---
+
 ## Versión 1.7.5j Altair — Cantidades de Recepción Siempre en su Lugar (Septiembre 2026) [PROD]
 
 * 🧾 **La cantidad recibida del primer producto ya no se borra**:  

@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.5j Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.5k Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -2214,14 +2214,38 @@ function _catalogo() {
   ];
 }
 
+const MISE_VERSION = "1.7.5k";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_EPOCA   = "Altair";
+const MISE_NOVEDADES = [
+  "Configurar este libro en un clic (🚀)",
+  "Hoja 📥 ENTRADAS para registrar mercancía desde el celular",
+  "Solo se descuenta lo que la tienda registró como recibido",
+  "Picking y productos desactivados se aplican al producto correcto",
+  "Cambio de semana automático en ambos Kardex"
+];
+
 function acercaDe() {
-  SpreadsheetApp.getUi().alert(
-    "⚙️ Mise — v1.5.0 Altair",
-    "Suite Atelier · La Crêpe Parisienne · Grupo MYT\n\n" +
-    "Sistema de inventario operativo para bodega.\n" +
-    "Quiosco de Picking · Remote Push Auto-Sync · Stock de Quiosco · 2 bodegas · Historial semanal",
-    SpreadsheetApp.getUi().ButtonSet.OK
-  );
+  const ui = SpreadsheetApp.getUi();
+  const props = PropertiesService.getScriptProperties();
+  const entorno = props.getProperty("MISE_ENV") === "DEV" ? "🧪 DEV (pruebas)" : "🟢 PRODUCCIÓN";
+  let activadores = "no disponible";
+  try {
+    const presentes = ScriptApp.getProjectTriggers().map(t => t.getHandlerFunction());
+    const faltan = ACTIVADORES_ESPERADOS_BDG.filter(f => presentes.indexOf(f) === -1);
+    activadores = faltan.length ? `⚠️ faltan ${faltan.length} (usa 🚀 Configurar)` : `✅ ${presentes.length} activos`;
+  } catch (e) {}
+  let conexiones = [];
+  try { conexiones = _diagnosticarConexionesBDG().lineas; } catch (e) {}
+  const ultimoCierre = props.getProperty("ULTIMO_CIERRE") || "sin registro aún";
+
+  ui.alert(`⚙️ Mise v${MISE_VERSION} · ${MISE_EPOCA}`,
+    `Bodega · La Crêpe Parisienne · Grupo MYT\n` +
+    `Entorno: ${entorno}\n\n` +
+    `🩺 Estado\n• Activadores: ${activadores}\n• Último cierre nocturno: ${ultimoCierre}\n` +
+    (conexiones.length ? `• Tiendas:\n   ${conexiones.join("\n   ")}\n` : "") +
+    `\n✨ Novedades\n• ${MISE_NOVEDADES.join("\n• ")}\n\n` +
+    `Arquitectura y desarrollo: Ibrahim García (@ultimaibrahim)`,
+    ui.ButtonSet.OK);
 }
 
 // ── ACCIONES EN LOTE Y CARGA MASIVA DE BODEGA ────────────────────────────────
@@ -5886,6 +5910,8 @@ function forzarAutoVerificarYAvanzarSemana() {
 function descontarSurtidoAutomatico(silent = true) {
   // 1. Ejecutar descuento de pedidos de ayer y vaciado de tiendas
   MiseSmartSync.ejecutarDescuento(silent);
+  PropertiesService.getScriptProperties().setProperty("ULTIMO_CIERRE",
+    Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm"));
 
   // 2. Verificar y auto-avanzar semana silenciosamente (ej. lunes en la madrugada)
   try {
