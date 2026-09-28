@@ -33,6 +33,11 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.5h Altair — Hotfix: Celdas Combinadas vs Columnas Congeladas (Septiembre 2026) [PROD]
+* **Hotfix `🚚 SURTIDO RÁPIDO` (`pda`, `pdm`)**: el encabezado combinaba `D1:H1`/`D2:H2` y la hoja congela `A:D`; Google rechaza congelar columnas que corten una celda combinada ("No se pueden inmovilizar columnas que solo contengan parte de una celda combinada"). La migración a esquema 2 falló en producción al regenerar el Surtido (respaldos intactos; queda pendiente de reintento). Ahora el encabezado se parte exactamente en la frontera (`A1:D1` | `E1:H1`, `A2:D2` | `E2:H2`) y antes se descongela y se deshacen las combinaciones del diseño previo (`breakApart`).
+* **Hotfix `📥 ENTRADAS` (`bdg`)**: mismo conflicto (`A1:D1`/`A3:D3` combinadas con la columna A congelada). Solo se congelan filas; anchos ajustados a 390 px. Si una hoja quedó a medias por un intento previo, se reconstruye el encabezado completo.
+* **Testing**: el emulador (`tests/mocks/gasMocks.js`) ahora valida celdas combinadas contra filas/columnas congeladas igual que Google Sheets; la suite de migración incluye el Surtido del diseño viejo con sus combinaciones (falla con `2b813a3`, pasa con el fix).
+
 ### Version 1.7.5g Altair — Configuración en un Clic, onEdit Instalable y Enlace Vivo (Septiembre 2026) [EN PRUEBAS · DEV]
 * **Bug crítico de stock: el push de Bodega congelaba `_SYNC` en tiendas** (`sincronizarRemotamenteTiendasPush`): escribía la VISTA como valores fijos sobre `A4`, borrando el `IMPORTRANGE`; desde ese guardado de picking los saldos de la tienda dejaban de actualizarse (el autorreparador solo actuaba con `A4` vacía o en error). Ahora re-escribe la fórmula (rompe caché) y, si encuentra valores fijos, restaura el `IMPORTRANGE` hacia la VISTA de Bodega.
 * **Autorreparación nocturna del enlace** (`_asegurarSyncVivo`, `pda`/`pdm`): el reset de las 00:00 restaura el `IMPORTRANGE` si `_SYNC` quedó con valores fijos.

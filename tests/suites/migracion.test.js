@@ -61,6 +61,10 @@ function _preparar(ctx) {
 
   // SURTIDO RÁPIDO viejo (7 columnas): Leche capturada en 2 pero el sincronizado a PEDIDO falló
   const surtido = ss.insertSheet("🚚 SURTIDO RÁPIDO");
+  // Encabezado del diseño viejo (A1:C1, D1:G1, A2:C2, D2:G2, I3:J3) con 3 columnas congeladas
+  ["A1:C1", "D1:G1", "A2:C2", "D2:G2", "I3:J3"].forEach(r => surtido.getRange(r).merge());
+  surtido.setFrozenRows(3);
+  surtido.setFrozenColumns(3);
   surtido.getRange(3, 1, 1, 7).setValues([["No", "CATEGORÍA", "PRODUCTO", "CANT. PEDIDA", "CANT. RECIBIDA", "✅ COMPLETO", "❌ INEXISTENTE"]]);
   surtido.getRange(4, 1, 2, 7).setValues([
     [1, "REF", "Fresa", 5, 5, true,  false],

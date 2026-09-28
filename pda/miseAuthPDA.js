@@ -1,5 +1,5 @@
 /**
- * MISE — Pedidos Andares Script v1.7.5g Altair (Configuración en un Clic · Picking y Colores por Producto · Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Pedidos Andares Script v1.7.5h Altair (Configuración en un Clic · Picking y Colores por Producto · Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Pedidos Andares (Google Sheets de B-Andares)
@@ -1489,20 +1489,25 @@ function _generarSurtidoRapidoInternal(activateSheet) {
     sSheet = ss.insertSheet(sheetName);
   }
 
-  // Configurar columnas de la hoja
-  sSheet.getRange("A1:C1").merge().setBackground("#3D5A47");
-  sSheet.getRange("D1:H1").merge()
-    .setValue(`MISE — SURTIDO RÁPIDO (${BODEGA_NOMBRE})`)
+  // Encabezado partido EXACTAMENTE en la frontera congelada (A:D | E:H): Google no permite congelar
+  // columnas que corten una celda combinada. Primero se deshacen las combinaciones de versiones previas.
+  sSheet.setFrozenColumns(0);
+  sSheet.setFrozenRows(0);
+  sSheet.getRange(1, 1, sSheet.getMaxRows(), sSheet.getMaxColumns()).breakApart();
+
+  sSheet.getRange("A1:D1").merge()
+    .setValue(`🚚 SURTIDO RÁPIDO · ${BODEGA_NOMBRE}`)
     .setBackground("#3D5A47").setFontColor("#FFFFFF").setFontWeight("bold")
-    .setFontSize(11).setFontFamily("Arial").setHorizontalAlignment("center").setVerticalAlignment("middle");
+    .setFontSize(11).setFontFamily("Arial").setHorizontalAlignment("left").setVerticalAlignment("middle");
+  sSheet.getRange("E1:H1").merge().setBackground("#3D5A47");
   sSheet.setRowHeight(1, 30);
 
-  sSheet.getRange("A2:C2").merge().setBackground("#F5EFE6");
-  sSheet.getRange("D2:H2").merge()
-    .setValue("Escribe lo que llegó en CANT. RECIBIDA, o marca ✅ si llegó completo / ❌ si no llegó.")
-    .setBackground("#F5EFE6").setFontColor("#333333").setFontSize(9)
-    .setHorizontalAlignment("center").setVerticalAlignment("middle");
-  sSheet.setRowHeight(2, 20);
+  sSheet.getRange("A2:D2").merge()
+    .setValue("Escribe lo que llegó, o marca ✅ completo / ❌ no llegó ➜")
+    .setBackground("#F5EFE6").setFontColor("#333333").setFontSize(8).setWrap(true)
+    .setHorizontalAlignment("left").setVerticalAlignment("middle");
+  sSheet.getRange("E2:H2").merge().setBackground("#F5EFE6");
+  sSheet.setRowHeight(2, 30);
 
   // Headers de columnas (Fila 3)
   const headers = ["No", "CATEGORÍA", "PRODUCTO", "CANT. PEDIDA", "CANT. RECIBIDA", "✅ COMPLETO", "❌ INEXISTENTE", "CANT. FINAL"];

@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.5h Altair (Hotfix celdas combinadas) — 2026-09-28 [PROD]
+
+### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* Encabezados de `🚚 SURTIDO RÁPIDO` y `📥 ENTRADAS` compatibles con columnas congeladas; el emulador de pruebas valida combinaciones.
+
+---
+
 ## ⚡ v1.7.5g Altair (Configuración en un Clic) — 2026-09-28 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)

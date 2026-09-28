@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.5g Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.5h Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -5264,8 +5264,9 @@ function _prepararHojaEntradas(keepQty = false) {
   if (!kBA) throw new Error("No existe KARDEX_BA.");
 
   let sheet = ss.getSheetByName(SHEET_ENTRADAS);
-  const esNueva = !sheet;
-  if (esNueva) sheet = ss.insertSheet(SHEET_ENTRADAS, 0);
+  if (!sheet) sheet = ss.insertSheet(SHEET_ENTRADAS, 0);
+  // Encabezado incompleto (hoja nueva o intento previo interrumpido) → se arma completo
+  const esNueva = sheet.getRange(4, 1).getValue() !== "PRODUCTO";
 
   // Respaldo de cantidades ya capturadas (por nombre de producto)
   const prevQty = {};
@@ -5305,6 +5306,9 @@ function _prepararHojaEntradas(keepQty = false) {
   if (maxRows < needed) sheet.insertRowsAfter(maxRows, needed - maxRows);
 
   if (esNueva) {
+    sheet.setFrozenRows(0);
+    sheet.setFrozenColumns(0);
+    sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
     sheet.getRange("A1:D1").merge().setValue("📥 ENTRADAS DE STOCK · Andares & Mercado")
       .setBackground(C.dark).setFontColor("#FFFFFF").setFontWeight("bold").setFontSize(11)
       .setHorizontalAlignment("center").setVerticalAlignment("middle");
@@ -5325,12 +5329,13 @@ function _prepararHojaEntradas(keepQty = false) {
     sheet.getRange(4, 1, 1, 4).setValues([["PRODUCTO", "UNIDAD", "ENT ANDARES", "ENT MERCADO"]])
       .setBackground(C.sage).setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center");
 
+    // Solo filas congeladas: los títulos combinados A:D impiden congelar columnas, y las 4 columnas
+    // caben en el ancho de un celular (≈ 390 px) sin desplazamiento horizontal.
     sheet.setFrozenRows(4);
-    sheet.setFrozenColumns(1);
-    sheet.setColumnWidth(1, 200);
-    sheet.setColumnWidth(2, 60);
-    sheet.setColumnWidth(3, 100);
-    sheet.setColumnWidth(4, 100);
+    sheet.setColumnWidth(1, 170);
+    sheet.setColumnWidth(2, 50);
+    sheet.setColumnWidth(3, 85);
+    sheet.setColumnWidth(4, 85);
   }
 
   // Selector de día (se refresca siempre para reflejar las fechas de la semana activa)

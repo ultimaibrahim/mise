@@ -63,6 +63,21 @@ class MockRange {
   }
 
   clear() { return this.clearContent(); }
+  // Celdas combinadas con las mismas reglas que Google Sheets frente a filas/columnas congeladas
+  merge() {
+    const m = { r1: this.row, c1: this.col, r2: this.row + this.numRows - 1, c2: this.col + this.numCols - 1 };
+    const fc = this.sheet.frozenCols, fr = this.sheet.frozenRows;
+    if ((fc > 0 && m.c1 <= fc && fc < m.c2) || (fr > 0 && m.r1 <= fr && fr < m.r2)) {
+      throw new Error("No se pueden combinar celdas congeladas y no congeladas.");
+    }
+    this.sheet.merges.push(m);
+    return this;
+  }
+  breakApart() {
+    const r2 = this.row + this.numRows - 1, c2 = this.col + this.numCols - 1;
+    this.sheet.merges = this.sheet.merges.filter(m => m.r2 < this.row || m.r1 > r2 || m.c2 < this.col || m.c1 > c2);
+    return this;
+  }
   setBackground() { return this; }
   setBackgrounds() { return this; }
   setFontColor() { return this; }
@@ -93,6 +108,7 @@ class MockSheet {
     this.colWidths = {};
     this.rowHeights = {};
     this.hidden = false;
+    this.merges = [];
   }
 
   getName() { return this.name; }
@@ -174,8 +190,18 @@ class MockSheet {
     return this;
   }
 
-  setFrozenRows(n) { this.frozenRows = n; return this; }
-  setFrozenColumns(n) { this.frozenCols = n; return this; }
+  setFrozenRows(n) {
+    if (this.merges.some(m => m.r1 <= n && n < m.r2)) {
+      throw new Error("No se pueden inmovilizar filas que solo contengan parte de una celda combinada.");
+    }
+    this.frozenRows = n; return this;
+  }
+  setFrozenColumns(n) {
+    if (this.merges.some(m => m.c1 <= n && n < m.c2)) {
+      throw new Error("No se pueden inmovilizar columnas que solo contengan parte de una celda combinada.");
+    }
+    this.frozenCols = n; return this;
+  }
   setColumnWidth(col, width) { this.colWidths[col] = width; return this; }
   setRowHeight(row, height) { this.rowHeights[row] = height; return this; }
   hideSheet() { this.hidden = true; return this; }
