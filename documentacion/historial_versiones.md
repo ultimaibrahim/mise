@@ -5,6 +5,14 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.5g Altair (Configuración en un Clic) — 2026-09-28 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* `🚀 Configurar este libro` en los 3 libros; `onEditBodegaInstalable`; diagnóstico de conexiones por nombre.
+* Fix: el push de Bodega ya no congela `_SYNC` (conserva/restaura el `IMPORTRANGE`); autorreparación nocturna del enlace en tiendas.
+
+---
+
 ## ⚡ v1.7.5f Altair (Enlaces por Producto) — 2026-09-28 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)

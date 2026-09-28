@@ -23,6 +23,16 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.5g Altair — Configuración en un Clic y Existencias Siempre al Día (Septiembre 2026) [EN PRUEBAS]
+
+* 🚀 **Un solo botón para dejar cada archivo listo**:  
+  Nuevo `⚙️ Mise ➔ 🚀 Configurar este libro` en Bodega, Andares y Mercado. Con un clic se programan las tareas automáticas, se actualiza la estructura, se aplica el orden de recorrido y aparece un resumen de lo que quedó listo o de lo que hay que revisar.
+* 📦 **Las existencias en tienda ya no se quedan congeladas**:  
+  Se corrigió un error por el que, después de guardar el orden de picking en Bodega, las tiendas dejaban de ver los saldos actualizados. Ahora el enlace se mantiene vivo y, si se llegara a romper, el sistema lo repara solo durante la noche.
+* ⚡ **Desactivar un producto se refleja al instante en las tiendas**.
+
+---
+
 ## Versión 1.7.5f Altair — Orden de Picking y Productos Desactivados, Corregidos (Septiembre 2026) [EN PRUEBAS]
 
 * 🎯 **Desactivar un producto ya apaga ESE producto**:  

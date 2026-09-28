@@ -33,6 +33,17 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.5g Altair — Configuración en un Clic, onEdit Instalable y Enlace Vivo (Septiembre 2026) [EN PRUEBAS · DEV]
+* **Bug crítico de stock: el push de Bodega congelaba `_SYNC` en tiendas** (`sincronizarRemotamenteTiendasPush`): escribía la VISTA como valores fijos sobre `A4`, borrando el `IMPORTRANGE`; desde ese guardado de picking los saldos de la tienda dejaban de actualizarse (el autorreparador solo actuaba con `A4` vacía o en error). Ahora re-escribe la fórmula (rompe caché) y, si encuentra valores fijos, restaura el `IMPORTRANGE` hacia la VISTA de Bodega.
+* **Autorreparación nocturna del enlace** (`_asegurarSyncVivo`, `pda`/`pdm`): el reset de las 00:00 restaura el `IMPORTRANGE` si `_SYNC` quedó con valores fijos.
+* **`onEditBodegaInstalable`**: activador `onEdit` instalable (permisos de quien lo instala) que empuja a las tiendas al instante los cambios de ACTIVO en MAESTRO; el `onEdit` simple conserva la parte local.
+* **`🚀 Configurar este libro`** (menú principal en los 3 libros): un clic ejecuta en orden y reporta cada paso —
+  - Bodega: reinicio total de activadores (incluye el `onEdit` instalable), `📥 ENTRADAS`, vistas BA/BM, push a tiendas y diagnóstico de conexiones.
+  - Tiendas: reinicio total de activadores, enlace vivo con Bodega, migración de estructura pendiente, orden de picking e inactivos y diagnóstico de conexión.
+* **Diagnóstico de conexiones** (`_diagnosticarConexionesBDG`, `_diagnosticarConexionTienda`): muestra a qué libro apunta cada propiedad **por nombre**, marca nombres sospechosos (prueba, domingo, copia, staging) fuera de DEV y verifica que `_SYNC` esté enlazado en vivo.
+* Núcleos silenciosos `_reiniciarActivadoresBDG` / `_reiniciarActivadoresTienda` reutilizados por el menú y por el configurador.
+* **Testing**: `tests/suites/nivel1.test.js` (reinicio de activadores en BDG y tienda, push sin congelar `_SYNC` y des-congelado).
+
 ### Version 1.7.5f Altair — Enlaces por Producto: Picking Custom y Desactivación Correctos (Septiembre 2026) [EN PRUEBAS · DEV]
 * **Bug: desactivar un producto apagaba OTRO en tiendas (`pda`, `pdm`)**: la regla de formato de inactivo y las 5 del semáforo de saldo usaban `INDIRECT("'_SYNC'!…" & ROW())`, que lee la misma POSICIÓN en `_SYNC`; con el pedido ordenado por picking esa fila es otro producto. Nuevas columnas auxiliares ocultas `L:O` (`_ACTIVO`, `_SALDO`, `_MÍN`, `_MÁX`) con una sola `ARRAYFORMULA` en `L4` que busca por NOMBRE (`VLOOKUP(C4:C, '_SYNC'!C4:K, {7,3,8,9})`); las reglas leen `$L4…$O4` de su propia fila (sin `INDIRECT`, sin volatilidad). Se auto-instala en `_aplicarFormatosCondicionales()` (reset nocturno, reordenamiento, reparación).
 * **Bug: picking custom / ACTIVO de otro producto desde Bodega (`bdg`)**: `_buildVista()` calculaba la fila de MAESTRO como `kr - KARDEX_START + MAESTRO_START` (supone MAESTRO y KARDEX alineados fila a fila). Ahora usa un mapa por nombre (`_mapaFilasPorProducto`). Igual en `onEdit` de ACTIVO (ocultar en Kardex) y `anularProducto()`.

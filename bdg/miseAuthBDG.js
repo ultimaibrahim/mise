@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.5f Altair (Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.5g Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -150,6 +150,8 @@ function onOpen() {
     const ui = SpreadsheetApp.getUi();
     const menu = ui.createMenu("⚙️ Mise")
       // Operación Diaria y Supervisión Rápida
+      .addItem("🚀 Configurar este libro (activadores, vistas, tiendas)", "configurarEsteLibroBDG")
+      .addSeparator()
       .addItem("🚚 Descontar Pedidos de Hoy (Cierre diario)", "descontarSurtidoAutomaticoManualmente")
       .addItem("🔄 Registrar Traspaso entre Sucursales",  "abrirDialogoTraspasoBDGHTML")
       .addItem("📥 Preparar hoja de Entradas (móvil)",   "prepararHojaEntradasManualmente")
@@ -4532,7 +4534,13 @@ function sincronizarRemotamenteTiendasPush(sourceKey = null, sourceRankMap = nul
           }
 
           if (syncSheet) {
-            syncSheet.getRange(4, 1, vCount, 12).setValues(datosFrescos);
+            // Refrescar el enlace vivo (re-escribir la fórmula rompe la caché). NUNCA pisar A4 con valores:
+            // eso borra el IMPORTRANGE y congela saldos/estado en la tienda hasta una reparación manual.
+            const fActual = syncSheet.getRange(4, 1).getFormula();
+            const fSync = /IMPORTRANGE/i.test(fActual) ? fActual
+              : `=IMPORTRANGE("${ss.getUrl()}", "${t.vistaName}!A4:L")`;
+            syncSheet.getRange(4, 1).clearContent();
+            syncSheet.getRange(4, 1).setFormula(fSync);
           }
 
           // 3. REORDENAMIENTO FÍSICO EN VIVO: Reordenar la pestaña 📋 PEDIDO DIARIO remota
@@ -5194,7 +5202,7 @@ function registrarMovimientoRapidoKardex(payload) {
 // ── 🩺 DIAGNÓSTICO DE ACTIVADORES ─────────────────────────────────────────────
 // Apps Script no expone la hora programada de un activador; se listan función, tipo y id.
 // Solo aparecen los activadores instalados por la cuenta que ejecuta el diagnóstico.
-const ACTIVADORES_ESPERADOS_BDG = ["descontarSurtidoAutomatico", "ejecutarMantenimientoSemanalBDG"];
+const ACTIVADORES_ESPERADOS_BDG = ["descontarSurtidoAutomatico", "ejecutarMantenimientoSemanalBDG", "onEditBodegaInstalable"];
 
 function diagnosticarActivadores() {
   const trig = ScriptApp.getProjectTriggers();
@@ -5209,7 +5217,7 @@ function diagnosticarActivadores() {
   MiseLogger.info("diagnosticarActivadores", `${resumen} | ${lineas.join(" ")}`);
   try {
     SpreadsheetApp.getUi().alert("🩺 Activadores de Bodega", `${resumen}\n\n${lineas.join("\n") || "(ninguno)"}\n\n` +
-      (faltantes.length ? "Usa ⚙️ Mise → Automatizaciones → Reinstalar activadores." : "Todo en orden."),
+      (faltantes.length ? "Usa ⚙️ Mise → 🚀 Configurar este libro." : "Todo en orden."),
       SpreadsheetApp.getUi().ButtonSet.OK);
   } catch(e) {}
   return { total: trig.length, faltantes, duplicados, lineas };
@@ -6090,24 +6098,85 @@ function ejecutarMantenimientoSemanalBDG() {
  * 1. Descuento diario nocturno de inventario (01:00 AM)
  * 2. Mantenimiento, purga y avance semanal de catálogo (Domingos 11:00 PM)
  */
-function instalarActivadoresNocturnosBDG() {
-  // Reinicio TOTAL: borra todos los activadores del proyecto (incluidos viejos, duplicados o de funciones
-  // que ya no existen) y crea exactamente el juego esperado. Apps Script no expone la hora de un activador,
-  // así que recrearlos es la única forma de garantizar el horario correcto.
+// Núcleo silencioso: borra TODOS los activadores del proyecto y crea exactamente el juego esperado.
+// Apps Script no expone la hora de un activador; recrearlos es la única forma de garantizar el horario.
+function _reiniciarActivadoresBDG() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
   const borrados = ScriptApp.getProjectTriggers().map(t => { const h = t.getHandlerFunction(); ScriptApp.deleteTrigger(t); return h; });
-
-  // 1. Descuento diario (23:00 hrs del día en curso)
   ScriptApp.newTrigger("descontarSurtidoAutomatico").timeBased().everyDays(1).atHour(23).create();
-  // 2. Mantenimiento y avance de semana (Domingos 23:00 hrs)
   ScriptApp.newTrigger("ejecutarMantenimientoSemanalBDG").timeBased().everyWeeks(1)
     .onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(23).create();
+  // onEdit INSTALABLE: corre con los permisos de quien lo instaló → puede empujar cambios a las tiendas
+  ScriptApp.newTrigger("onEditBodegaInstalable").forSpreadsheet(ss).onEdit().create();
+  const creados = ["descontarSurtidoAutomatico (diario 23:00)", "ejecutarMantenimientoSemanalBDG (domingo 23:00)", "onEditBodegaInstalable (al editar)"];
+  MiseLogger.info("_reiniciarActivadoresBDG", `Borrados (${borrados.length}): [${borrados.join(", ")}]. Creados: ${creados.join(", ")}.`);
+  return { borrados, creados };
+}
 
-  MiseLogger.info("instalarActivadoresNocturnosBDG", `Activadores reiniciados. Borrados (${borrados.length}): [${borrados.join(", ")}]. ` +
-    `Creados: descontarSurtidoAutomatico (diario 23:00), ejecutarMantenimientoSemanalBDG (domingo 23:00).`);
-  SpreadsheetApp.getUi().alert(
-    "⏰ Activadores Reiniciados",
-    `Se borraron ${borrados.length} activador(es) previos:\n${borrados.join("\n") || "(ninguno)"}\n\n` +
-    `Quedaron exactamente:\n1. 🚚 Descuento diario — todos los días 23:00\n2. 🛡️ Mantenimiento y avance de semana — domingos 23:00`,
-    SpreadsheetApp.getUi().ButtonSet.OK
-  );
+function instalarActivadoresNocturnosBDG() {
+  const r = _reiniciarActivadoresBDG();
+  SpreadsheetApp.getUi().alert("⏰ Activadores Reiniciados",
+    `Se borraron ${r.borrados.length} activador(es) previos:\n${r.borrados.join("\n") || "(ninguno)"}\n\nQuedaron exactamente:\n• ${r.creados.join("\n• ")}`,
+    SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+// Carril rápido con permisos completos: al cambiar ACTIVO en MAESTRO, empuja a las tiendas al instante.
+// (El onEdit simple hace la parte local; un onEdit simple no puede abrir otros libros.)
+function onEditBodegaInstalable(e) {
+  if (!e || !e.range) return;
+  const sheet = e.range.getSheet();
+  if (sheet.getName() !== SHEET_MAESTRO || e.range.getRow() < MAESTRO_START) return;
+  const map = _getMaestroHeaderMap(sheet);
+  const cAct = map["ACTIVO"] ? map["ACTIVO"].col : 6;
+  if (e.range.getColumn() > cAct || e.range.getLastColumn() < cAct) return;
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return;
+  try {
+    sincronizarRemotamenteTiendasPush();
+    MiseLogger.info("onEditBodegaInstalable", `ACTIVO modificado en MAESTRO fila ${e.range.getRow()}: tiendas actualizadas.`);
+  } catch (err) {
+    MiseLogger.error("onEditBodegaInstalable", err.message, err);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ── 🔗 DIAGNÓSTICO DE CONEXIONES (a qué libro apunta cada propiedad, por NOMBRE) ──────────
+function _diagnosticarConexionesBDG() {
+  const props = PropertiesService.getScriptProperties();
+  const lineas = [], alertas = [];
+  [["Andares", props.getProperty("PDA_SPREADSHEET_ID") || props.getProperty("BODEGA_ID_BA")],
+   ["Mercado", props.getProperty("PDM_SPREADSHEET_ID") || props.getProperty("BODEGA_ID_BM")]].forEach(([tienda, id]) => {
+    if (!id) { lineas.push(`❌ ${tienda}: sin ID configurado`); alertas.push(tienda); return; }
+    try {
+      const nombre = SpreadsheetApp.openById(id).getName();
+      const sospechoso = /prueba|domingo|copia|staging|\[dev\]/i.test(nombre) && props.getProperty("MISE_ENV") !== "DEV";
+      lineas.push(`${sospechoso ? "⚠️" : "✅"} ${tienda} → "${nombre}"`);
+      if (sospechoso) alertas.push(tienda);
+    } catch (err) {
+      lineas.push(`❌ ${tienda}: no se pudo abrir (${id.substring(0, 8)}…)`); alertas.push(tienda);
+    }
+  });
+  return { lineas, alertas };
+}
+
+// ── 🚀 CONFIGURAR ESTE LIBRO (un clic: activadores, hojas, vistas, tiendas y diagnóstico) ────
+function configurarEsteLibroBDG() {
+  const ui = SpreadsheetApp.getUi();
+  const pasos = [];
+  const paso = (nombre, fn) => {
+    try { const d = fn(); pasos.push(`✅ ${nombre}${d ? " — " + d : ""}`); }
+    catch (err) { pasos.push(`❌ ${nombre} — ${err.message}`); MiseLogger.error("configurarEsteLibroBDG", `${nombre}: ${err.message}`, err); }
+  };
+  paso("Activadores", () => { const r = _reiniciarActivadoresBDG(); return `${r.borrados.length} viejos borrados, ${r.creados.length} creados`; });
+  paso("Hoja 📥 ENTRADAS", () => { _prepararHojaEntradas(true); return "lista"; });
+  paso("Vistas móviles", () => { _buildVista("BA"); _buildVista("BM"); return "BA y BM reconstruidas"; });
+  paso("Tiendas actualizadas", () => { sincronizarRemotamenteTiendasPush(); return "catálogo, picking y activos enviados"; });
+  let conexiones = { lineas: [], alertas: [] };
+  paso("Conexiones", () => { conexiones = _diagnosticarConexionesBDG(); return conexiones.alertas.length ? `${conexiones.alertas.length} por revisar` : "correctas"; });
+
+  const ok = pasos.every(p => p.startsWith("✅")) && conexiones.alertas.length === 0;
+  MiseLogger.info("configurarEsteLibroBDG", pasos.join(" | "));
+  ui.alert(ok ? "🚀 Bodega lista" : "🚀 Bodega configurada con observaciones",
+    `${pasos.join("\n")}\n\n🔗 Conexiones:\n${conexiones.lineas.join("\n")}`, ui.ButtonSet.OK);
 }

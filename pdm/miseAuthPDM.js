@@ -1,5 +1,5 @@
 /**
- * MISE — Pedidos Mercado Script v1.7.5f Altair (Picking y Colores por Producto · Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Pedidos Mercado Script v1.7.5g Altair (Configuración en un Clic · Picking y Colores por Producto · Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Pedidos Mercado (Google Sheets de B-Mercado)
@@ -54,6 +54,8 @@ function onOpen() {
     const ui = SpreadsheetApp.getUi();
     const menu = ui.createMenu("⚙️ Mise")
       // Operación Diaria
+      .addItem("🚀 Configurar este libro (activadores, estructura, picking)", "configurarEsteLibroTienda")
+      .addSeparator()
       .addItem("🚚 Generar Surtido Rápido (móvil)",       "generarSurtidoRapido")
       .addItem("🔄 Registrar Traspaso entre Tiendas",     "abrirDialogoTraspasoTiendaHTML")
       .addItem("🖐️ Reordenar lista por picking",          "ordenarPedido")
@@ -783,6 +785,9 @@ function _resetearPedidoSilencioso(e) {
   
   const dur = MiseLogger.timeEnd(tId);
   MiseLogger.info("_resetearPedidoSilencioso", `Pedido diario reseteado (${count} productos limpiados).`, dur);
+
+  // Enlace vivo con Bodega: si _SYNC quedó con valores fijos, restaurar el IMPORTRANGE
+  try { _asegurarSyncVivo(); } catch (errSync) {}
 
   // Actualización de estructura pendiente: justo después del reset (sin capturas del día en juego)
   _migrarSiEsActivador(e);
@@ -1898,23 +1903,75 @@ function registrarLog(accion, estado, detalle) {
  * Instala el activador automático por tiempo para ejecutar el reseteo y registro en LOG
  * todos los días entre 00:00 y 01:00 AM.
  */
-function instalarActivadoresMedianochePDM() {
-  // Reinicio TOTAL: borra todos los activadores del proyecto (viejos, duplicados, "sincronizarEstados"
-  // cada 10 min, funciones que ya no existen) y crea exactamente el juego esperado.
+// Núcleo silencioso: borra TODOS los activadores del proyecto (viejos, duplicados, "sincronizarEstados"
+// cada 10 min, funciones inexistentes) y crea exactamente el juego esperado.
+function _reiniciarActivadoresTienda() {
   const borrados = ScriptApp.getProjectTriggers().map(t => { const h = t.getHandlerFunction(); ScriptApp.deleteTrigger(t); return h; });
-
   // 1. Reset diario + LOG_SURTIDO + migración de estructura pendiente (00:00 - 01:00)
   ScriptApp.newTrigger("_resetearPedidoSilencioso").timeBased().everyDays(1).atHour(0).create();
   // 2. Respaldo del reset y reintento de migración (04:00 - 05:00)
   ScriptApp.newTrigger("_checkAutoResetNuevoDia").timeBased().everyDays(1).atHour(4).create();
+  const creados = ["_resetearPedidoSilencioso (00:00)", "_checkAutoResetNuevoDia (04:00)"];
+  registrarLog("instalarActivadores", "SUCCESS", `Borrados (${borrados.length}): [${borrados.join(", ")}]. Creados: ${creados.join(", ")}.`);
+  return { borrados, creados };
+}
 
-  registrarLog("instalarActivadores", "SUCCESS", `Activadores reiniciados. Borrados (${borrados.length}): [${borrados.join(", ")}]. Creados: reset 00:00 y respaldo 04:00.`);
-  SpreadsheetApp.getUi().alert(
-    "⏰ Activadores Reiniciados",
-    `Se borraron ${borrados.length} activador(es) previos:\n${borrados.join("\n") || "(ninguno)"}\n\n` +
-    `Quedaron exactamente:\n1. 🌙 Reset diario, log de surtido y actualización de estructura — 00:00\n2. 🔁 Respaldo del reset — 04:00`,
-    SpreadsheetApp.getUi().ButtonSet.OK
-  );
+function instalarActivadoresMedianochePDM() {
+  const r = _reiniciarActivadoresTienda();
+  SpreadsheetApp.getUi().alert("⏰ Activadores Reiniciados",
+    `Se borraron ${r.borrados.length} activador(es) previos:\n${r.borrados.join("\n") || "(ninguno)"}\n\nQuedaron exactamente:\n• ${r.creados.join("\n• ")}`,
+    SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+// ── 🔗 CONEXIÓN CON BODEGA (a qué libro apunta, por NOMBRE, y si _SYNC está vivo) ──────────
+function _diagnosticarConexionTienda() {
+  const props = PropertiesService.getScriptProperties();
+  const url = props.getProperty(`BODEGA_URL_${BODEGA_KEY}`);
+  if (!url) return { ok: false, linea: `❌ Sin BODEGA_URL_${BODEGA_KEY} configurada` };
+  let nombre = "";
+  try { nombre = SpreadsheetApp.openByUrl(url).getName(); }
+  catch (err) { return { ok: false, linea: "❌ No se pudo abrir el libro de Bodega configurado" }; }
+  const sospechoso = /prueba|domingo|copia|staging|\[dev\]/i.test(nombre) && props.getProperty("MISE_ENV") !== "DEV";
+  const sync = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_SYNC);
+  const vivo = sync && /IMPORTRANGE/i.test(sync.getRange(4, 1).getFormula());
+  return {
+    ok: !sospechoso && vivo,
+    linea: `${sospechoso ? "⚠️" : "✅"} Bodega → "${nombre}"\n${vivo ? "✅" : "❌"} ${SHEET_SYNC} ${vivo ? "enlazado en vivo (IMPORTRANGE)" : "SIN enlace vivo (valores fijos)"}`
+  };
+}
+
+// ── 🚀 CONFIGURAR ESTE LIBRO (un clic: activadores, estructura, picking y diagnóstico) ──────
+function configurarEsteLibroTienda() {
+  const ui = SpreadsheetApp.getUi();
+  const pasos = [];
+  const paso = (nombre, fn) => {
+    try { const d = fn(); pasos.push(`✅ ${nombre}${d ? " — " + d : ""}`); }
+    catch (err) { pasos.push(`❌ ${nombre} — ${err.message}`); registrarLog("configurarEsteLibro", "ERROR", `${nombre}: ${err.message}`); }
+  };
+  paso("Activadores", () => { const r = _reiniciarActivadoresTienda(); return `${r.borrados.length} viejos borrados, ${r.creados.length} creados`; });
+  paso("Enlace con Bodega", () => { _validarYAutoRepararSyncSilencioso(); _asegurarSyncVivo(); return ""; });
+  paso("Estructura", () => {
+    const actual = parseInt(PropertiesService.getScriptProperties().getProperty(PROP_SCHEMA) || "1", 10);
+    if (actual >= MISE_SCHEMA_TIENDA) return `al día (v${actual})`;
+    if (!_migrarEsquemaTienda()) throw new Error("no se pudo actualizar; revisa 🗒 LOG");
+    return `v${actual} → v${MISE_SCHEMA_TIENDA} (capturas respaldadas y restauradas)`;
+  });
+  paso("Orden de picking e inactivos", () => { ordenarPedido(); return "aplicados"; });
+  let con = { ok: false, linea: "" };
+  paso("Conexión", () => { con = _diagnosticarConexionTienda(); return con.ok ? "correcta" : "por revisar"; });
+
+  const ok = pasos.every(p => p.startsWith("✅")) && con.ok;
+  registrarLog("configurarEsteLibro", ok ? "SUCCESS" : "WARN", pasos.join(" | "));
+  ui.alert(ok ? `🚀 ${BODEGA_NOMBRE} lista` : `🚀 ${BODEGA_NOMBRE} configurada con observaciones`,
+    `${pasos.join("\n")}\n\n🔗 ${con.linea}`, ui.ButtonSet.OK);
+}
+
+// Si _SYNC quedó con valores fijos (sin IMPORTRANGE), restaurar el enlace vivo desde BODEGA_URL
+function _asegurarSyncVivo() {
+  const sync = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_SYNC);
+  if (!sync || /IMPORTRANGE/i.test(sync.getRange(4, 1).getFormula())) return;
+  const url = PropertiesService.getScriptProperties().getProperty(`BODEGA_URL_${BODEGA_KEY}`);
+  if (url) _setupSync(url);
 }
 
 // ── MÓDULO DE TRASPASOS INTER-TIENDAS (MOBILE-FIRST) ─────────────────────────
