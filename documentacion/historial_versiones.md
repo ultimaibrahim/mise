@@ -26,7 +26,7 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
-## ⚡ v1.7.5g Altair (Configuración en un Clic) — 2026-09-28 [EN PRUEBAS · DEV]
+## ⚡ v1.7.5g Altair (Configuración en un Clic) — 2026-09-28 [PROD]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
 * `🚀 Configurar este libro` en los 3 libros; `onEditBodegaInstalable`; diagnóstico de conexiones por nombre.
@@ -34,7 +34,7 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
-## ⚡ v1.7.5f Altair (Enlaces por Producto) — 2026-09-28 [EN PRUEBAS · DEV]
+## ⚡ v1.7.5f Altair (Enlaces por Producto) — 2026-09-28 [PROD]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
 * Tiendas: columnas auxiliares `L:O` por nombre (una `ARRAYFORMULA`) y reglas de formato sin `INDIRECT(ROW())`; reconstrucción en orden de picking.
@@ -42,21 +42,21 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
-## ⚡ v1.7.5e Altair (Migración Automática de Estructura) — 2026-09-26 [EN PRUEBAS · DEV]
+## ⚡ v1.7.5e Altair (Migración Automática de Estructura) — 2026-09-26 [PROD]
 
 ### 📱 Tiendas (PDA / PDM)
 * Motor `_migrarEsquemaTienda()` con esquema versionado, respaldo nativo + RAM, reintento seguro y verificación; corre en los activadores nocturnos. `repararSistemaTienda()` refactorizada sobre `_reconstruirPedidoDiarioCore()`. Reinicio total de activadores en los 3 libros.
 
 ---
 
-## ⚡ v1.7.5d Altair (Sin Descuento Fantasma) — 2026-09-26 [EN PRUEBAS]
+## ⚡ v1.7.5d Altair (Sin Descuento Fantasma) — 2026-09-26 [PROD]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
 * Sin registro de recepción → 0 descuento (Bodega y logs de tienda homologados). `📥 ENTRADAS` se crea y re-sincroniza sola. `diagnosticarActivadores()`.
 
 ---
 
-## ⚡ v1.7.5c Altair (Surtido Rápido con CANT. FINAL) — 2026-09-26 [EN PRUEBAS · DEV]
+## ⚡ v1.7.5c Altair (Surtido Rápido con CANT. FINAL) — 2026-09-26 [PROD]
 
 ### 📱 Tiendas (PDA / PDM) & 🏬 Bodega (BDG)
 * `🚚 SURTIDO RÁPIDO`: columna H `CANT. FINAL` (fórmula), captura libre en E con una sola fuente activa por fila (E / ✅ / ❌), coloreado de fila completa por H vs D (5 estados), resumen en J:K, columnas congeladas A:D.
@@ -64,14 +64,14 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
-## ⚡ v1.7.5b Altair (Auto-Avance Semanal Confiable) — 2026-09-25 [EN PRUEBAS]
+## ⚡ v1.7.5b Altair (Auto-Avance Semanal Confiable) — 2026-09-25 [PROD]
 
 ### 🏬 Bodega General (BDG)
 * Candado reentrante (`hasLock`) en el avance silencioso, sin avances contados que no ocurrieron, presupuesto de 18 s en `onOpen` para no dejar una bodega a medias y corrección de la `ReferenceError` del mantenimiento dominical.
 
 ---
 
-## ⚡ v1.7.5a Altair (Hoja de Entradas Móvil hacia Kardex) — 2026-09-24 [EN PRUEBAS]
+## ⚡ v1.7.5a Altair (Hoja de Entradas Móvil hacia Kardex) — 2026-09-24 [PROD]
 
 ### 🏬 Bodega General (BDG)
 * **Hoja persistente `📥 ENTRADAS`**: captura móvil de ENT para Andares y Mercado en unidad de Kardex, selector de día (HOY por default + LUN..DOM de la semana activa) y checkbox `D2` para enviar; estado en `A3` sin `toast`/`alert`.

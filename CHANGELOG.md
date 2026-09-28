@@ -37,6 +37,7 @@ Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Go
 * **Bug heredado en `_actualizarAvisoPedido()` (`pda`, `pdm`, corre en cada `onOpen`)**: usaba `H4` como celda de aviso, pero `H4` es `CANT. RECIBIDA` del primer producto de la lista. Cada apertura la borraba y, sin enlace con Bodega, escribía "⚠️ CONECTAR BDG" en ella. El aviso pasa a `D2` (barra de acciones) y la tabla ya no se toca.
 * **Estados normalizados al restaurar** (`_normalizarEstado`): cualquier variante (`✅ COMPLETO`, minúsculas, etc.) se guarda como `COMPLETO` / `PARCIAL` / `EXCEDENTE` / `INEXISTENTE`, que es lo que leen las reglas de color de PEDIDO DIARIO.
 * **`📥 ENTRADAS`**: la fila 3 (línea de estado) muestra la instrucción cuando no hay un resultado reciente, en lugar de quedar en blanco.
+* **Tooling (`ccb0c37`)**: `scripts/mise-env.js push prod` también exige `tests/run_all.js` en verde antes de subir (antes solo `push dev`); el emulador incorpora `Sheet.setRowHeights`.
 
 ### Version 1.7.5i Altair — Apertura de Libros Tolerante y Entradas Táctil (Septiembre 2026) [PROD]
 * **Fix diagnóstico de conexión en tiendas**: `openByUrl` rechaza URLs que `IMPORTRANGE` sí acepta (`/u/0/`, `?usp=`, `#gid=`); el diagnóstico reportaba "No se pudo abrir el libro de Bodega" aunque el enlace funcionaba. Nuevo `_abrirLibro(ref)` (BDG, PDA, PDM) extrae el ID de cualquier formato y usa `openById`; el mensaje de error ahora incluye la causa real. Aplicado también a traspasos (tienda → Bodega), descuento nocturno y push (Bodega → tiendas).
@@ -48,7 +49,7 @@ Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Go
 * **Hotfix `📥 ENTRADAS` (`bdg`)**: mismo conflicto (`A1:D1`/`A3:D3` combinadas con la columna A congelada). Solo se congelan filas; anchos ajustados a 390 px. Si una hoja quedó a medias por un intento previo, se reconstruye el encabezado completo.
 * **Testing**: el emulador (`tests/mocks/gasMocks.js`) ahora valida celdas combinadas contra filas/columnas congeladas igual que Google Sheets; la suite de migración incluye el Surtido del diseño viejo con sus combinaciones (falla con `2b813a3`, pasa con el fix).
 
-### Version 1.7.5g Altair — Configuración en un Clic, onEdit Instalable y Enlace Vivo (Septiembre 2026) [EN PRUEBAS · DEV]
+### Version 1.7.5g Altair — Configuración en un Clic, onEdit Instalable y Enlace Vivo (Septiembre 2026) [PROD]
 * **Bug crítico de stock: el push de Bodega congelaba `_SYNC` en tiendas** (`sincronizarRemotamenteTiendasPush`): escribía la VISTA como valores fijos sobre `A4`, borrando el `IMPORTRANGE`; desde ese guardado de picking los saldos de la tienda dejaban de actualizarse (el autorreparador solo actuaba con `A4` vacía o en error). Ahora re-escribe la fórmula (rompe caché) y, si encuentra valores fijos, restaura el `IMPORTRANGE` hacia la VISTA de Bodega.
 * **Autorreparación nocturna del enlace** (`_asegurarSyncVivo`, `pda`/`pdm`): el reset de las 00:00 restaura el `IMPORTRANGE` si `_SYNC` quedó con valores fijos.
 * **`onEditBodegaInstalable`**: activador `onEdit` instalable (permisos de quien lo instala) que empuja a las tiendas al instante los cambios de ACTIVO en MAESTRO; el `onEdit` simple conserva la parte local.
@@ -59,7 +60,7 @@ Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Go
 * Núcleos silenciosos `_reiniciarActivadoresBDG` / `_reiniciarActivadoresTienda` reutilizados por el menú y por el configurador.
 * **Testing**: `tests/suites/nivel1.test.js` (reinicio de activadores en BDG y tienda, push sin congelar `_SYNC` y des-congelado).
 
-### Version 1.7.5f Altair — Enlaces por Producto: Picking Custom y Desactivación Correctos (Septiembre 2026) [EN PRUEBAS · DEV]
+### Version 1.7.5f Altair — Enlaces por Producto: Picking Custom y Desactivación Correctos (Septiembre 2026) [PROD]
 * **Bug: desactivar un producto apagaba OTRO en tiendas (`pda`, `pdm`)**: la regla de formato de inactivo y las 5 del semáforo de saldo usaban `INDIRECT("'_SYNC'!…" & ROW())`, que lee la misma POSICIÓN en `_SYNC`; con el pedido ordenado por picking esa fila es otro producto. Nuevas columnas auxiliares ocultas `L:O` (`_ACTIVO`, `_SALDO`, `_MÍN`, `_MÁX`) con una sola `ARRAYFORMULA` en `L4` que busca por NOMBRE (`VLOOKUP(C4:C, '_SYNC'!C4:K, {7,3,8,9})`); las reglas leen `$L4…$O4` de su propia fila (sin `INDIRECT`, sin volatilidad). Se auto-instala en `_aplicarFormatosCondicionales()` (reset nocturno, reordenamiento, reparación).
 * **Bug: picking custom / ACTIVO de otro producto desde Bodega (`bdg`)**: `_buildVista()` calculaba la fila de MAESTRO como `kr - KARDEX_START + MAESTRO_START` (supone MAESTRO y KARDEX alineados fila a fila). Ahora usa un mapa por nombre (`_mapaFilasPorProducto`). Igual en `onEdit` de ACTIVO (ocultar en Kardex) y `anularProducto()`.
 * **Bug: `anularProducto()`** usaba el diseño viejo de MAESTRO: buscaba el nombre en PRESENTACIÓN y escribía "NO" en la columna 7 (hoy `MÍN_BA`). Ahora usa el mapa de encabezados.
@@ -67,7 +68,7 @@ Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Go
 * **Reconstrucción (`_reconstruirPedidoDiarioCore`) en orden de picking** (`_ordenPickingSync`): antes escribía en el orden de `_SYNC` y la migración/reparación perdía el orden custom.
 * **Testing**: `tests/suites/vista.test.js` (reproduce el caso Ranch/Concentrado; falla con el código anterior) y casos de picking/inactivo en `migracion.test.js`.
 
-### Version 1.7.5e Altair — Motor de Migración Automática de Estructura en Tiendas (Septiembre 2026) [EN PRUEBAS · DEV]
+### Version 1.7.5e Altair — Motor de Migración Automática de Estructura en Tiendas (Septiembre 2026) [PROD]
 * **`_migrarEsquemaTienda()` (`pda`, `pdm`)**: versión de estructura en la propiedad `MISE_SCHEMA_VERSION` vs constante `MISE_SCHEMA_TIENDA` (= 2: DIFERENCIA intra-fila + Surtido con CANT. FINAL). Corre sola en los activadores nocturnos (`_resetearPedidoSilencioso` 00:00 y `_checkAutoResetNuevoDia` 04:00) detectando `e.triggerUid`; nunca en `onOpen` (límite 30 s).
 * **Respaldo doble**: copia nativa oculta (`sheet.copyTo`) de `📋 PEDIDO DIARIO` y `🚚 SURTIDO RÁPIDO` como `_RESPALDO_*_v2` + capturas en RAM por nombre de producto (F pedir, H recibida, I estado, J adición; SURTIDO E/F/G con prioridad por ser captura directa).
 * **Reintento seguro**: bandera `MISE_SCHEMA_MIGRANDO`; si una corrida falla, la siguiente toma las capturas del respaldo original y no de la hoja a medio reconstruir. Idempotente.
@@ -76,14 +77,14 @@ Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Go
 * **Reinicio total de activadores** (`instalarActivadoresNocturnosBDG`, `instalarActivadoresMedianochePDA/PDM`): borran TODOS los activadores del proyecto (viejos, duplicados, `sincronizarEstados` cada 10 min, funciones inexistentes) y crean exactamente el juego esperado — BDG: descuento diario 23:00 + mantenimiento domingo 23:00; tiendas: reset 00:00 + respaldo 04:00. Menú corregido (decía "23:00" en tiendas pero instalaba 00:00).
 * **Testing**: `tests/suites/migracion.test.js` + helper `tests/mocks/tiendaVm.js` (estructura vieja con capturas, respaldo, restauración, idempotencia y reintento).
 
-### Version 1.7.5d Altair — Sin Descuento Fantasma, Entradas Automáticas y Diagnóstico de Activadores (Septiembre 2026) [EN PRUEBAS]
+### Version 1.7.5d Altair — Sin Descuento Fantasma, Entradas Automáticas y Diagnóstico de Activadores (Septiembre 2026) [PROD]
 * **Fix crítico en `MiseSmartSync` (`bdg/MiseKardexEngine.js`)**: eliminado el fallback `else if (cantPed > 0) cantDeducir = cantPed`. Si la tienda no registró recepción (sin cantidad, sin ✅, sin ❌) **no se descuenta nada**; el log remoto marca `SIN_REGISTRO` en lugar de `SURTIDO_AUTO`.
 * **`_registrarLogSurtidoDiario()` homologado en PDA y PDM**: misma regla que el descuento (PDA registraba lo pedido como recibido con estado `PEDIDO`; PDM omitía filas). Ahora ambos registran todo lo pedido con la cantidad realmente recibida y estado `SIN_REGISTRO` cuando aplica.
 * **`📥 ENTRADAS` automática**: se crea en `onOpen()` si falta y el cierre diario (`descontarSurtidoAutomatico`) la re-sincroniza con el catálogo conservando capturas; ya no requiere menú.
 * **`diagnosticarActivadores()`**: lista los activadores instalados, faltantes y duplicados (menú Automatizaciones y `🗒 LOG`).
 * **`scripts/mise-env.js push <env> <proyecto>`**: despliegue de un solo proyecto (`npm run push:prod:bdg`).
 
-### Version 1.7.5c Altair — Surtido Rápido con CANT. FINAL y Coloreado por Fila (Septiembre 2026) [EN PRUEBAS · DEV]
+### Version 1.7.5c Altair — Surtido Rápido con CANT. FINAL y Coloreado por Fila (Septiembre 2026) [PROD]
 * **Nueva columna H `CANT. FINAL` en `🚚 SURTIDO RÁPIDO` (`pda`, `pdm`)**: fórmula por fila `=IF($G=TRUE,0,IF($E<>"",$E,IF($F=TRUE,$D,"")))`. Es la fuente de verdad de lo recibido y no depende de que `onEdit()` inyecte valores (raíz del bug de fila pintada sin cantidad).
 * **Una sola fuente activa por fila en `onEdit()`**: escribir en `CANT. RECIBIDA` (E) desmarca ✅/❌; marcar ✅ o ❌ limpia E y desmarca la otra casilla. Se conserva el sincronizado de `CANT. RECIBIDA`/`ESTADO` (H/I) en `📋 PEDIDO DIARIO` vía `_estadoRecepcion()`.
 * **Coloreado de fila completa (A:H) según `CANT. FINAL` vs `CANT. PEDIDA`**: exacto (verde), no llegó = 0 (rojo), de menos (naranja), de más (azul), sin registrar (amarillo). Resumen reubicado a `J:K` con 5 conteos `SUMPRODUCT` sobre H.
@@ -91,14 +92,14 @@ Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Go
 * **Bodega (`bdg/MiseKardexEngine.js`)**: el descuento lee 8 columnas del Surtido remoto y prioriza `CANT. FINAL` cuando trae número; conserva el doble candado anterior como respaldo para tiendas sin la columna.
 * **Testing**: `tests/suites/surtido.test.js` ejecuta el código real de PDA y PDM en VM (estructura, fórmula, reglas de color, protección y captura/sincronizado).
 
-### Version 1.7.5b Altair — Auto-Avance Semanal Confiable en ambos Kardex (Septiembre 2026) [EN PRUEBAS · SOLO BDG]
+### Version 1.7.5b Altair — Auto-Avance Semanal Confiable en ambos Kardex (Septiembre 2026) [PROD]
 * **Candado reentrante en `_ejecutarAvanzarSemanaSilencioso()`**: usa `lock.hasLock()`; si el llamador (mantenimiento dominical) ya tiene el candado no lo re-adquiere ni lo libera. Devuelve `true/false`.
 * **Sin avances fantasma en `_autoVerificarYAvanzarSemanaSilencioso()`**: antes, si `tryLock` fallaba, el avance se contaba como hecho y el bucle repetía hasta 4 veces sin avanzar. Ahora corta, registra `WARN` en `🗒 LOG` y devuelve el número real de bodegas avanzadas.
 * **Presupuesto de tiempo en `onOpen()` (trigger simple de 30 s)**: tope de 18 s; si se agota tras Andares, Mercado se deja intacta para la siguiente corrida en lugar de quedar a medias (historial archivado sin mover `G4`).
 * **`ejecutarMantenimientoSemanalBDG()`**: corregida la `ReferenceError` por `semanasAvanzadas` no declarada, que hacía terminar cada mantenimiento dominical en error.
 * **Testing**: `tests/suites/semana.test.js` (candado del mantenimiento, candado ocupado, presupuesto de onOpen) + helper `tests/mocks/bdgVm.js`.
 
-### Version 1.7.5a Altair — Hoja de Entradas Móvil hacia Kardex (Septiembre 2026) [EN PRUEBAS · SOLO BDG]
+### Version 1.7.5a Altair — Hoja de Entradas Móvil hacia Kardex (Septiembre 2026) [PROD]
 * **Nueva hoja persistente `📥 ENTRADAS` (`bdg/miseAuthBDG.js`)**:
   - Lista de productos activos en el orden del Kardex (A: PRODUCTO congelada, B: UNIDAD de Kardex, C: ENT ANDARES, D: ENT MERCADO). Captura en unidad de Kardex (kg, lt, pza), sin conversión.
   - Selector de día en `B2` con `HOY (automático)` por default más `LUN..DOM` con fechas de la semana activa (`KARDEX_BA!G4`). Tras cada envío regresa a HOY.

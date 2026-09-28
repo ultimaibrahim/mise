@@ -23,7 +23,34 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.7.5g Altair — Configuración en un Clic y Existencias Siempre al Día (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.5j Altair — Cantidades de Recepción Siempre en su Lugar (Septiembre 2026) [PROD]
+
+* 🧾 **La cantidad recibida del primer producto ya no se borra**:  
+  Se corrigió un error antiguo por el que, cada vez que alguien abría la hoja de la tienda, se borraba la cantidad recibida del primer producto de la lista. El aviso de "conectar con Bodega" ahora aparece en la barra superior y no dentro de la tabla.
+* 🎨 **Colores de recepción consistentes**:  
+  Los estados de cada producto (completo, parcial, de más, no llegó) se guardan siempre igual, para que el pedido diario se pinte correctamente.
+* 📥 **Hoja de Entradas más clara**:  
+  La línea de resultado muestra una instrucción mientras no se ha enviado nada, en lugar de quedar en blanco.
+
+---
+
+## Versión 1.7.5i Altair — Conexiones Más Confiables y Entradas Más Cómodas (Septiembre 2026) [PROD]
+
+* 🔗 **Traspasos y cierre nocturno más confiables**:  
+  Las tiendas y Bodega ahora se encuentran entre sí aunque el enlace guardado tenga distintos formatos, lo que evita fallas al registrar traspasos o al descontar el inventario por la noche. Si algo falla, el sistema indica el motivo exacto.
+* 👆 **Hoja de Entradas pensada para el dedo**:  
+  Filas más altas, nombres de producto más grandes y columnas ajustadas al ancho del celular.
+
+---
+
+## Versión 1.7.5h Altair — Corrección en la Actualización de Tiendas (Septiembre 2026) [PROD]
+
+* 🛠️ **La actualización de las tiendas vuelve a completarse**:  
+  Se corrigió un detalle de diseño en los encabezados de Surtido Rápido y de la hoja de Entradas que impedía terminar la actualización. Los pedidos capturados ese día estaban respaldados y se restauraron completos.
+
+---
+
+## Versión 1.7.5g Altair — Configuración en un Clic y Existencias Siempre al Día (Septiembre 2026) [PROD]
 
 * 🚀 **Un solo botón para dejar cada archivo listo**:  
   Nuevo `⚙️ Mise ➔ 🚀 Configurar este libro` en Bodega, Andares y Mercado. Con un clic se programan las tareas automáticas, se actualiza la estructura, se aplica el orden de recorrido y aparece un resumen de lo que quedó listo o de lo que hay que revisar.
@@ -33,7 +60,7 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.7.5f Altair — Orden de Picking y Productos Desactivados, Corregidos (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.5f Altair — Orden de Picking y Productos Desactivados, Corregidos (Septiembre 2026) [PROD]
 
 * 🎯 **Desactivar un producto ya apaga ESE producto**:  
   Antes, al desactivar un insumo en Bodega, en las tiendas se marcaba en gris otro producto que estaba en la misma posición. Ahora cada tienda identifica el producto por su nombre, sin importar el orden de la lista.
@@ -44,7 +71,7 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.7.5e Altair — Las Tiendas se Actualizan Solas por la Noche (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.5e Altair — Las Tiendas se Actualizan Solas por la Noche (Septiembre 2026) [PROD]
 
 * 🌙 **Actualizaciones sin interrumpir la operación**:  
   Cuando una mejora requiere cambiar la estructura de las hojas de tienda, el sistema la aplica solo durante la noche, después del cierre del día. Nadie tiene que abrir la hoja ni presionar nada.
@@ -53,7 +80,7 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.7.5d Altair — Solo se Descuenta lo que Realmente se Recibió (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.5d Altair — Solo se Descuenta lo que Realmente se Recibió (Septiembre 2026) [PROD]
 
 * 🛡️ **Adiós a los descuentos fantasma**:  
   Si en la tienda no se registró la recepción de un producto (ni cantidad, ni ✅, ni ❌), el inventario de Bodega ya **no** lo descuenta. Antes se descontaba lo pedido como si hubiera llegado, lo que descuadraba el stock.
@@ -62,7 +89,7 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.7.5c Altair — Surtido Rápido Más Claro: Cantidad Final y Colores por Fila (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.5c Altair — Surtido Rápido Más Claro: Cantidad Final y Colores por Fila (Septiembre 2026) [PROD]
 
 * 🚚 **Escribe lo que llegó, sin trucos**:  
   En Surtido Rápido se escribe directo la cantidad recibida. Si llegó completo basta marcar ✅, y si no llegó, ❌. Solo cuenta una de las tres opciones por producto, así que ya no hay datos contradictorios.
@@ -75,14 +102,14 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.7.5b Altair — Cambio de Semana Automático en Ambas Tiendas (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.5b Altair — Cambio de Semana Automático en Ambas Tiendas (Septiembre 2026) [PROD]
 
 * 📅 **El Kardex de Mercado ya cambia de semana solo**:  
   Se corrigió la causa por la que uno de los inventarios (normalmente Mercado) se quedaba en la semana anterior y había que avanzarlo a mano con la casilla. Ahora el cierre del domingo a las 23:00 avanza Andares y Mercado juntos, y si algo lo impide, el sistema lo deja registrado y lo completa en la siguiente oportunidad sin dejar la semana a medias.
 
 ---
 
-## Versión 1.7.5a Altair — Registro de Entradas desde el Celular (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.5a Altair — Registro de Entradas desde el Celular (Septiembre 2026) [PROD]
 
 * 📥 **Nueva hoja de Entradas para Bodega**:  
   Cuando llega mercancía, ahora se puede registrar desde el celular en una sola lista: cada producto con su unidad y dos columnas, una para **Andares** y otra para **Mercado**. Se escribe la cantidad, se marca la casilla **Enviar ➜** y el inventario de ambas tiendas se actualiza al instante, sin buscar filas ni días en el Kardex.
