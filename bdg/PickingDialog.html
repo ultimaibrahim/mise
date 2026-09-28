@@ -1111,10 +1111,33 @@
         picking: rawItems.map((it, idx) => ({ name: it.name, rank: idx + 1, cat: it.cat }))
       };
 
-      google.script.run
-        .withSuccessHandler(onSaveSuccess)
-        .withFailureHandler(onSaveFailure)
-        .guardarPowerhouseBatch(currentKey, payload);
+      guardarEnFases(payload, btnText);
+    }
+
+    // Promesa sobre google.script.run: cada llamada es una ejecución independiente en el servidor
+    function runServer(fn, ...args) {
+      return new Promise((resolve, reject) => {
+        google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args);
+      });
+    }
+
+    // Fase 1: catálogo (con candado). Fase 2: Andares y Mercado EN PARALELO (ejecuciones separadas).
+    async function guardarEnFases(payload, btnText) {
+      const t0 = performance.now();
+      const seg = (ms) => (ms / 1000).toFixed(1);
+      try {
+        btnText.innerText = "Guardando catálogo…";
+        const cat = await runServer("powerhouseGuardarCatalogo", currentKey, payload);
+
+        btnText.innerText = "Actualizando Andares y Mercado en paralelo…";
+        const tiendas = await Promise.all(["BA", "BM"].map(k => runServer("powerhouseActualizarTienda", k)));
+
+        const total = seg(performance.now() - t0);
+        const detalle = tiendas.map(t => `${t.nombre} ${seg(t.ms)}s`).join(" · ");
+        onSaveSuccess(`✅ Guardado en ${total}s (catálogo ${seg(cat.ms)}s · ${detalle})`);
+      } catch (err) {
+        onSaveFailure(err);
+      }
     }
 
     function onSaveSuccess(msg) {

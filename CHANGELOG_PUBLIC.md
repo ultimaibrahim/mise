@@ -23,6 +23,15 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.5l Altair — Mise Powerhouse Mucho Más Rápido (Septiembre 2026) [PROD]
+
+* ⚡ **Guardar cambios del catálogo ya no tarda minutos**:  
+  El Powerhouse solo actualiza lo que realmente cambiaste y actualiza Andares y Mercado al mismo tiempo, en lugar de una después de la otra. Al terminar muestra cuánto tardó cada parte.
+* 🖐️ **Renombrar un producto ya no lo mueve de lugar**:  
+  Si cambias el nombre de un insumo y su posición en el recorrido, ambas cosas se guardan correctamente en las tiendas.
+
+---
+
 ## Versión 1.7.5k Altair — "Acerca de" Muestra el Estado Real del Sistema (Septiembre 2026) [PROD]
 
 * ℹ️ **Versión correcta en pantalla**:  

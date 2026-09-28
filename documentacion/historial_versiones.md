@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.5l Altair (Powerhouse en paralelo) — 2026-09-28 [PROD]
+
+### 🏬 Bodega (BDG)
+* Powerhouse en 2 fases (catálogo con candado → tiendas en paralelo con `Promise.all`); solo se aplica lo que cambió (sin reconstruir Kardex por ediciones); el rank de picking sigue al producto renombrado.
+
+---
+
 ## ⚡ v1.7.5k Altair (Acerca de con estado) — 2026-09-28 [PROD]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)

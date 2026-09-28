@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.5k Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.5l Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -2214,9 +2214,10 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.5k";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.5l";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "Powerhouse más rápido: Andares y Mercado se actualizan en paralelo",
   "Configurar este libro en un clic (🚀)",
   "Hoja 📥 ENTRADAS para registrar mercancía desde el celular",
   "Solo se descuenta lo que la tienda registró como recibido",
@@ -4317,13 +4318,57 @@ function obtenerProductosPickingHTML(key) {
   return items;
 }
 
-function guardarPowerhouseBatch(key, payload) {
+// ── ⚡ POWERHOUSE: GUARDADO EN 2 FASES (catálogo → tiendas en paralelo) ─────────────────
+// Fase 1 (con candado): MAESTRO + Kardex, solo lo que cambió de verdad.
+// Fase 2 (sin candado global, una ejecución por tienda en paralelo desde el diálogo):
+//   VISTA_MOVIL_<k> + push a la tienda <k>. Cada tienda toca hojas distintas.
+function powerhouseGuardarCatalogo(key, payload) {
+  const t0 = Date.now();
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(45000)) {
-    throw new Error("El archivo de Bodega está ocupado. Intenta de nuevo en unos segundos.");
-  }
-
+  if (!lock.tryLock(45000)) throw new Error("El archivo de Bodega está ocupado. Intenta de nuevo en unos segundos.");
   try {
+    const resumen = _guardarCatalogoPowerhouse(key, payload);
+    const ms = Date.now() - t0;
+    MiseLogger.info("powerhouseGuardarCatalogo", `${key}: ${resumen}`, ms);
+    return { ms, resumen };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function powerhouseActualizarTienda(k) {
+  const t0 = Date.now();
+  _buildVista(k);
+  sincronizarRemotamenteTiendasPush(k);
+  const ms = Date.now() - t0;
+  MiseLogger.info("powerhouseActualizarTienda", `${BODEGAS[k].nombre}: vista y tienda actualizadas.`, ms);
+  return { k, nombre: BODEGAS[k].nombre, ms };
+}
+
+// Compatibilidad (llamadas antiguas y guardarOrdenPickingHTML): mismas fases, en secuencia
+function guardarPowerhouseBatch(key, payload) {
+  const r = powerhouseGuardarCatalogo(key, payload);
+  ["BA", "BM"].forEach(k => powerhouseActualizarTienda(k));
+  _log("guardarPowerhouseBatch", `${key}: ${r.resumen}`);
+  return `✅ Se guardaron los cambios del catálogo y la secuencia de picking se sincronizó con las tiendas.`;
+}
+
+// Renombra productos en KARDEX_BA/BM por nombre (evita reconstruir los Kardex completos)
+function _renombrarEnKardex(renombres) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  Object.values(BODEGAS).forEach(b => {
+    const k = ss.getSheetByName(b.kardex);
+    if (!k || k.getLastRow() < KARDEX_START) return;
+    const rng = k.getRange(KARDEX_START, 3, k.getLastRow() - KARDEX_START + 1, 1);
+    const vals = rng.getValues();
+    let n = 0;
+    vals.forEach(r => { const nuevo = renombres[String(r[0]).trim().toUpperCase()]; if (nuevo) { r[0] = nuevo; n++; } });
+    if (n) rng.setValues(vals);
+  });
+}
+
+function _guardarCatalogoPowerhouse(key, payload) {
+  {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const maestro = ss.getSheetByName(SHEET_MAESTRO);
     if (!maestro) throw new Error("No se encontró la hoja MAESTRO.");
@@ -4398,7 +4443,10 @@ function guardarPowerhouseBatch(key, payload) {
       }
     }
 
-    // 2. Procesar Ediciones y Desactivaciones
+    // 2. Procesar Ediciones y Desactivaciones (solo cuenta lo que cambia de verdad: el diálogo manda
+    //    el producto completo en cada edición, incluido ACTIVO aunque no se haya tocado)
+    const renombres = {};      // NOMBRE VIEJO (mayúsculas) → nombre nuevo
+    const cambiosActivo = {};  // NOMBRE (mayúsculas) → "SÍ" | "NO"
     const ediciones = payload.ediciones || [];
     const eliminados = payload.eliminados || [];
     if (ediciones.length > 0 || eliminados.length > 0) {
@@ -4414,11 +4462,15 @@ function guardarPowerhouseBatch(key, payload) {
       });
 
       const delSet = new Set(eliminados.map(n => String(n).trim().toUpperCase()));
+      const iAct = map["ACTIVO"] ? map["ACTIVO"].index : -1;
+      const iProd = map["PRODUCTO"] ? map["PRODUCTO"].index : 2;
 
       for (let i = 0; i < mData.length; i++) {
-        const prodName = String(mData[i][map["PRODUCTO"] ? map["PRODUCTO"].index : 2]).trim().toUpperCase();
+        const prodName = String(mData[i][iProd]).trim().toUpperCase();
+        const activoAntes = iAct !== -1 ? String(mData[i][iAct]).trim().toUpperCase() : "";
         if (delSet.has(prodName)) {
-          if (map["ACTIVO"]) mData[i][map["ACTIVO"].index] = "NO";
+          if (iAct !== -1) mData[i][iAct] = "NO";
+          if (activoAntes !== "NO") cambiosActivo[String(mData[i][iProd]).trim().toUpperCase()] = "NO";
           continue;
         }
 
@@ -4437,6 +4489,10 @@ function guardarPowerhouseBatch(key, payload) {
           if (ed.minQBm !== undefined && map["MÍN_Q_BM"]) mData[i][map["MÍN_Q_BM"].index] = parseFloat(ed.minQBm) || 0;
           if (ed.maxQBm !== undefined && map["MÁX_Q_BM"]) mData[i][map["MÁX_Q_BM"].index] = parseFloat(ed.maxQBm) || 0;
           if (ed.activo !== undefined && map["ACTIVO"])    mData[i][map["ACTIVO"].index] = ed.activo ? "SÍ" : "NO";
+          const nuevoNombre = String(mData[i][iProd]).trim();
+          if (nuevoNombre.toUpperCase() !== prodName) renombres[prodName] = nuevoNombre;
+          const activoDespues = iAct !== -1 ? String(mData[i][iAct]).trim().toUpperCase() : "";
+          if (activoDespues !== activoAntes) cambiosActivo[nuevoNombre.toUpperCase()] = activoDespues;
         }
       }
       mRange.setValues(mData);
@@ -4452,7 +4508,8 @@ function guardarPowerhouseBatch(key, payload) {
 
     if (Array.isArray(pickingList)) {
       pickingList.forEach((item, idx) => {
-        const pName = String(item.name).trim();
+        let pName = String(item.name).trim();
+        pName = renombres[pName.toUpperCase()] || pName; // el diálogo manda el nombre anterior al renombre
         rankMap[pName] = item.rank || (idx + 1);
         if (item.cat) catMap[pName] = String(item.cat).trim().toUpperCase();
       });
@@ -4462,10 +4519,11 @@ function guardarPowerhouseBatch(key, payload) {
       const newColValues = [];
       const newCatValues = [];
       const currentCats = map["CATEGORÍA"] ? maestro.getRange(MAESTRO_START, map["CATEGORÍA"].col, countFinal, 1).getValues() : [];
+      const currentRanks = maestro.getRange(MAESTRO_START, cPicObj.col, countFinal, 1).getValues();
 
       for (let i = 0; i < prodsFinal.length; i++) {
         const pName = String(prodsFinal[i][0]).trim();
-        const rank = rankMap[pName] || (i + 1);
+        const rank = rankMap[pName] || parseInt(currentRanks[i][0]) || (i + 1); // sin dato: conserva su rank
         newColValues.push([rank]);
 
         if (catMap[pName]) {
@@ -4482,23 +4540,26 @@ function guardarPowerhouseBatch(key, payload) {
       }
     }
 
-    // Reordenar si hubo altas o si hubo bajas/desactivaciones para sincronizar y ocultar filas en Kardex
-    const huboBajasOEdicionActivo = eliminados.length > 0 || ediciones.some(e => e.activo !== undefined);
-    if (prodsNuevos.length > 0 || huboBajasOEdicionActivo) {
+    // Kardex: reconstrucción completa SOLO con altas (necesita filas nuevas). Renombres y cambios de
+    // ACTIVO se aplican quirúrgicamente por nombre (antes cada guardado reconstruía ambos Kardex).
+    const nRen = Object.keys(renombres).length, nAct = Object.keys(cambiosActivo).length;
+    if (prodsNuevos.length > 0) {
       _ordenarYRenumerarTodo();
+    } else {
+      if (nRen) _renombrarEnKardex(renombres);
+      if (nAct) {
+        Object.values(BODEGAS).forEach(b => {
+          const kSheet = ss.getSheetByName(b.kardex);
+          const filas = _mapaFilasPorProducto(kSheet, KARDEX_START, 3);
+          Object.keys(cambiosActivo).forEach(n => {
+            const r = filas[n];
+            if (!r) return;
+            if (cambiosActivo[n] === "NO") kSheet.hideRows(r); else kSheet.showRows(r);
+          });
+        });
+      }
     }
-
-    // Reconstruir VISTAS_MOVILES
-    _buildVista("BA");
-    _buildVista("BM");
-
-    // Sincronizar tiendas remotas
-    sincronizarRemotamenteTiendasPush(null, rankMap);
-
-    _log("guardarPowerhouseBatch", `${key}: Catálogo y picking sincronizados exitosamente.`);
-    return `✅ Se guardaron los cambios del catálogo y la secuencia de picking se sincronizó con las tiendas.`;
-  } finally {
-    lock.releaseLock();
+    return `${prodsNuevos.length} altas, ${ediciones.length} ediciones (${nRen} renombres, ${nAct} cambios de activo), picking ${key} guardado`;
   }
 }
 
