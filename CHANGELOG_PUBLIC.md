@@ -23,6 +23,13 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.5m Altair — Las Cantidades del Día se Conservan al Guardar en Powerhouse (Septiembre 2026) [PROD]
+
+* 🛡️ **Guardar cambios en Bodega ya no arriesga el pedido de las tiendas**:  
+  Se corrigió el orden interno de la actualización para que, al guardar el catálogo o el orden de picking en Bodega, las cantidades que las tiendas ya capturaron ese día se conserven siempre.
+
+---
+
 ## Versión 1.7.5l Altair — Mise Powerhouse Mucho Más Rápido (Septiembre 2026) [PROD]
 
 * ⚡ **Guardar cambios del catálogo ya no tarda minutos**:  

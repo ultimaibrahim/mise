@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.5l Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.5m Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -2214,7 +2214,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.5l";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.5m";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "Powerhouse más rápido: Andares y Mercado se actualizan en paralelo",
@@ -4625,20 +4625,21 @@ function sincronizarRemotamenteTiendasPush(sourceKey = null, sourceRankMap = nul
             syncSheet = targetSs.getSheets().find(s => s.getName().startsWith("_SYNC"));
           }
 
+          // 3. PRIMERO reordenar 📋 PEDIDO DIARIO (lee las capturas del día mientras _SYNC está estable;
+          //    si se refresca antes, los nombres del pedido quedan "cargando" y se perderían las cantidades)
+          const pedidoSheet = targetSs.getSheetByName("📋 PEDIDO DIARIO");
+          if (pedidoSheet && syncSheet) {
+            _reordenarPedidoRemotoDirecto(targetSs, syncSheet, pedidoSheet, datosFrescos);
+          }
+
+          // 4. AL FINAL refrescar el enlace vivo (re-escribir la fórmula rompe la caché). NUNCA pisar A4 con
+          //    valores: eso borra el IMPORTRANGE y congela saldos/estado en la tienda.
           if (syncSheet) {
-            // Refrescar el enlace vivo (re-escribir la fórmula rompe la caché). NUNCA pisar A4 con valores:
-            // eso borra el IMPORTRANGE y congela saldos/estado en la tienda hasta una reparación manual.
             const fActual = syncSheet.getRange(4, 1).getFormula();
             const fSync = /IMPORTRANGE/i.test(fActual) ? fActual
               : `=IMPORTRANGE("${ss.getUrl()}", "${t.vistaName}!A4:L")`;
             syncSheet.getRange(4, 1).clearContent();
             syncSheet.getRange(4, 1).setFormula(fSync);
-          }
-
-          // 3. REORDENAMIENTO FÍSICO EN VIVO: Reordenar la pestaña 📋 PEDIDO DIARIO remota
-          const pedidoSheet = targetSs.getSheetByName("📋 PEDIDO DIARIO");
-          if (pedidoSheet && syncSheet) {
-            _reordenarPedidoRemotoDirecto(targetSs, syncSheet, pedidoSheet, datosFrescos);
           }
         }
       } catch(e) {

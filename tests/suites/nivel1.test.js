@@ -103,6 +103,19 @@ function runNivel1Tests() {
     sandbox.sincronizarRemotamenteTiendasPush("BA");
     assert.ok(/IMPORTRANGE\("https:\/\/docs.google.com\/spreadsheets\/d\/BDG\/edit", "VISTA_MOVIL_BA!A4:L"\)/.test(sync.getRange(4, 1).getValue()),
       "Un _SYNC congelado recupera el IMPORTRANGE desde Bodega");
+    // Orden obligatorio: reordenar el pedido (lee capturas con _SYNC estable) ANTES de refrescar el enlace
+    tienda.insertSheet("📋 PEDIDO DIARIO");
+    const eventos = [];
+    const reordenarReal = sandbox._reordenarPedidoRemotoDirecto;
+    sandbox._reordenarPedidoRemotoDirecto = () => { eventos.push("reordenar"); };
+    const setFormulaBase = rp.setFormula;
+    rp.setFormula = function(f) { if (this.sheet === sync) eventos.push("refrescar"); return setFormulaBase.call(this, f); };
+    sandbox.sincronizarRemotamenteTiendasPush("BA");
+    assert.deepStrictEqual(eventos, ["reordenar", "refrescar"], "Primero reordenar (capturas estables), al final refrescar el IMPORTRANGE");
+    sandbox._reordenarPedidoRemotoDirecto = reordenarReal;
+    rp.setFormula = setFormulaBase;
+    console.log("  ✓ Push: reordena el pedido antes de refrescar el enlace (no pierde capturas del día)");
+
     sandbox.PropertiesService.getScriptProperties().setProperty("PDA_SPREADSHEET_ID", ""); // no contaminar otras suites
     console.log("  ✓ Push de Bodega refresca el IMPORTRANGE y des-congela un _SYNC con valores fijos");
   }

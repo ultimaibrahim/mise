@@ -33,6 +33,10 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.5m Altair — Push a Tiendas: Reordenar antes de Refrescar el Enlace (Septiembre 2026) [PROD]
+* **Riesgo de pérdida de capturas introducido en 1.7.5g** (`sincronizarRemotamenteTiendasPush`): el push refrescaba `_SYNC!A4` (clear + `setFormula`) y **después** `_reordenarPedidoRemotoDirecto` leía los nombres del pedido (fórmulas hacia `_SYNC`) para conservar CANT. A PEDIR / RECIBIDA / ESTADO. Con el `IMPORTRANGE` recargando, los nombres podían leerse vacíos, todos los productos se trataban como nuevos y el pedido se reescribía sin las cantidades del día. Ahora el orden es: reordenar (lee capturas con `_SYNC` estable; las referencias `sr` se calculan con la VISTA fresca) → refrescar el enlace al final.
+* **Testing**: `nivel1.test.js` fija el orden "reordenar → refrescar".
+
 ### Version 1.7.5l Altair — Powerhouse: Guardado en Paralelo y Picking tras Renombrar (Septiembre 2026) [PROD]
 * **Bug: el producto renombrado perdía su posición de picking** (`guardarPowerhouseBatch`): el diálogo manda el orden con el nombre anterior; el servidor aplicaba el renombre y luego buscaba el rank con el nombre nuevo, y al no encontrarlo le asignaba su número de fila en MAESTRO. Ahora el rank se traduce por el mapa de renombres y un producto sin rank en la lista **conserva el suyo**.
 * **Lentitud (1–2 min por guardado)**: el diálogo manda el producto completo en cada edición (incluido `activo` sin cambios), lo que disparaba `_ordenarYRenumerarTodo()` (reconstrucción de ambos Kardex) en **cada** guardado. Ahora solo cuenta lo que cambia de verdad: renombres → `_renombrarEnKardex()` (una escritura por Kardex); cambios reales de ACTIVO → ocultar/mostrar esa fila por nombre; la reconstrucción completa queda solo para altas.

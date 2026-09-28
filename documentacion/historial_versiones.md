@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.5m Altair (Push: reordenar antes de refrescar) — 2026-09-28 [PROD]
+
+### 🏬 Bodega (BDG)
+* El push a tiendas reordena el pedido (con `_SYNC` estable) y refresca el `IMPORTRANGE` al final; evita perder capturas del día.
+
+---
+
 ## ⚡ v1.7.5l Altair (Powerhouse en paralelo) — 2026-09-28 [PROD]
 
 ### 🏬 Bodega (BDG)
