@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.5n Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.5o Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -977,7 +977,7 @@ function _buildVista(key) {
     const maxCols = sheet.getMaxColumns();
     if (maxRows > 0 && maxCols > 0) {
       try {
-        sheet.getRange(1, 1, maxRows, maxCols).breakAtMerge();
+        sheet.getRange(1, 1, maxRows, maxCols).breakApart();
       } catch(e) {}
     }
   } else {
@@ -2218,7 +2218,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.5n";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.5o";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "Powerhouse más rápido: Andares y Mercado se actualizan en paralelo",
@@ -4836,7 +4836,7 @@ function _restaurarFila2AccionesLote(sheet, lastCol) {
   sheet.getRange(2, 1, 1, colCount).setBackground(C.cream);
 
   // A2:B2 - Etiqueta de acciones
-  try { sheet.getRange("A2:B2").breakAtMerge(); } catch(e) {}
+  try { sheet.getRange("A2:B2").breakApart(); } catch(e) {}
   sheet.getRange("A2:B2").merge()
     .setValue("⚠️ Acciones por lote:").setFontWeight("bold").setFontColor(C.dark)
     .setHorizontalAlignment("right").setVerticalAlignment("middle").setFontSize(9);
@@ -4939,7 +4939,7 @@ function _asegurarFormatoHeadersMaestro(maestroSheet) {
   if (lastCol < 1) return;
 
   // Banner principal en Fila 1 (merge limpio de 1 hasta lastCol)
-  try { sheet.getRange(1, 1, 1, sheet.getMaxColumns()).breakAtMerge(); } catch(e) {}
+  try { sheet.getRange(1, 1, 1, sheet.getMaxColumns()).breakApart(); } catch(e) {}
   sheet.getRange(1, 1, 1, lastCol).merge()
     .setValue("MISE — MAESTRO DE PRODUCTOS   |   La Crêpe Parisienne · Grupo MYT")
     .setBackground(C.dark).setFontColor("#FFFFFF").setFontWeight("bold")
@@ -5077,11 +5077,11 @@ function _actualizarBadgeEstadoSemana(sheet, key, actualizada) {
     const texto = actualizada ? `🟢 SEMANA ${sem} ACTUALIZADA (${fechaStr})` : `⏳ SEMANA ${sem} PENDIENTE DE AVANZAR`;
     
     // Descombinar previamente L2:P2 para asegurar que no colisione con merges previos
-    try { sheet.getRange(2, 12, 1, 5).breakAtMerge(); } catch(e) {}
+    try { sheet.getRange(2, 12, 1, 5).breakApart(); } catch(e) {}
 
     // Descombinar y acortar el banner principal de la fila 2 para dar espacio al badge en L2:P2
     try {
-      sheet.getRange(2, 4, 1, 27).breakAtMerge();
+      sheet.getRange(2, 4, 1, 27).breakApart();
       sheet.getRange(2, 4, 1, 8).merge()
         .setValue(`MISE — KARDEX ${BODEGAS[key].nombre}   |   La Crêpe Parisienne`)
         .setBackground(C.dark).setFontColor("#FFFFFF").setFontWeight("bold")

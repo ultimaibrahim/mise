@@ -33,6 +33,10 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.5o Altair — Badge de Semana Visible (método inexistente) (Septiembre 2026) [PROD]
+* **Bug heredado (desde 1.6.2a): el badge de semana del Kardex nunca se pintaba**. `_actualizarBadgeEstadoSemana`, `_buildVista` y otras 3 rutinas llamaban `Range.breakAtMerge()`, que **no existe** en Apps Script (el método es `breakApart()`). Al estar en `try/catch`, fallaba en silencio: las combinaciones previas de la fila 2 no se deshacían y la combinación `L2:P2` del badge chocaba con el título original, error también silenciado. 5 reemplazos por `breakApart()`.
+* **Testing**: el emulador tenía un `breakAtMerge` falso que ocultaba el bug (eliminado). Nueva suite `tests/suites/metodos.test.js` con una lista de métodos inexistentes conocidos que falla si aparecen en `bdg/`, `pda/` o `pdm/`.
+
 ### Version 1.7.5n Altair — onOpen Instalable: Ambos Kardex Avanzan al Abrir (Septiembre 2026) [PROD]
 * **Bug: KARDEX_BM no avanzaba solo** (sí BA): el avance al abrir corría en el `onOpen` simple (límite de 30 s) con tope de 18 s desde 1.7.5b; Andares consumía el tiempo y Mercado quedaba "para la siguiente apertura". Además, `_actualizarBadgeEstadoSemana` se llamaba con `true` aunque la bodega no hubiera avanzado, así que BM mostraba "🟢 SEMANA ACTUALIZADA" estando atrasada.
 * **`onOpenBodegaInstalable`**: activador `onOpen` instalable (6 min, permisos completos) creado por `_reiniciarActivadoresBDG` / `🚀 Configurar`; ejecuta `_autoVerificarYAvanzarSemanaSilencioso` sin tope (ambos Kardex en la misma apertura) y prepara `📥 ENTRADAS` si falta. Con la propiedad `ONOPEN_INSTALABLE = "1"`, el `onOpen` simple omite ese trabajo; sin ella, conserva el respaldo con tope.

@@ -23,6 +23,13 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.5o Altair — El Aviso de Semana del Kardex Ahora Sí Aparece (Septiembre 2026) [PROD]
+
+* 🏷️ **Indicador de semana visible**:  
+  El aviso en la parte superior de cada Kardex ("🟢 SEMANA XX ACTUALIZADA" o "⏳ PENDIENTE DE AVANZAR") no se mostraba por un error antiguo. Ya aparece a la derecha del título de cada inventario.
+
+---
+
 ## Versión 1.7.5n Altair — Andares y Mercado Cambian de Semana Juntos (Septiembre 2026) [PROD]
 
 * 📅 **El Kardex de Mercado ya avanza de semana solo**:  

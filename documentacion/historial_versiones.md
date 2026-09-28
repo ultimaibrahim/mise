@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.5o Altair (Badge visible) — 2026-09-28 [PROD]
+
+### 🏬 Bodega (BDG)
+* `breakAtMerge()` (inexistente) → `breakApart()` en 5 rutinas; el badge de semana del Kardex vuelve a pintarse. Suite de métodos inexistentes.
+
+---
+
 ## ⚡ v1.7.5n Altair (onOpen instalable) — 2026-09-28 [PROD]
 
 ### 🏬 Bodega (BDG)

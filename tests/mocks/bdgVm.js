@@ -19,7 +19,7 @@ function crearContextoBDG(opts = {}) {
   if (!rangeProto.merge)      rangeProto.merge = function() { return this; };
   if (!rangeProto.breakApart) rangeProto.breakApart = function() { return this; };
   if (!sheetProto.getMaxRows) sheetProto.getMaxRows = function() { return Math.max(this.getLastRow(), 200); };
-  ["setFontFamily", "breakAtMerge", "setFontStyle"].forEach(m => { if (!rangeProto[m]) rangeProto[m] = function() { return this; }; });
+  ["setFontFamily", "setFontStyle"].forEach(m => { if (!rangeProto[m]) rangeProto[m] = function() { return this; }; });
   ["clearConditionalFormatRules", "setConditionalFormatRules", "setHiddenGridlines", "showRows", "hideRows", "hideColumns", "showColumns"]
     .forEach(m => { if (!sheetProto[m]) sheetProto[m] = function() { return this; }; });
   if (!sheetProto.getConditionalFormatRules) sheetProto.getConditionalFormatRules = function() { return []; };

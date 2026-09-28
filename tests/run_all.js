@@ -13,6 +13,7 @@ const { runVistaTests } = require('./suites/vista.test');
 const { runNivel1Tests } = require('./suites/nivel1.test');
 const { runVersionTests } = require('./suites/version.test');
 const { runPowerhouseTests } = require('./suites/powerhouse.test');
+const { runMetodosTests } = require('./suites/metodos.test');
 const { execSync } = require('child_process');
 
 console.log("═════════════════════════════════════════════════════════════════");
@@ -36,6 +37,7 @@ try {
   runVistaTests();
   runNivel1Tests();
   runPowerhouseTests();
+  runMetodosTests();
   runVersionTests();
   runDevEnvTests();
 
