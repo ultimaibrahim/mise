@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.5n Altair (onOpen instalable) — 2026-09-28 [PROD]
+
+### 🏬 Bodega (BDG)
+* `onOpenBodegaInstalable` avanza ambos Kardex al abrir (sin el límite de 30 s); badge "PENDIENTE DE AVANZAR" cuando aplica.
+
+---
+
 ## ⚡ v1.7.5m Altair (Push: reordenar antes de refrescar) — 2026-09-28 [PROD]
 
 ### 🏬 Bodega (BDG)

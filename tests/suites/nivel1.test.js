@@ -61,9 +61,12 @@ function runNivel1Tests() {
     assert.strictEqual(r.borrados.length, 3, "Borra todos, incluidos duplicados y huérfanos");
     assert.strictEqual(sa.estado.vivos.length, 0, "No queda ninguno viejo");
     assert.deepStrictEqual(sa.estado.creados.map(t => t.h),
-      ["descontarSurtidoAutomatico", "ejecutarMantenimientoSemanalBDG", "onEditBodegaInstalable"], "Juego exacto");
+      ["descontarSurtidoAutomatico", "ejecutarMantenimientoSemanalBDG", "onEditBodegaInstalable", "onOpenBodegaInstalable"], "Juego exacto");
     assert.ok(sa.estado.creados[2].tipo.includes("onEdit()"), "onEdit instalable sobre el libro");
-    console.log("  ✓ Bodega: reinicio total deja descuento 23:00, mantenimiento dominical y onEdit instalable");
+    assert.ok(sa.estado.creados[3].tipo.includes("onOpen()"), "onOpen instalable sobre el libro");
+    assert.strictEqual(sandbox.PropertiesService.getScriptProperties().getProperty("ONOPEN_INSTALABLE"), "1", "Marca que existe el onOpen instalable");
+    sandbox.PropertiesService.getScriptProperties().setProperty("ONOPEN_INSTALABLE", ""); // no contaminar otras suites
+    console.log("  ✓ Bodega: reinicio total deja descuento 23:00, mantenimiento dominical, onEdit y onOpen instalables");
   }
 
   // 2. Tienda: reinicio total 00:00 + 04:00

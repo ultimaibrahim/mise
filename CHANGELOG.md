@@ -33,6 +33,13 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.5n Altair — onOpen Instalable: Ambos Kardex Avanzan al Abrir (Septiembre 2026) [PROD]
+* **Bug: KARDEX_BM no avanzaba solo** (sí BA): el avance al abrir corría en el `onOpen` simple (límite de 30 s) con tope de 18 s desde 1.7.5b; Andares consumía el tiempo y Mercado quedaba "para la siguiente apertura". Además, `_actualizarBadgeEstadoSemana` se llamaba con `true` aunque la bodega no hubiera avanzado, así que BM mostraba "🟢 SEMANA ACTUALIZADA" estando atrasada.
+* **`onOpenBodegaInstalable`**: activador `onOpen` instalable (6 min, permisos completos) creado por `_reiniciarActivadoresBDG` / `🚀 Configurar`; ejecuta `_autoVerificarYAvanzarSemanaSilencioso` sin tope (ambos Kardex en la misma apertura) y prepara `📥 ENTRADAS` si falta. Con la propiedad `ONOPEN_INSTALABLE = "1"`, el `onOpen` simple omite ese trabajo; sin ella, conserva el respaldo con tope.
+* **Badge honesto**: "🟢 SEMANA XX ACTUALIZADA" solo si la semana activa está al día; si no, "⏳ SEMANA XX PENDIENTE DE AVANZAR".
+* `ACTIVADORES_ESPERADOS_BDG` incluye `onOpenBodegaInstalable` (diagnóstico y Acerca de avisan si falta).
+* **Testing**: `semana.test.js` (badge pendiente, avance de ambos con el instalable) y `nivel1.test.js` (4 activadores).
+
 ### Version 1.7.5m Altair — Push a Tiendas: Reordenar antes de Refrescar el Enlace (Septiembre 2026) [PROD]
 * **Riesgo de pérdida de capturas introducido en 1.7.5g** (`sincronizarRemotamenteTiendasPush`): el push refrescaba `_SYNC!A4` (clear + `setFormula`) y **después** `_reordenarPedidoRemotoDirecto` leía los nombres del pedido (fórmulas hacia `_SYNC`) para conservar CANT. A PEDIR / RECIBIDA / ESTADO. Con el `IMPORTRANGE` recargando, los nombres podían leerse vacíos, todos los productos se trataban como nuevos y el pedido se reescribía sin las cantidades del día. Ahora el orden es: reordenar (lee capturas con `_SYNC` estable; las referencias `sr` se calculan con la VISTA fresca) → refrescar el enlace al final.
 * **Testing**: `nivel1.test.js` fija el orden "reordenar → refrescar".

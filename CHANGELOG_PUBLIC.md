@@ -23,6 +23,15 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.5n Altair — Andares y Mercado Cambian de Semana Juntos (Septiembre 2026) [PROD]
+
+* 📅 **El Kardex de Mercado ya avanza de semana solo**:  
+  Al abrir Bodega, el sistema pone al día los inventarios de ambas tiendas en la misma apertura, sin tener que avanzar Mercado a mano.
+* 🏷️ **El aviso de semana dice la verdad**:  
+  Si alguna semana todavía no se ha avanzado, el encabezado lo indica como "pendiente" en lugar de mostrarla como actualizada.
+
+---
+
 ## Versión 1.7.5m Altair — Las Cantidades del Día se Conservan al Guardar en Powerhouse (Septiembre 2026) [PROD]
 
 * 🛡️ **Guardar cambios en Bodega ya no arriesga el pedido de las tiendas**:  

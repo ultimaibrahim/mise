@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.5m Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.5n Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -149,9 +149,13 @@ const C = {
 function onOpen() {
   try {
     migrarEstructuraMaestro13Cols();
-    _autoVerificarYAvanzarSemanaSilencioso(true, 18000);
-    _ensureTriggersBDG();
-    if (!SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_ENTRADAS)) _prepararHojaEntradas();
+    // Con onOpen instalable (🚀 Configurar), el avance de semana y la hoja de Entradas se hacen allí
+    // con 6 min y permisos completos. Sin él (libro no configurado), respaldo con tope de 18 s.
+    if (PropertiesService.getScriptProperties().getProperty("ONOPEN_INSTALABLE") !== "1") {
+      _autoVerificarYAvanzarSemanaSilencioso(true, 18000);
+      _ensureTriggersBDG();
+      if (!SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_ENTRADAS)) _prepararHojaEntradas();
+    }
   } catch(e) {}
   try {
     const ui = SpreadsheetApp.getUi();
@@ -2214,7 +2218,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.5m";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.5n";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "Powerhouse más rápido: Andares y Mercado se actualizan en paralelo",
@@ -2222,7 +2226,7 @@ const MISE_NOVEDADES = [
   "Hoja 📥 ENTRADAS para registrar mercancía desde el celular",
   "Solo se descuenta lo que la tienda registró como recibido",
   "Picking y productos desactivados se aplican al producto correcto",
-  "Cambio de semana automático en ambos Kardex"
+  "Andares y Mercado cambian de semana juntos al abrir Bodega"
 ];
 
 function acercaDe() {
@@ -5036,7 +5040,8 @@ function _autoVerificarYAvanzarSemanaSilencioso(silent = true, presupuestoMs = n
         nextMondayTime = d4Midnight.getTime() + 7 * 24 * 60 * 60 * 1000;
         detalles.push(`${bodega.nombre}: Semana ${semAnterior} ➔ ${_fmt(d4)}`);
       }
-      _actualizarBadgeEstadoSemana(sheet, key, true);
+      const alDia = !(hoy.getTime() >= nextMondayTime - 2 * 60 * 60 * 1000);
+      _actualizarBadgeEstadoSemana(sheet, key, alDia);
     });
 
     // Si hubo avances de semana, reconstruir vistas móviles
@@ -5069,7 +5074,7 @@ function _actualizarBadgeEstadoSemana(sheet, key, actualizada) {
     const d4 = sheet.getRange("G4").getValue();
     const sem = sheet.getRange("E4").getValue() || _isoWeek(d4 instanceof Date ? d4 : new Date());
     const fechaStr = d4 instanceof Date ? _fmt(d4) : "";
-    const texto = actualizada ? `🟢 SEMANA ${sem} ACTUALIZADA (${fechaStr})` : `⚠️ SEMANA ${sem} REVISAR`;
+    const texto = actualizada ? `🟢 SEMANA ${sem} ACTUALIZADA (${fechaStr})` : `⏳ SEMANA ${sem} PENDIENTE DE AVANZAR`;
     
     // Descombinar previamente L2:P2 para asegurar que no colisione con merges previos
     try { sheet.getRange(2, 12, 1, 5).breakAtMerge(); } catch(e) {}
@@ -5295,7 +5300,7 @@ function registrarMovimientoRapidoKardex(payload) {
 // ── 🩺 DIAGNÓSTICO DE ACTIVADORES ─────────────────────────────────────────────
 // Apps Script no expone la hora programada de un activador; se listan función, tipo y id.
 // Solo aparecen los activadores instalados por la cuenta que ejecuta el diagnóstico.
-const ACTIVADORES_ESPERADOS_BDG = ["descontarSurtidoAutomatico", "ejecutarMantenimientoSemanalBDG", "onEditBodegaInstalable"];
+const ACTIVADORES_ESPERADOS_BDG = ["descontarSurtidoAutomatico", "ejecutarMantenimientoSemanalBDG", "onEditBodegaInstalable", "onOpenBodegaInstalable"];
 
 function diagnosticarActivadores() {
   const trig = ScriptApp.getProjectTriggers();
@@ -6217,7 +6222,11 @@ function _reiniciarActivadoresBDG() {
     .onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(23).create();
   // onEdit INSTALABLE: corre con los permisos de quien lo instaló → puede empujar cambios a las tiendas
   ScriptApp.newTrigger("onEditBodegaInstalable").forSpreadsheet(ss).onEdit().create();
-  const creados = ["descontarSurtidoAutomatico (diario 23:00)", "ejecutarMantenimientoSemanalBDG (domingo 23:00)", "onEditBodegaInstalable (al editar)"];
+  // onOpen INSTALABLE: avance de semana de ambos Kardex al abrir, con 6 min y permisos completos
+  ScriptApp.newTrigger("onOpenBodegaInstalable").forSpreadsheet(ss).onOpen().create();
+  PropertiesService.getScriptProperties().setProperty("ONOPEN_INSTALABLE", "1");
+  const creados = ["descontarSurtidoAutomatico (diario 23:00)", "ejecutarMantenimientoSemanalBDG (domingo 23:00)",
+                   "onEditBodegaInstalable (al editar)", "onOpenBodegaInstalable (al abrir)"];
   MiseLogger.info("_reiniciarActivadoresBDG", `Borrados (${borrados.length}): [${borrados.join(", ")}]. Creados: ${creados.join(", ")}.`);
   return { borrados, creados };
 }
@@ -6227,6 +6236,17 @@ function instalarActivadoresNocturnosBDG() {
   SpreadsheetApp.getUi().alert("⏰ Activadores Reiniciados",
     `Se borraron ${r.borrados.length} activador(es) previos:\n${r.borrados.join("\n") || "(ninguno)"}\n\nQuedaron exactamente:\n• ${r.creados.join("\n• ")}`,
     SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+// onOpen INSTALABLE: al abrir Bodega pone al día AMBOS Kardex (sin el límite de 30 s del simple)
+function onOpenBodegaInstalable(e) {
+  try {
+    const n = _autoVerificarYAvanzarSemanaSilencioso(true);
+    if (n > 0) MiseLogger.info("onOpenBodegaInstalable", `Semana avanzada al abrir: ${n} bodega(s).`);
+    if (!SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_ENTRADAS)) _prepararHojaEntradas();
+  } catch (err) {
+    MiseLogger.error("onOpenBodegaInstalable", err.message, err);
+  }
 }
 
 // Carril rápido con permisos completos: al cambiar ACTIVO en MAESTRO, empuja a las tiendas al instante.

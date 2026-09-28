@@ -77,10 +77,27 @@ function runSemanaTests() {
     assert.strictEqual(g4("KARDEX_BA"), lunesPasado.getTime() + semana, "BA avanzó");
     assert.strictEqual(g4("KARDEX_BM"), lunesPasado.getTime(), "BM intacta, sin estado a medias");
     assert.ok(!ctx.ss.getSheetByName("HISTORIAL_BM"), "BM no debe archivar historial parcial");
+    assert.ok(/PENDIENTE DE AVANZAR/.test(ctx.ss.getSheetByName("KARDEX_BM").getRange(2, 12).getValue()),
+      "El badge de BM NO dice ACTUALIZADA si no avanzó");
+    assert.ok(/ACTUALIZADA/.test(ctx.ss.getSheetByName("KARDEX_BA").getRange(2, 12).getValue()), "BA sí dice ACTUALIZADA");
     // Siguiente corrida sin límite: BM se pone al día
     assert.strictEqual(ctx.sandbox._autoVerificarYAvanzarSemanaSilencioso(true), 1, "BM avanza en la siguiente corrida");
     assert.strictEqual(g4("KARDEX_BM"), lunesPasado.getTime() + semana, "BM al día");
-    console.log("  ✓ Presupuesto de onOpen: BM no queda a medias y se pone al día en la siguiente corrida");
+    console.log("  ✓ Presupuesto de onOpen: BM no queda a medias, su badge avisa y se pone al día en la siguiente corrida");
+  }
+
+  // 4. onOpen INSTALABLE (sin tope de 30 s): pone al día AMBOS Kardex de una vez
+  {
+    const lock = { held: false, libre: true };
+    const { ctx, VMDate, lunesPasado, g4, semana } = _escenario(lock);
+    let reloj = 0;
+    const nowReal = VMDate.now;
+    VMDate.now = () => (reloj += 10000); // aunque cada paso "tarde", el instalable no tiene tope
+    ctx.sandbox.onOpenBodegaInstalable({});
+    VMDate.now = nowReal;
+    assert.strictEqual(g4("KARDEX_BA"), lunesPasado.getTime() + semana, "BA avanzó");
+    assert.strictEqual(g4("KARDEX_BM"), lunesPasado.getTime() + semana, "BM avanzó en la misma apertura");
+    console.log("  ✓ onOpen instalable: Andares y Mercado avanzan en la misma apertura");
   }
 }
 
