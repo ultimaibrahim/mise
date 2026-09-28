@@ -1,5 +1,5 @@
 /**
- * MISE — Pedidos Mercado Script v1.7.5h Altair (Configuración en un Clic · Picking y Colores por Producto · Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Pedidos Mercado Script v1.7.5i Altair (Configuración en un Clic · Picking y Colores por Producto · Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Pedidos Mercado (Google Sheets de B-Mercado)
@@ -1928,14 +1928,22 @@ function instalarActivadoresMedianochePDM() {
     SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
+// Abre un libro desde una URL en cualquier formato (/u/0/, ?usp=, #gid=) o desde su ID pelón.
+// IMPORTRANGE es tolerante con el formato; openByUrl no, así que se extrae el ID y se usa openById.
+function _abrirLibro(ref) {
+  const txt = String(ref || "").trim();
+  const m = txt.match(/\/d\/([a-zA-Z0-9_-]{20,})/);
+  return SpreadsheetApp.openById(m ? m[1] : txt);
+}
+
 // ── 🔗 CONEXIÓN CON BODEGA (a qué libro apunta, por NOMBRE, y si _SYNC está vivo) ──────────
 function _diagnosticarConexionTienda() {
   const props = PropertiesService.getScriptProperties();
   const url = props.getProperty(`BODEGA_URL_${BODEGA_KEY}`);
   if (!url) return { ok: false, linea: `❌ Sin BODEGA_URL_${BODEGA_KEY} configurada` };
   let nombre = "";
-  try { nombre = SpreadsheetApp.openByUrl(url).getName(); }
-  catch (err) { return { ok: false, linea: "❌ No se pudo abrir el libro de Bodega configurado" }; }
+  try { nombre = _abrirLibro(url).getName(); }
+  catch (err) { return { ok: false, linea: `❌ No se pudo abrir Bodega (${url.substring(0, 60)}…): ${err.message}` }; }
   const sospechoso = /prueba|domingo|copia|staging|\[dev\]/i.test(nombre) && props.getProperty("MISE_ENV") !== "DEV";
   const sync = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_SYNC);
   const vivo = sync && /IMPORTRANGE/i.test(sync.getRange(4, 1).getFormula());
@@ -2051,7 +2059,7 @@ function registrarTraspasoTiendaRPC(payload) {
       try { bdgSs = SpreadsheetApp.openById(bdgId); } catch(e) {}
     }
     if (!bdgSs && bdgUrl) {
-      try { bdgSs = SpreadsheetApp.openByUrl(bdgUrl); } catch(e) {}
+      try { bdgSs = _abrirLibro(bdgUrl); } catch(e) {}
     }
 
     if (!bdgSs) {

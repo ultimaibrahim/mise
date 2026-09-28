@@ -30,6 +30,25 @@ function scriptAppGrabador(existentes) {
   };
 }
 
+function _pruebaAbrirLibro() {
+  // 4. Conexión tienda → Bodega con URL en formatos que openByUrl rechaza
+  const ID = "1bQR0TJUqY9jmtapblMiGY-FKCAB6xfLz535BLRgC_IY";
+  ["https://docs.google.com/spreadsheets/u/0/d/" + ID + "/edit?usp=drivesdk#gid=0",
+   "https://docs.google.com/spreadsheets/d/" + ID + "/edit",
+   ID].forEach(ref => {
+    const { sandbox, ss } = crearContextoTienda("pda", "miseAuthPDA.js", { BODEGA_URL_BA: ref });
+    let pedido = null;
+    sandbox.SpreadsheetApp.openById = (id) => { pedido = id; return { getName: () => "(at) | mise - Bodegas" }; };
+    const sync = ss.insertSheet("_SYNC_BA");
+    const rp = Object.getPrototypeOf(sync.getRange(1, 1));
+    rp.getFormula = function() { return '=IMPORTRANGE("x", "VISTA_MOVIL_BA!A4:L")'; };
+    const r = sandbox._diagnosticarConexionTienda();
+    assert.strictEqual(pedido, ID, `Extrae el ID de: ${ref.substring(0, 50)}`);
+    assert.ok(r.ok && r.linea.includes("(at) | mise - Bodegas"), "Conexión correcta por nombre");
+  });
+  console.log("  ✓ Tienda abre Bodega desde URL con /u/0/, parámetros, #gid o ID pelón");
+}
+
 function runNivel1Tests() {
   console.log("\n🧪 [TEST SUITE] Nivel 1 — activadores, enlace vivo con Bodega y configuración en un clic");
 
@@ -87,6 +106,8 @@ function runNivel1Tests() {
     sandbox.PropertiesService.getScriptProperties().setProperty("PDA_SPREADSHEET_ID", ""); // no contaminar otras suites
     console.log("  ✓ Push de Bodega refresca el IMPORTRANGE y des-congela un _SYNC con valores fijos");
   }
+
+  _pruebaAbrirLibro();
 }
 
 module.exports = { runNivel1Tests };

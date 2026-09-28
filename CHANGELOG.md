@@ -33,6 +33,11 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.5i Altair — Apertura de Libros Tolerante y Entradas Táctil (Septiembre 2026) [PROD]
+* **Fix diagnóstico de conexión en tiendas**: `openByUrl` rechaza URLs que `IMPORTRANGE` sí acepta (`/u/0/`, `?usp=`, `#gid=`); el diagnóstico reportaba "No se pudo abrir el libro de Bodega" aunque el enlace funcionaba. Nuevo `_abrirLibro(ref)` (BDG, PDA, PDM) extrae el ID de cualquier formato y usa `openById`; el mensaje de error ahora incluye la causa real. Aplicado también a traspasos (tienda → Bodega), descuento nocturno y push (Bodega → tiendas).
+* **`📥 ENTRADAS` táctil**: PRODUCTO 205 px con ajuste de texto y fuente 11, UNIDAD 40 px (2–3 caracteres), cantidades 72 px con fuente 12, filas de 38 px; los anchos se actualizan también en hojas ya creadas.
+* **Testing**: formatos de URL en `nivel1.test.js`.
+
 ### Version 1.7.5h Altair — Hotfix: Celdas Combinadas vs Columnas Congeladas (Septiembre 2026) [PROD]
 * **Hotfix `🚚 SURTIDO RÁPIDO` (`pda`, `pdm`)**: el encabezado combinaba `D1:H1`/`D2:H2` y la hoja congela `A:D`; Google rechaza congelar columnas que corten una celda combinada ("No se pueden inmovilizar columnas que solo contengan parte de una celda combinada"). La migración a esquema 2 falló en producción al regenerar el Surtido (respaldos intactos; queda pendiente de reintento). Ahora el encabezado se parte exactamente en la frontera (`A1:D1` | `E1:H1`, `A2:D2` | `E2:H2`) y antes se descongela y se deshacen las combinaciones del diseño previo (`breakApart`).
 * **Hotfix `📥 ENTRADAS` (`bdg`)**: mismo conflicto (`A1:D1`/`A3:D3` combinadas con la columna A congelada). Solo se congelan filas; anchos ajustados a 390 px. Si una hoja quedó a medias por un intento previo, se reconstruye el encabezado completo.

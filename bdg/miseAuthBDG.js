@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.5h Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.5i Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -46,6 +46,13 @@ function _colToLetter(col) {
     temp = Math.floor((temp - rem) / 26);
   }
   return letter;
+}
+
+// Abre un libro desde una URL en cualquier formato (/u/0/, ?usp=, #gid=) o desde su ID pelón
+function _abrirLibro(ref) {
+  const txt = String(ref || "").trim();
+  const m = txt.match(/\/d\/([a-zA-Z0-9_-]{20,})/);
+  return SpreadsheetApp.openById(m ? m[1] : txt);
 }
 
 // Mapa NOMBRE (mayúsculas) → fila, para enlazar MAESTRO ↔ KARDEX por producto y no por posición
@@ -4512,7 +4519,7 @@ function sincronizarRemotamenteTiendasPush(sourceKey = null, sourceRankMap = nul
           try { targetSs = SpreadsheetApp.openById(t.id); } catch(err) {}
         }
         if (!targetSs && t.url) {
-          try { targetSs = SpreadsheetApp.openByUrl(t.url); } catch(err) {}
+          try { targetSs = _abrirLibro(t.url); } catch(err) {}
         }
 
         const vistaSheet = ss.getSheetByName(t.vistaName);
@@ -5332,11 +5339,14 @@ function _prepararHojaEntradas(keepQty = false) {
     // Solo filas congeladas: los títulos combinados A:D impiden congelar columnas, y las 4 columnas
     // caben en el ancho de un celular (≈ 390 px) sin desplazamiento horizontal.
     sheet.setFrozenRows(4);
-    sheet.setColumnWidth(1, 170);
-    sheet.setColumnWidth(2, 50);
-    sheet.setColumnWidth(3, 85);
-    sheet.setColumnWidth(4, 85);
+    sheet.setColumnWidth(1, 205);  // PRODUCTO: más ancha, con ajuste de texto
+    sheet.setColumnWidth(2, 40);   // UNIDAD: 2–3 caracteres (kg, lt, pza)
+    sheet.setColumnWidth(3, 72);
+    sheet.setColumnWidth(4, 72);
   }
+
+  // Anchos al día también en hojas creadas por versiones previas
+  [[1, 205], [2, 40], [3, 72], [4, 72]].forEach(([c, w]) => sheet.setColumnWidth(c, w));
 
   // Selector de día (se refresca siempre para reflejar las fechas de la semana activa)
   const opts = _opcionesDiaEntradas(_lunesSemanaActivaKardex(ss));
@@ -5353,7 +5363,10 @@ function _prepararHojaEntradas(keepQty = false) {
       const base = i % 2 === 0 ? C.rowA : C.rowB;
       return [base, base, C.entBg, C.entBg];
     }));
-    sheet.getRange(ENTRADAS_START, 2, prods.length, 1).setHorizontalAlignment("center").setFontColor("#757575");
+    sheet.getRange(ENTRADAS_START, 1, prods.length, 1).setWrap(true).setFontSize(11).setVerticalAlignment("middle");
+    sheet.getRange(ENTRADAS_START, 2, prods.length, 1).setHorizontalAlignment("center").setFontColor("#757575").setFontSize(9);
+    sheet.getRange(ENTRADAS_START, 3, prods.length, 2).setFontSize(12).setVerticalAlignment("middle");
+    sheet.setRowHeights(ENTRADAS_START, prods.length, 38); // filas altas: objetivo táctil cómodo en celular
     sheet.getRange(ENTRADAS_START, 3, prods.length, 2).setNumberFormat("0.####").setHorizontalAlignment("center");
   }
 

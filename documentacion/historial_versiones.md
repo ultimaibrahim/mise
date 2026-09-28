@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.5i Altair (Apertura tolerante y Entradas táctil) — 2026-09-28 [PROD]
+
+### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* `_abrirLibro()` acepta cualquier formato de URL o ID; diagnóstico con causa real. `📥 ENTRADAS` con filas altas y columnas ajustadas.
+
+---
+
 ## ⚡ v1.7.5h Altair (Hotfix celdas combinadas) — 2026-09-28 [PROD]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)

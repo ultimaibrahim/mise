@@ -195,7 +195,7 @@ const MiseSmartSync = {
           try { remoteSs = SpreadsheetApp.openById(storeId); } catch(e) {}
         }
         if (!remoteSs && storeUrl) {
-          try { remoteSs = SpreadsheetApp.openByUrl(storeUrl); } catch(e) {}
+          try { remoteSs = _abrirLibro(storeUrl); } catch(e) {}
         }
 
         // A. Leer pedidos directamente de 📋 PEDIDO DIARIO de la tienda remota
