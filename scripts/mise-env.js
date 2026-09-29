@@ -14,6 +14,7 @@
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
+const { build: buildTiendas } = require("./build-tienda");
 
 const ROOT = path.join(__dirname, "..");
 const CONFIG_PATH = path.join(__dirname, "mise-env.config.json");
@@ -118,6 +119,7 @@ function miseDevReapuntarFormulasManualmente() {
 }
 
 function gen(cfg) {
+  buildTiendas(); // pda/ y pdm/ se generan desde la fuente única tienda/
   Object.entries(PROYECTOS).forEach(([k, dir]) => {
     const abs = path.join(ROOT, dir);
     fs.writeFileSync(path.join(abs, ".claspignore"), IGNORE_PROD.join("\n") + "\n");
@@ -173,6 +175,7 @@ function verificarContenedores(cfg, env) {
 }
 
 function push(cfg, env, solo) {
+  buildTiendas(); // nunca subir copias de tienda desactualizadas
   if (env === "dev") {
     gen(cfg);
     const faltan = Object.keys(PROYECTOS).filter(k => !cfg.dev[k].scriptId);

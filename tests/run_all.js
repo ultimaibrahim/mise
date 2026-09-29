@@ -14,7 +14,9 @@ const { runNivel1Tests } = require('./suites/nivel1.test');
 const { runVersionTests } = require('./suites/version.test');
 const { runPowerhouseTests } = require('./suites/powerhouse.test');
 const { runMetodosTests } = require('./suites/metodos.test');
+const { runTiendaUnicaTests } = require('./suites/tienda_unica.test');
 const { execSync } = require('child_process');
+require('../scripts/build-tienda').build(); // pda/ y pdm/ se generan desde tienda/
 
 console.log("═════════════════════════════════════════════════════════════════");
 console.log("🚀 SUITE MISE · RUNNER DE PRUEBAS AUTOMATIZADAS & TELEMETRÍA");
@@ -38,6 +40,7 @@ try {
   runNivel1Tests();
   runPowerhouseTests();
   runMetodosTests();
+  runTiendaUnicaTests();
   runVersionTests();
   runDevEnvTests();
 

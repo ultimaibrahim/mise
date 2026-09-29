@@ -16,7 +16,7 @@ const INEXISTENTES = {
 function runMetodosTests() {
   console.log("\n🧪 [TEST SUITE] Métodos inexistentes en Apps Script (fallan en silencio dentro de try/catch)");
   const root = path.join(__dirname, "..", "..");
-  ["bdg", "pda", "pdm"].forEach(dir => {
+  ["bdg", "tienda", "pda", "pdm"].forEach(dir => {
     fs.readdirSync(path.join(root, dir)).filter(f => /\.(js|html)$/.test(f) && f !== "MiseDevEnv.js").forEach(f => {
       const src = fs.readFileSync(path.join(root, dir, f), "utf8");
       Object.keys(INEXISTENTES).forEach(m => {

@@ -14,3 +14,11 @@ dist/
 scripts/mise-env.config.json
 **/MiseDevEnv.js
 **/.clasp.dev.json
+
+# Tiendas GENERADAS desde la fuente única tienda/ (scripts/build-tienda.js) — no editar ni versionar
+pda/miseAuthPDA.js
+pda/TraspasoTiendaDialog.html
+pda/appsscript.json
+pdm/miseAuthPDM.js
+pdm/TraspasoTiendaDialog.html
+pdm/appsscript.json

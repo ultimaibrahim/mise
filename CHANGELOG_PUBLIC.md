@@ -23,6 +23,13 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6b Altair — Andares y Mercado, Siempre Iguales por Dentro (Septiembre 2026) [EN PRUEBAS]
+
+* 🧬 **Un solo sistema para las dos tiendas**:  
+  Andares y Mercado ahora funcionan con exactamente el mismo sistema interno. Cada mejora o corrección llega a las dos al mismo tiempo y ya no pueden comportarse distinto, como llegó a pasar con el registro de surtido.
+
+---
+
 ## Versión 1.7.6a Altair — Entradas Más Seguras y Bodega Más Simple (Septiembre 2026) [EN PRUEBAS]
 
 * 📥 **Cada tienda con su propia semana en Entradas**:  

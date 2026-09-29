@@ -1,14 +1,18 @@
 /**
- * MISE — Pedidos Mercado Script v1.7.6a Altair (Configuración en un Clic · Picking y Colores por Producto · Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Pedidos Tienda · FUENTE ÚNICA de Andares (PDA) y Mercado (PDM)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
- * INSTALAR EN: Pedidos Mercado (Google Sheets de B-Mercado)
+ * Este es el ÚNICO archivo que se edita para las tiendas. scripts/build-tienda.js genera
+ * pda/miseAuthPDA.js y pdm/miseAuthPDM.js (gitignored) con su cabecera y MISE_SUCURSAL_DEFAULT.
+ * La sucursal real la deciden las Propiedades del Script (BODEGA_KEY / BODEGA_NOMBRE).
+ * SUBTITULO: Configuración en un Clic · Picking y Colores por Producto · Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico
  */
 
 // ── BODEGA & CONFIGURACIÓN DINÁMICA DE ENTORNO ──────────────────────────────
 const props = PropertiesService.getScriptProperties();
-const BODEGA_KEY    = props.getProperty("BODEGA_KEY") || "BM";
-const BODEGA_NOMBRE = props.getProperty("BODEGA_NOMBRE") || "Mercado";
+// MISE_SUCURSAL_DEFAULT lo inyecta el build por libro; solo aplica si faltan las propiedades
+const BODEGA_KEY    = props.getProperty("BODEGA_KEY") || MISE_SUCURSAL_DEFAULT.key;
+const BODEGA_NOMBRE = props.getProperty("BODEGA_NOMBRE") || MISE_SUCURSAL_DEFAULT.nombre;
 const VISTA_MOVIL   = `VISTA_MOVIL_${BODEGA_KEY}`;
 const SHEET_SYNC    = `_SYNC_${BODEGA_KEY}`;
 
@@ -67,7 +71,7 @@ function onOpen() {
       .addSubMenu(ui.createMenu("⚠️ Mantenimiento Avanzado y Zona de Riesgo")
         .addSubMenu(ui.createMenu("🚨 Reseteo y Cierre Manual")
           .addItem("🗑️ Limpiar / Reiniciar pedido de hoy", "resetearPedidoManualmente")
-          .addItem("⏰ Reiniciar activadores (00:00 y 04:00)", "instalarActivadoresMedianochePDM"))
+          .addItem("⏰ Reiniciar activadores (00:00 y 04:00)", "instalarActivadoresTienda"))
         .addSubMenu(ui.createMenu("🔒 Blindaje y Permisos")
           .addItem("🔒 Proteger Pedido Diario", "protegerPedidoSeguro")
           .addItem("🛡️ Blindar Pedido y Surtido (Total)", "protegerTodasLasHojasTiendaSeguras"))
@@ -145,19 +149,7 @@ function _actualizarAvisoPedido() {
     const sr = 4 + i;
     const bg = i % 2 === 0 ? COLORS.neutral_a : COLORS.neutral_b;
 
-    outputGrid.push([
-      i + 1,                                        // Col A (No)
-      '=' + sRef + '!B' + sr,                       // Col B (CATEGORÍA)
-      '=' + sRef + '!C' + sr,                       // Col C (PRODUCTO)
-      '=' + sRef + '!D' + sr,                       // Col D (UNIDAD)
-      '=IFERROR(' + sRef + '!E' + sr + '*1, 0) & IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "", IF(' + sRef + '!E' + sr + '<' + sRef + '!J' + sr + ', " (-" & (' + sRef + '!J' + sr + '-' + sRef + '!E' + sr + ') & ")", IF(' + sRef + '!E' + sr + '>' + sRef + '!K' + sr + ', " (+" & (' + sRef + '!E' + sr + '-' + sRef + '!K' + sr + ') & ")", " (-)")))', // Col E
-      "",                                           // Col F (CANT. A PEDIR)
-      '=IF(OR(F' + r + '="", H' + r + '=""), "", H' + r + ' - F' + r + ')', // Col G (DIFERENCIA)
-      "",                                           // Col H (RECIBIDA)
-      "",                                           // Col I (ESTADO)
-      "",                                           // Col J (ADICIÓN)
-      '=IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "—", ' + sRef + '!J' + sr + ' & "  |  " & ' + sRef + '!K' + sr + ')' // Col K (MÍN | MÁX QUIOSCO)
-    ]);
+    outputGrid.push(_filaPedido(r, sr, i + 1, {}));
 
     const rowBg = Array(NUM_COLS).fill(bg);
     rowBg[COL_CANT_PEDIR - 1] = COLORS.yellow; // Col F
@@ -607,19 +599,7 @@ function ordenarPedido() {
       cleanFonts.push(rowFont);
 
       // Generar fórmulas y valores limpios (Col G es DIFERENCIA, Col K es MÍN/MÁX QUIOSCO)
-      outputData.push([
-        prodNo,                                       // Col A (No)
-        '=' + sRef + '!B' + sr,                       // Col B (CATEGORÍA)
-        '=' + sRef + '!C' + sr,                       // Col C (PRODUCTO)
-        '=' + sRef + '!D' + sr,                       // Col D (UNIDAD)
-        '=IFERROR(' + sRef + '!E' + sr + '*1, 0) & IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "", IF(' + sRef + '!E' + sr + '<' + sRef + '!J' + sr + ', " (-" & (' + sRef + '!J' + sr + '-' + sRef + '!E' + sr + ') & ")", IF(' + sRef + '!E' + sr + '>' + sRef + '!K' + sr + ', " (+" & (' + sRef + '!E' + sr + '-' + sRef + '!K' + sr + ') & ")", " (-)")))', // Col E (SALDO TEÓRICO)
-        items[i].vals[5],                             // Col F (CANT. A PEDIR)
-        '=IF(OR(F' + r + '="", H' + r + '=""), "", H' + r + ' - F' + r + ')', // Col G (DIFERENCIA)
-        items[i].vals[7] === "" ? "" : items[i].vals[7], // Col H (CANT. RECIBIDA)
-        items[i].vals[8] || "",                       // Col I (ESTADO)
-        items[i].vals[9] || "",                       // Col J (ADICIÓN)
-        '=IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "—", ' + sRef + '!J' + sr + ' & "  |  " & ' + sRef + '!K' + sr + ')' // Col K (MÍN | MÁX QUIOSCO)
-      ]);
+      outputData.push(_filaPedido(r, sr, prodNo, { pedir: items[i].vals[5], recibida: items[i].vals[7], estado: items[i].vals[8], adicion: items[i].vals[9] }));
     }
 
     // Escribir en bloque
@@ -740,7 +720,7 @@ function _resetearPedidoSilencioso(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_PEDIDO);
   if (!sheet) return;
-
+  
   // Issue 6: Registrar evidencias en LOG_SURTIDO antes de vaciar las cantidades
   try { _registrarLogSurtidoDiario(ss, sheet); } catch(e) {}
 
@@ -972,7 +952,6 @@ function _reconstruirPedidoDiarioCore(backupData) {
   const orden = _ordenPickingSync(syncVals);
   const outputGrid = [];
   const cleanBgs = [];
-  const _v = (x) => (x !== "" && x !== null && x !== undefined) ? x : "";
 
   for (let i = 0; i < syncCount; i++) {
     const r = DR + i;
@@ -980,19 +959,7 @@ function _reconstruirPedidoDiarioCore(backupData) {
     const pName = String(syncVals[orden[i]][2] || "").trim();
     const b = (backupData && backupData[pName]) || {};
 
-    outputGrid.push([
-      i + 1,                                        // Col A (No)
-      '=' + sRef + '!B' + sr,                       // Col B (CATEGORÍA)
-      '=' + sRef + '!C' + sr,                       // Col C (PRODUCTO)
-      '=' + sRef + '!D' + sr,                       // Col D (UNIDAD)
-      '=IFERROR(' + sRef + '!E' + sr + '*1, 0) & IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "", IF(' + sRef + '!E' + sr + '<' + sRef + '!J' + sr + ', " (-" & (' + sRef + '!J' + sr + '-' + sRef + '!E' + sr + ') & ")", IF(' + sRef + '!E' + sr + '>' + sRef + '!K' + sr + ', " (+" & (' + sRef + '!E' + sr + '-' + sRef + '!K' + sr + ') & ")", " (-)")))', // Col E
-      _v(b.pedir),                                  // Col F (CANT. A PEDIR)
-      '=IF(OR(F' + r + '="", H' + r + '=""), "", H' + r + ' - F' + r + ')', // Col G (DIFERENCIA)
-      _v(b.recibida),                               // Col H (RECIBIDA)
-      _v(b.estado),                                 // Col I (ESTADO)
-      _v(b.adicion),                                // Col J (ADICIÓN)
-      '=IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "—", ' + sRef + '!J' + sr + ' & "  |  " & ' + sRef + '!K' + sr + ')' // Col K (MÍN | MÁX QUIOSCO)
-    ]);
+    outputGrid.push(_filaPedido(r, sr, i + 1, b));
 
     const rowBg = Array(NUM_COLS).fill(i % 2 === 0 ? COLORS.neutral_a : COLORS.neutral_b);
     rowBg[4] = COLORS.blue;                    // Col E (Saldo Teórico)
@@ -1011,6 +978,27 @@ function _reconstruirPedidoDiarioCore(backupData) {
   _protegerPedidoDiario(pedido, syncCount);
   SpreadsheetApp.flush();
   return syncCount;
+}
+
+// ÚNICO constructor de filas de 📋 PEDIDO DIARIO (A:K). Antes había 3 copias idénticas de estas fórmulas
+// (_actualizarAvisoPedido, ordenarPedido, _reconstruirPedidoDiarioCore): un cambio en una no llegaba a las otras.
+//   r = fila en PEDIDO · sr = fila de ESE producto en _SYNC · no = número · c = capturas {pedir, recibida, estado, adicion}
+function _filaPedido(r, sr, no, c) {
+  const S = "'" + SHEET_SYNC + "'!";
+  const v = (x) => (x !== "" && x !== null && x !== undefined) ? x : "";
+  return [
+    no,                                                            // A No
+    '=' + S + 'B' + sr,                                            // B CATEGORÍA
+    '=' + S + 'C' + sr,                                            // C PRODUCTO
+    '=' + S + 'D' + sr,                                            // D UNIDAD
+    '=IFERROR(' + S + 'E' + sr + '*1, 0) & IF(AND(' + S + 'J' + sr + '=0, ' + S + 'K' + sr + '=0), "", IF(' + S + 'E' + sr + '<' + S + 'J' + sr + ', " (-" & (' + S + 'J' + sr + '-' + S + 'E' + sr + ') & ")", IF(' + S + 'E' + sr + '>' + S + 'K' + sr + ', " (+" & (' + S + 'E' + sr + '-' + S + 'K' + sr + ') & ")", " (-)")))', // E SALDO
+    v(c.pedir),                                                    // F CANT. A PEDIR
+    '=IF(OR(F' + r + '="", H' + r + '=""), "", H' + r + ' - F' + r + ')', // G DIFERENCIA
+    v(c.recibida),                                                 // H RECIBIDA
+    v(c.estado),                                                   // I ESTADO
+    v(c.adicion),                                                  // J ADICIÓN
+    '=IF(AND(' + S + 'J' + sr + '=0, ' + S + 'K' + sr + '=0), "—", ' + S + 'J' + sr + ' & "  |  " & ' + S + 'K' + sr + ')' // K MÍN | MÁX
+  ];
 }
 
 // Índices de _SYNC ordenados como ordenarPedido(): PICKING (col L) → CATEGORÍA → No
@@ -1359,7 +1347,7 @@ function _aplicarFormatosCondicionales(sheet) {
   sheet.setConditionalFormatRules(rules);
 }
 
-const MISE_VERSION = "1.7.6a";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6b";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "Surtido Rápido: escribe lo recibido y la fila completa se pinta sola",
@@ -1959,7 +1947,7 @@ function _reiniciarActivadoresTienda() {
   return { borrados, creados };
 }
 
-function instalarActivadoresMedianochePDM() {
+function instalarActivadoresTienda() {
   const r = _reiniciarActivadoresTienda();
   SpreadsheetApp.getUi().alert("⏰ Activadores Reiniciados",
     `Se borraron ${r.borrados.length} activador(es) previos:\n${r.borrados.join("\n") || "(ninguno)"}\n\nQuedaron exactamente:\n• ${r.creados.join("\n• ")}`,
@@ -2117,6 +2105,7 @@ function registrarTraspasoTiendaRPC(payload) {
     };
 
     // 1. Ejecutar registro autoritativo en BDG mediante importación directa en libro
+    // Llamada atómica hacia la función global en BDG
     const res = bdgSs.getName() ? (function() {
       // Registrar fila en 🔄 TRASPASOS de BDG
       let traspasosSheet = bdgSs.getSheetByName("🔄 TRASPASOS");

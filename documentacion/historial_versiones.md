@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6b Altair (Fase 2: fuente única de tiendas) — 2026-09-28 [EN PRUEBAS · DEV]
+
+### 📱 Tiendas (PDA / PDM)
+* `tienda/miseTienda.js` como fuente única; `scripts/build-tienda.js` genera `pda/` y `pdm/`; `_filaPedido()` como constructor único de filas; instalador `instalarActivadoresTienda`.
+
+---
+
 ## ⚡ v1.7.6a Altair (Fase 1: Entradas por bodega, adiós Registro Rápido) — 2026-09-28 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG)

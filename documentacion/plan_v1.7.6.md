@@ -36,8 +36,8 @@
 
 ## Fase 2 — Limpieza y una sola fuente de verdad (1.7.6b–d)
 
-- [ ] **Un solo archivo de tienda**: `pda/miseAuthPDA.js` y `pdm/miseAuthPDM.js` difieren en 3 líneas. Crear `tienda/miseTienda.js` (la sucursal sale de `BODEGA_KEY`/`BODEGA_NOMBRE`) y que `mise-env.js` lo suba a ambos proyectos. Adiós a las divergencias (log de surtido, etc.).
-- [ ] **Un solo escritor de PEDIDO DIARIO**: hoy hay 4 (`_actualizarAvisoPedido`, `ordenarPedido`, `_reconstruirPedidoDiarioCore` y el escritor remoto de Bodega `_reordenarPedidoRemotoDirecto`). Unificar en `_escribirFilasPedido()`; el escritor remoto desaparece en la Fase 3.
+- [x] **Un solo archivo de tienda** *(1.7.6b: `tienda/miseTienda.js` + `scripts/build-tienda.js`)*: `pda/miseAuthPDA.js` y `pdm/miseAuthPDM.js` difieren en 3 líneas. Crear `tienda/miseTienda.js` (la sucursal sale de `BODEGA_KEY`/`BODEGA_NOMBRE`) y que `mise-env.js` lo suba a ambos proyectos. Adiós a las divergencias (log de surtido, etc.).
+- [~] **Un solo escritor de PEDIDO DIARIO** *(1.7.6b: `_filaPedido()` unifica las 3 copias de la tienda; falta el escritor remoto de Bodega → Fase 3)*: hoy hay 4 (`_actualizarAvisoPedido`, `ordenarPedido`, `_reconstruirPedidoDiarioCore` y el escritor remoto de Bodega `_reordenarPedidoRemotoDirecto`). Unificar en `_escribirFilasPedido()`; el escritor remoto desaparece en la Fase 3.
 - [ ] **Herramientas de desarrollo fuera de PROD**: mover a `MiseDevTools.js` (solo DEV vía `.claspignore`) — reconciliador del 7/sep, inyección de recuperación, datos aleatorios de prueba, forzar LOG, reconciliador de huérfanos; menús condicionados a `MISE_ENV`.
 - [ ] **Código muerto**: 9 funciones sin referencias en BDG y 4 en tiendas (lista en la sesión del 28/sep: `crearVistaMovilBA/BM` duplicadas, `runTests`, `limpiarProps`, `crearHojaCargaMasiva`, `crearHojaEdicionMasiva`, `abrirPowerhouse`, `obtenerProductosPickingHTML`, `_validarOAvanzarSemanaBDG`, `invalidarCache`, `instalarTriggers`, `desinstalarTriggers`, `avanzarSemanaInfo`). Confirmar con `grep` antes de borrar.
 - [ ] **Logs**: unificar `_log`, `registrarLog` y `MiseLogger` en `MiseLogger`.

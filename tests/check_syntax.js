@@ -8,6 +8,7 @@ const vm = require('vm');
 const filesToValidate = [
   'bdg/miseAuthBDG.js',
   'bdg/MiseKardexEngine.js',
+  'tienda/miseTienda.js',
   'pda/miseAuthPDA.js',
   'pdm/miseAuthPDM.js',
   'scripts/sheets_mirror_worker.js'
