@@ -153,7 +153,17 @@ function verificarContenedores(cfg, env) {
     if (scriptId !== cfg[env][k].scriptId) {
       throw new Error(`${k}: ${dir}/${claspFile} (${scriptId}) no coincide con la config ${env} (${cfg[env][k].scriptId}).`);
     }
-    const proj = JSON.parse(curl(`-H "Authorization: Bearer ${at}" https://script.googleapis.com/v1/projects/${scriptId}`));
+    // La API a veces responde vacío o con error pasajero: reintentar antes de concluir nada
+    let proj = {};
+    for (let intento = 1; intento <= 3; intento++) {
+      try { proj = JSON.parse(curl(`-H "Authorization: Bearer ${at}" https://script.googleapis.com/v1/projects/${scriptId}`)); } catch (e) { proj = {}; }
+      if (proj.parentId) break;
+      execSync("sleep 3");
+    }
+    if (!proj.parentId) {
+      throw new Error(`${k} ${env.toUpperCase()}: la API de Apps Script no respondió tras 3 intentos` +
+        (proj.error ? ` (${proj.error.status || proj.error.message})` : "") + `. Nada se subió; reintenta en un momento.`);
+    }
     if (proj.parentId !== cfg[env][k].sheetId) {
       throw new Error(`${k} ${env.toUpperCase()}: el script "${proj.title}" está vinculado al libro ${proj.parentId}, ` +
         `no al esperado ${cfg[env][k].sheetId}. Push abortado.`);
