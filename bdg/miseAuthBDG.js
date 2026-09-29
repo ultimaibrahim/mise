@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.5r Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.6a Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -190,7 +190,6 @@ function onOpen() {
         .addItem("⏩ Auto-verificar y avanzar semana ahora", "forzarAutoVerificarYAvanzarSemana"))
       // Gestión de Catálogo
       .addSubMenu(ui.createMenu("🛠️ Gestión de Catálogo")
-        .addItem("⚡ Registro rápido de movimientos (PC)", "abrirRegistroRapidoHTML")
         .addItem("🗑️ Eliminar productos seleccionados",    "eliminarSeleccionadosMaestro")
         .addItem("🧹 Eliminar productos duplicados",        "eliminarDuplicadosCatalogo"))
       .addSeparator()
@@ -2283,9 +2282,10 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.5r";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6a";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "📥 Entradas valida la semana de cada tienda por separado",
   "Powerhouse más rápido: Andares y Mercado se actualizan en paralelo",
   "Configurar este libro en un clic (🚀)",
   "Hoja 📥 ENTRADAS para registrar mercancía desde el celular",
@@ -5206,14 +5206,6 @@ function _ejecutarAvanzarSemanaSilencioso(key, sheet, d4) {
   }
 }
 
-// ── REGISTRO RÁPIDO DESDE PC (MODAL DE BÚSQUEDA RÁPIDA) ───────────────────────
-function abrirRegistroRapidoHTML() {
-  const html = HtmlService.createHtmlOutputFromFile('RegistroRapidoDialog')
-    .setWidth(650)
-    .setHeight(520);
-  SpreadsheetApp.getUi().showModalDialog(html, "⚡ Registro Rápido de Movimientos (PC)");
-}
-
 function abrirDialogoTraspasoBDGHTML() {
   const html = HtmlService.createHtmlOutputFromFile('TraspasoDialog')
     .setWidth(580)
@@ -5262,103 +5254,6 @@ function obtenerCatalogoParaTraspaso() {
   return prods;
 }
 
-function obtenerCatalogoKardexParaRegistro(key = "BA") {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const kName = BODEGAS[key] ? BODEGAS[key].kardex : BODEGAS.BA.kardex;
-  const sheet = ss.getSheetByName(kName);
-  if (!sheet) return [];
-  const lr = sheet.getLastRow();
-  if (lr < KARDEX_START) return [];
-
-  const data = sheet.getRange(KARDEX_START, 1, lr - KARDEX_START + 1, 30).getValues();
-  const hoy = new Date();
-  const dow = hoy.getDay() || 7; // 1 = Lun, 7 = Dom
-
-  const prods = [];
-  data.forEach((r, idx) => {
-    const no = r[0];
-    const cat = String(r[1] || '').trim();
-    const name = String(r[2] || '').trim();
-    const pres = String(r[3] || '').trim();
-    const unit = String(r[4] || '').trim();
-    const sldAnt = parseFloat(r[8]) || 0;
-    const sldFin = parseFloat(r[29]) || 0; // Col AD = 30 (index 29)
-
-    // Entradas y salidas de hoy
-    const entColIdx = 9 + (dow - 1) * 3; // Index 9 es ENT Lun (col 10)
-    const salColIdx = 10 + (dow - 1) * 3; // Index 10 es SAL Lun (col 11)
-    const entHoy = parseFloat(r[entColIdx]) || 0;
-    const salHoy = parseFloat(r[salColIdx]) || 0;
-
-    if (name && no) {
-      prods.push({
-        row: KARDEX_START + idx,
-        no: no,
-        cat: cat,
-        name: name,
-        pres: pres,
-        unit: unit,
-        sldAnt: sldAnt,
-        sldFin: sldFin,
-        entHoy: entHoy,
-        salHoy: salHoy
-      });
-    }
-  });
-
-  return prods;
-}
-
-function registrarMovimientoRapidoKardex(payload) {
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(10000)) {
-    throw new Error("El sistema está ocupado. Intenta nuevamente.");
-  }
-
-  try {
-    const { key, row, diaIndex, entVal, salVal } = payload;
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const kName = BODEGAS[key] ? BODEGAS[key].kardex : BODEGAS.BA.kardex;
-    const sheet = ss.getSheetByName(kName);
-    if (!sheet) throw new Error("No existe la hoja de KARDEX.");
-
-    const d = diaIndex !== undefined ? diaIndex : ((new Date().getDay() || 7) - 1);
-    const entCol = 10 + d * 3; // Col 10 = ENT Lun
-    const salCol = 11 + d * 3; // Col 11 = SAL Lun
-
-    // Actualizar ENT si viene en payload
-    if (entVal !== null && entVal !== undefined && entVal !== "") {
-      const numEnt = parseFloat(entVal);
-      if (!isNaN(numEnt) && numEnt >= 0) {
-        sheet.getRange(row, entCol).setValue(numEnt === 0 ? "" : numEnt);
-      }
-    }
-
-    // Actualizar SAL si viene en payload
-    if (salVal !== null && salVal !== undefined && salVal !== "") {
-      const numSal = parseFloat(salVal);
-      if (!isNaN(numSal) && numSal >= 0) {
-        sheet.getRange(row, salCol).setValue(numSal === 0 ? "" : numSal);
-      }
-    }
-
-    SpreadsheetApp.flush();
-
-    // Obtener saldo actualizado
-    const nuevoSld = sheet.getRange(row, KARDEX_SLD_FIN).getValue();
-    const prodName = sheet.getRange(row, 3).getValue();
-    _log("registrarMovimientoRapido", `${key} Row ${row} [${prodName}]: ENT=${entVal}, SAL=${salVal}`);
-
-    return {
-      success: true,
-      nuevoSaldo: nuevoSld,
-      mensaje: `Movimiento registrado en ${BODEGAS[key].nombre}`
-    };
-  } finally {
-    lock.releaseLock();
-  }
-}
-
 // ── 🩺 DIAGNÓSTICO DE ACTIVADORES ─────────────────────────────────────────────
 // Apps Script no expone la hora programada de un activador; se listan función, tipo y id.
 // Solo aparecen los activadores instalados por la cuenta que ejecuta el diagnóstico.
@@ -5397,10 +5292,11 @@ function prepararHojaEntradasManualmente() {
   SpreadsheetApp.getActive().toast("Hoja 📥 ENTRADAS lista para capturar desde el celular ✓", "⚙️ Mise", 5);
 }
 
-// Devuelve el lunes de la semana activa del Kardex (G4) a las 00:00
-function _lunesSemanaActivaKardex(ss) {
-  const kBA = ss.getSheetByName(BODEGAS.BA.kardex);
-  let monday = kBA ? kBA.getRange("G4").getValue() : null;
+// Devuelve el lunes de la semana activa del Kardex de una bodega (G4) a las 00:00.
+// Cada bodega tiene su propia semana: si una se atrasa, no puede arrastrar a la otra.
+function _lunesSemanaActivaKardex(ss, key = "BA") {
+  const k = ss.getSheetByName(BODEGAS[key].kardex);
+  let monday = k ? k.getRange("G4").getValue() : null;
   if (!monday || !(monday instanceof Date) || isNaN(monday.getTime())) {
     monday = _obtenerLunesSemanaActual();
   }
@@ -5536,19 +5432,25 @@ function _estadoEntradas(sheet, msg, tipo) {
   sheet.getRange("A3").setValue(msg).setBackground(c[0]).setFontColor(c[1]);
 }
 
-// Resuelve el índice de día (0 = LUN) a partir del selector; valida que HOY caiga en la semana activa
-function _resolverDiaEntradas(ss, seleccion) {
+// Resuelve el índice de día (0 = LUN) para UNA bodega a partir del selector.
+// HOY: valida que hoy caiga en la semana activa de ESA bodega. Día elegido: exige que esa bodega esté en la
+// misma semana que muestra el selector (la de Andares), para no escribir en la semana equivocada.
+function _resolverDiaEntradas(ss, seleccion, key = "BA") {
+  const nombre = BODEGAS[key].nombre;
   if (seleccion && seleccion !== ENTRADAS_HOY) {
     const idx = DIAS.indexOf(String(seleccion).substring(0, 3));
     if (idx === -1) throw new Error("Día no válido en B2. Elige uno de la lista.");
+    if (_lunesSemanaActivaKardex(ss, key).getTime() !== _lunesSemanaActivaKardex(ss, "BA").getTime()) {
+      throw new Error(`${nombre} está en otra semana que Andares. Avanza su semana antes de enviar.`);
+    }
     return idx;
   }
-  const monday = _lunesSemanaActivaKardex(ss);
+  const monday = _lunesSemanaActivaKardex(ss, key);
   const hoy = new Date();
   const hoyClean = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 0, 0, 0);
   const diff = Math.round((hoyClean.getTime() - monday.getTime()) / 86400000);
   if (diff < 0 || diff > 6) {
-    throw new Error("La semana activa del Kardex no incluye hoy. Avanza la semana antes de enviar.");
+    throw new Error(`La semana activa de ${nombre} no incluye hoy. Avanza la semana antes de enviar.`);
   }
   return diff;
 }
@@ -5570,8 +5472,7 @@ function procesarEntradasKardex() {
       _estadoEntradas(sheet, "No hay productos en la lista.", "error");
       return;
     }
-    const dIdx = _resolverDiaEntradas(ss, sheet.getRange("B2").getValue());
-    const entCol = 10 + dIdx * 3; // Col 10 = ENT LUN
+    const seleccionDia = sheet.getRange("B2").getValue();
 
     const rows = sheet.getRange(ENTRADAS_START, 1, lr - ENTRADAS_START + 1, 4).getValues();
     const pedidos = { BA: {}, BM: {} };
@@ -5606,6 +5507,12 @@ function procesarEntradasKardex() {
       return;
     }
 
+    // Día por bodega (cada una con su semana activa); cualquier bloqueo detiene todo el envío
+    const diaPorBodega = {};
+    Object.keys(pedidos).forEach(key => {
+      if (Object.keys(pedidos[key]).length) diaPorBodega[key] = _resolverDiaEntradas(ss, seleccionDia, key);
+    });
+
     // Validar que todos los productos existan en su Kardex antes de escribir (todo o nada)
     const planes = {};
     const faltantes = [];
@@ -5632,6 +5539,7 @@ function procesarEntradasKardex() {
     const resumen = [];
     Object.keys(planes).forEach(key => {
       const { kSheet, count, idxMap, nombres } = planes[key];
+      const entCol = 10 + diaPorBodega[key] * 3; // Col 10 = ENT LUN
       const rng = kSheet.getRange(KARDEX_START, entCol, count, 1);
       const vals = rng.getValues();
       nombres.forEach(n => {
@@ -5641,14 +5549,15 @@ function procesarEntradasKardex() {
       });
       rng.setValues(vals);
       resumen.push(`${BODEGAS[key].nombre} ${nombres.length}`);
-      _log("procesarEntradasKardex", `${BODEGAS[key].kardex} ENT ${DIAS[dIdx]}: ` +
+      _log("procesarEntradasKardex", `${BODEGAS[key].kardex} ENT ${DIAS[diaPorBodega[key]]}: ` +
         nombres.map(n => `${n}+${pedidos[key][n]}`).join(", "));
     });
 
     // Limpiar capturas y re-sincronizar la lista con el catálogo vigente
     _prepararHojaEntradas(false);
     const hora = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "HH:mm");
-    _estadoEntradas(sheet, `✅ ${capturadas} entrada(s) enviadas a ${DIAS[dIdx]} · ${hora} (${resumen.join(" · ")})`, "ok");
+    const dias = [...new Set(Object.values(diaPorBodega).map(d => DIAS[d]))].join("/");
+    _estadoEntradas(sheet, `✅ ${capturadas} entrada(s) enviadas a ${dias} · ${hora} (${resumen.join(" · ")})`, "ok");
   } catch (err) {
     MiseLogger.error("procesarEntradasKardex", err.message || String(err), err);
     _estadoEntradas(sheet, `❌ ${err.message || err}`, "error");

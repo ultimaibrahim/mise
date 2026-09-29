@@ -23,6 +23,15 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6a Altair — Entradas Más Seguras y Bodega Más Simple (Septiembre 2026) [EN PRUEBAS]
+
+* 📥 **Cada tienda con su propia semana en Entradas**:  
+  Si una tienda tuviera la semana atrasada, la hoja de Entradas ya no registra su mercancía en la semana equivocada: avisa cuál tienda hay que poner al día antes de enviar.
+* 🧹 **Se retira el Registro Rápido de PC**:  
+  La captura de entradas se hace desde la hoja 📥 ENTRADAS, pensada para el celular. El Registro Rápido se retiró porque podía sobrescribir movimientos ya registrados.
+
+---
+
 ## Versión 1.7.5r Altair — Mercado Avanza de Semana: Causa Real Encontrada (Septiembre 2026) [PROD]
 
 * 📅 **Se encontró y corrigió la causa real**:  

@@ -77,7 +77,7 @@ graph TD
    - Bitácora transaccional por lotes con reconstrucción en memoria RAM para evitar lecturas de rango repetidas en Google Sheets API (`Batch Operations`).
 2. **Matching Engine con Resolución Difusa (Fuzzy Matching)**:
    - Resuelve discrepancias ortográficas y de tecleo en nombres de insumos utilizando distancia de Levenshtein, N-Grams y token sort con caché L1 `O(1)`.
-3. **Quiosco de Picking y Registro Rápido**:
+3. **Quiosco de Picking y Entradas Móviles**:
    - Diálogos modales optimizados (1050x700px en escritorio y responsivos en móviles) para captura táctil ágil sin bloquear la navegación de la hoja.
 4. **Sincronización Asíncrona Idempotente**:
    - Trigger programado de conciliación nocturna con hashing de transacciones para garantizar deduplicación exacta.

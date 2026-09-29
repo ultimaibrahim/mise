@@ -1,6 +1,6 @@
 # 🗺️ Plan de Trabajo — Cierre v1.7.5 y Suite MISE v1.7.6 Altair
 **La Crêpe Parisienne · Grupo MYT** · Arquitectura: Ibrahim García (`ultimaibrahim`)
-**Creado**: 2026-09-28 · **Estado de partida**: PROD en `v1.7.5r` (BDG, PDA y PDM idénticos al repo), 55 pruebas en verde.
+**Creado**: 2026-09-28 · **Estado de partida**: PROD en `v1.7.5r` (se queda ahí hasta cerrar la Fase 0; la 1.7.6 se desarrolla en `feat/v1.7.6-altair` y se prueba en DEV) (BDG, PDA y PDM idénticos al repo), 55 pruebas en verde.
 
 > Cómo usar este plan: marcar `[x]` al cerrar cada punto (en el mismo commit que lo resuelve). Cada fase se libera como iteración con letra (`1.7.6a`, `b`, …) por el flujo `push:dev → pruebas → push:prod → verificar_prod`. La versión oficial `1.7.6` se consolida al terminar la Fase 3.
 
@@ -27,8 +27,8 @@
 
 ## Fase 1 — Bugs conocidos (1.7.6a) · prioridad alta, poco riesgo
 
-- [ ] **📥 ENTRADAS valida la semana solo contra `KARDEX_BA!G4`** (`_lunesSemanaActivaKardex`). Si Mercado va desfasada, sus entradas caen en la columna de otra semana (pasó hasta el 28/sep). → Validar y resolver el día **por bodega** y bloquear solo la bodega desfasada.
-- [ ] **⚡ Registro Rápido (PC) reemplaza ENT/SAL** (`registrarMovimientoRapidoKardex` usa `setValue`): si el descuento nocturno ya escribió SAL ese día, la pisa. → Decidir con Ibrahim: **sumar** (como Entradas) o **editar** con confirmación explícita.
+- [x] **📥 ENTRADAS valida la semana solo contra `KARDEX_BA!G4`** *(1.7.6a)* (`_lunesSemanaActivaKardex`). Si Mercado va desfasada, sus entradas caen en la columna de otra semana (pasó hasta el 28/sep). → Validar y resolver el día **por bodega** y bloquear solo la bodega desfasada.
+- [x] **⚡ Registro Rápido (PC) reemplaza ENT/SAL** *(1.7.6a: decisión de Ibrahim → función eliminada; Bodega pasa a mobile-first)* (`registrarMovimientoRapidoKardex` usa `setValue`): si el descuento nocturno ya escribió SAL ese día, la pisa. → Decidir con Ibrahim: **sumar** (como Entradas) o **editar** con confirmación explícita.
 - [ ] **Historial de Mercado, semanas 38–39**: quedó mezclado por el atasco (el bloque 38 trae dos semanas y el 39 salió vacío). → Solo documentar; el conteo del jueves reinicia saldos. Opcional: nota en `HISTORIAL_BM`.
 - [ ] Revisar `🗒 LOG` de la primera semana completa y convertir cada `WARN`/`ERROR` recurrente en un punto de esta fase.
 

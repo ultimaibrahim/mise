@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6a Altair (Fase 1: Entradas por bodega, adiós Registro Rápido) — 2026-09-28 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG)
+* `📥 ENTRADAS` valida la semana activa por bodega; se retira el Registro Rápido (PC) y su diálogo.
+
+---
+
 ## ⚡ v1.7.5r Altair (Error diferido del badge) — 2026-09-28 [PROD]
 
 ### 🏬 Bodega (BDG)

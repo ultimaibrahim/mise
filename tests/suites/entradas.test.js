@@ -75,14 +75,36 @@ function runEntradasTests() {
   assert.strictEqual(sh.getRange(K.ENTRADAS_START, 3).getValue(), 1, "Conserva lo capturado para corregir");
   console.log("  ✓ Validación todo-o-nada ante valores no numéricos");
 
+  // 4b. Mercado atrasada una semana y Andares al día (caso real hasta el 28/sep):
+  //     lo de Andares se envía normal; lo de Mercado se bloquea con su nombre y no escribe nada
+  {
+    const kBM = ss.getSheetByName("KARDEX_BM");
+    const lunesBM = kBM.getRange("G4").getValue();
+    kBM.getRange("G4").setValue(new VMDate(lunesBM.getTime() - 7 * 86400000));
+    sh.getRange(K.ENTRADAS_START, 3, 2, 2).setValues([["", ""], ["", ""]]);
+    sh.getRange("B2").setValue(K.ENTRADAS_HOY);
+    const antesBM = kBM.getRange(7, entColHoy).getValue();
+    sh.getRange(K.ENTRADAS_START, 4).setValue(2);          // Fresa → Mercado (atrasada)
+    sandbox.procesarEntradasKardex();
+    assert.ok(/Mercado/.test(String(sh.getRange("A3").getValue())), "El bloqueo nombra a Mercado");
+    assert.strictEqual(kBM.getRange(7, entColHoy).getValue(), antesBM, "No escribe en la semana equivocada de Mercado");
+    sh.getRange(K.ENTRADAS_START, 3, 1, 2).setValues([[1, ""]]);   // solo Andares
+    const antesBA = ss.getSheetByName("KARDEX_BA").getRange(7, entColHoy).getValue() || 0;
+    sandbox.procesarEntradasKardex();
+    assert.strictEqual(ss.getSheetByName("KARDEX_BA").getRange(7, entColHoy).getValue(), antesBA + 1, "Andares al día se envía normal");
+    kBM.getRange("G4").setValue(lunesBM);
+    console.log("  ✓ Semana por bodega: Mercado atrasada se bloquea con su nombre; Andares al día se envía");
+  }
+
   // 5. Semana del Kardex vencida: HOY fuera de la semana activa se rechaza
-  sh.getRange(K.ENTRADAS_START + 1, 3).setValue("");
+  sh.getRange(K.ENTRADAS_START, 3, 2, 1).setValues([[1], [""]]);   // captura propia (no heredada)
+  const antes5 = ss.getSheetByName("KARDEX_BA").getRange(7, entColHoy).getValue();
   sh.getRange("B2").setValue(K.ENTRADAS_HOY);
   const viejo = new VMDate(monday.getTime() - 14 * 86400000);
   ss.getSheetByName("KARDEX_BA").getRange("G4").setValue(viejo);
   sandbox.procesarEntradasKardex();
   assert.ok(String(sh.getRange("A3").getValue()).includes("Avanza la semana"), "Debe pedir avanzar semana");
-  assert.strictEqual(ss.getSheetByName("KARDEX_BA").getRange(7, entColHoy).getValue(), antes, "No escribe con semana vencida");
+  assert.strictEqual(ss.getSheetByName("KARDEX_BA").getRange(7, entColHoy).getValue(), antes5, "No escribe con semana vencida");
   console.log("  ✓ Bloqueo cuando HOY no pertenece a la semana activa del Kardex");
 }
 
