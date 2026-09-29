@@ -23,6 +23,13 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.5r Altair — Mercado Avanza de Semana: Causa Real Encontrada (Septiembre 2026) [PROD]
+
+* 📅 **Se encontró y corrigió la causa real**:  
+  El indicador de semana de Andares, al dibujarse, provocaba un error que se manifestaba justo cuando el sistema pasaba a revisar Mercado, y por eso Mercado nunca avanzaba. Ahora cada indicador se dibuja de forma segura y, si algo fallara, no afecta el cambio de semana.
+
+---
+
 ## Versión 1.7.5q Altair — El Cambio de Semana Ya No se Puede Trabar (Septiembre 2026) [PROD]
 
 * 📅 **Mercado se destraba por completo**:  

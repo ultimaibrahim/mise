@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.5r Altair (Error diferido del badge) — 2026-09-28 [PROD]
+
+### 🏬 Bodega (BDG)
+* `_separarCombinaciones()` (nunca pedazos de una combinación) y `flush()` dentro del `try` del badge; el emulador difiere los errores de combinaciones como Apps Script.
+
+---
+
 ## ⚡ v1.7.5q Altair (Avance indestructible) — 2026-09-28 [PROD]
 
 ### 🏬 Bodega (BDG)

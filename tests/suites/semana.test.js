@@ -124,6 +124,21 @@ function runSemanaTests() {
     console.log("  ✓ Si el historial falla, la semana avanza igual y los datos quedan en _HISTORIAL_RESPALDO");
   }
 
+  // 7. Caso real PROD: el título de KARDEX_BA combinado D2:AD2. El badge de BA separaba L2:P2 (pedazo de
+  //    esa combinación); Apps Script difiere el error a la SIGUIENTE lectura = G4 de KARDEX_BM → BM nunca avanzaba
+  {
+    const lock = { held: false, libre: true };
+    const { ctx, lunesPasado, g4, semana } = _escenario(lock);
+    ["KARDEX_BA", "KARDEX_BM"].forEach(k => ctx.ss.getSheetByName(k).getRange(2, 4, 1, 27).merge());
+    const n = ctx.sandbox._autoVerificarYAvanzarSemanaSilencioso(true);
+    assert.strictEqual(g4("KARDEX_BM"), lunesPasado.getTime() + semana, "BM avanza aunque el título de BA esté combinado D2:AD2");
+    assert.strictEqual(n, 2, "Ambas avanzan");
+    const fila2 = ctx.ss.getSheetByName("KARDEX_BA").getRange(2, 1, 1, 30).getMergedRanges().map(m => [m.getColumn(), m.getLastColumn()]);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(fila2)), [[4, 11], [12, 16]], "Título D2:K2 y badge L2:P2");
+    assert.ok(/ACTUALIZADA/.test(ctx.ss.getSheetByName("KARDEX_BM").getRange(2, 12).getValue()), "Badge de BM dibujado");
+    console.log("  ✓ Título combinado D2:AD2: el badge ya no rompe el avance de Mercado (error diferido de Apps Script)");
+  }
+
   // 4. onOpen INSTALABLE (sin tope de 30 s): pone al día AMBOS Kardex de una vez
   {
     const lock = { held: false, libre: true };

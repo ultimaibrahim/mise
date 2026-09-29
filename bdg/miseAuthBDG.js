@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.5q Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.5r Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -46,6 +46,15 @@ function _colToLetter(col) {
     temp = Math.floor((temp - rem) / 26);
   }
   return letter;
+}
+
+// Separa TODAS las combinaciones que toquen el rango, cada una completa (nunca un pedazo).
+// breakApart() sobre un rango que corta una combinación falla, y Apps Script aplica las escrituras en
+// lote: el error aparece en la SIGUIENTE lectura (fuera de cualquier try/catch local). Caso real: el badge
+// de KARDEX_BA rompía el avance de KARDEX_BM al leer su G4.
+function _separarCombinaciones(range) {
+  range.getMergedRanges().forEach(m => m.breakApart());
+  return range;
 }
 
 // Abre un libro desde una URL en cualquier formato (/u/0/, ?usp=, #gid=) o desde su ID pelón
@@ -1546,7 +1555,7 @@ function _siguienteColumnaHistorial(hSheet, numRows) {
     // Huérfano: deshacer combinaciones y limpiar su zona de encabezado (filas 1–4) HASTA EL FINAL de la hoja.
     // Cada intento fallido insertaba 16 columnas dentro de él y Google lo ensanchaba: puede medir cientos
     // de columnas, así que limpiar solo 16 volvería a "separar parte de una combinación".
-    hSheet.getRange(1, c, 4, maxCols - c + 1).breakApart().clearContent().setBackground(null);
+    _separarCombinaciones(hSheet.getRange(1, c, 4, maxCols - c + 1)).clearContent().setBackground(null);
     MiseLogger.warn("_siguienteColumnaHistorial", `${hSheet.getName()}: bloque huérfano en columna ${c} limpiado (archivado previo interrumpido).`);
   }
   let finCombinado = 0;
@@ -2274,7 +2283,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.5q";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.5r";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "Powerhouse más rápido: Andares y Mercado se actualizan en paralelo",
@@ -2817,7 +2826,7 @@ function _ordenarYRenumerarTodo() {
 
     // 2. Auto-Reparación de Encabezados en Fila 5 y 6 (Seguro: des-combina antes para evitar error de intervalos combinados)
     try {
-      kSheet.getRange(5, 10, 1, 21).breakApart(); // Des-combinar columnas J a AD en fila 5
+      _separarCombinaciones(kSheet.getRange(5, 10, 1, 21)); // Des-combinar columnas J a AD en fila 5
       DIAS.forEach((dia, idx) => {
         const sc = 10 + idx * 3;
         const rDay = kSheet.getRange(5, sc, 1, 3);
@@ -4892,7 +4901,7 @@ function _restaurarFila2AccionesLote(sheet, lastCol) {
   sheet.getRange(2, 1, 1, colCount).setBackground(C.cream);
 
   // A2:B2 - Etiqueta de acciones
-  try { sheet.getRange("A2:B2").breakApart(); } catch(e) {}
+  try { _separarCombinaciones(sheet.getRange("A2:B2")); SpreadsheetApp.flush(); } catch(e) {}
   sheet.getRange("A2:B2").merge()
     .setValue("⚠️ Acciones por lote:").setFontWeight("bold").setFontColor(C.dark)
     .setHorizontalAlignment("right").setVerticalAlignment("middle").setFontSize(9);
@@ -4995,7 +5004,7 @@ function _asegurarFormatoHeadersMaestro(maestroSheet) {
   if (lastCol < 1) return;
 
   // Banner principal en Fila 1 (merge limpio de 1 hasta lastCol)
-  try { sheet.getRange(1, 1, 1, sheet.getMaxColumns()).breakApart(); } catch(e) {}
+  try { _separarCombinaciones(sheet.getRange(1, 1, 1, sheet.getMaxColumns())); SpreadsheetApp.flush(); } catch(e) {}
   sheet.getRange(1, 1, 1, lastCol).merge()
     .setValue("MISE — MAESTRO DE PRODUCTOS   |   La Crêpe Parisienne · Grupo MYT")
     .setBackground(C.dark).setFontColor("#FFFFFF").setFontWeight("bold")
@@ -5132,30 +5141,26 @@ function _actualizarBadgeEstadoSemana(sheet, key, actualizada) {
     const sem = sheet.getRange("E4").getValue() || _isoWeek(d4 instanceof Date ? d4 : new Date());
     const fechaStr = d4 instanceof Date ? _fmt(d4) : "";
     const texto = actualizada ? `🟢 SEMANA ${sem} ACTUALIZADA (${fechaStr})` : `⏳ SEMANA ${sem} PENDIENTE DE AVANZAR`;
-    
-    // Descombinar previamente L2:P2 para asegurar que no colisione con merges previos
-    try { sheet.getRange(2, 12, 1, 5).breakApart(); } catch(e) {}
 
-    // Descombinar y acortar el banner principal de la fila 2 para dar espacio al badge en L2:P2
-    try {
-      sheet.getRange(2, 4, 1, 27).breakApart();
-      sheet.getRange(2, 4, 1, 8).merge()
-        .setValue(`MISE — KARDEX ${BODEGAS[key].nombre}   |   La Crêpe Parisienne`)
-        .setBackground(C.dark).setFontColor("#FFFFFF").setFontWeight("bold")
-        .setFontSize(11).setFontFamily("Arial").setHorizontalAlignment("center");
-    } catch(e) {}
-
-    // Inyectar badge en L2:P2
+    // Fila 2: separar exactamente las combinaciones que toquen D2:P2 (el título original puede llegar a AD2)
+    _separarCombinaciones(sheet.getRange(2, 4, 1, 13));
+    sheet.getRange(2, 4, 1, 8).merge()
+      .setValue(`MISE — KARDEX ${BODEGAS[key].nombre}   |   La Crêpe Parisienne`)
+      .setBackground(C.dark).setFontColor("#FFFFFF").setFontWeight("bold")
+      .setFontSize(11).setFontFamily("Arial").setHorizontalAlignment("center");
     sheet.getRange(2, 12, 1, 5).merge()
       .setValue(texto)
-      .setFontWeight("bold")
-      .setFontSize(9)
-      .setHorizontalAlignment("center")
-      .setVerticalAlignment("middle")
+      .setFontWeight("bold").setFontSize(9)
+      .setHorizontalAlignment("center").setVerticalAlignment("middle")
       .setBackground(actualizada ? "#C8E6C9" : "#FFF9C4")
       .setFontColor(actualizada ? "#1B5E20" : "#F57F17");
-  } catch(e) {}
+    // Aplicar YA las escrituras: si algo falla, que falle aquí (atrapado) y no en la siguiente lectura
+    SpreadsheetApp.flush();
+  } catch(e) {
+    MiseLogger.warn("_actualizarBadgeEstadoSemana", `${BODEGAS[key].nombre}: no se pudo dibujar el badge (${e.message}); el avance de semana no se afecta.`);
+  }
 }
+
 
 function _ejecutarAvanzarSemanaSilencioso(key, sheet, d4) {
   const lock = LockService.getScriptLock();

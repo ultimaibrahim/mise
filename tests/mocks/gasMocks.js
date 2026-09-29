@@ -3,6 +3,11 @@
  * Simula SpreadsheetApp, Sheet, Range, LockService, PropertiesService, Session
  */
 
+// Error diferido pendiente (compartido, como la cola de escrituras de Apps Script)
+const _cola = { error: null };
+function _diferir(msg) { if (!_cola.error) _cola.error = new Error(msg); }
+function _aplicarPendientes() { if (_cola.error) { const e = _cola.error; _cola.error = null; throw e; } }
+
 class MockRange {
   constructor(sheet, row, col, numRows = 1, numCols = 1) {
     this.sheet = sheet;
@@ -13,6 +18,7 @@ class MockRange {
   }
 
   getValue() {
+    _aplicarPendientes();
     const vals = this.getValues();
     return vals[0] ? vals[0][0] : "";
   }
@@ -23,6 +29,7 @@ class MockRange {
   }
 
   getValues() {
+    _aplicarPendientes();
     const res = [];
     for (let r = 0; r < this.numRows; r++) {
       const rowArr = [];
@@ -70,7 +77,7 @@ class MockRange {
     if ((fc > 0 && m.c1 <= fc && fc < m.c2) || (fr > 0 && m.r1 <= fr && fr < m.r2)) {
       throw new Error("No se pueden combinar celdas congeladas y no congeladas.");
     }
-    this._validarCombinacionesParciales();
+    if (!this._validarCombinacionesParciales()) return this;
     // Las combinaciones completamente contenidas se absorben (igual que Google)
     this.sheet.merges = this.sheet.merges.filter(x => !(x.r1 >= m.r1 && x.r2 <= m.r2 && x.c1 >= m.c1 && x.c2 <= m.c2));
     this.sheet.merges.push(m);
@@ -83,10 +90,11 @@ class MockRange {
       const contenida = x.r1 >= this.row && x.r2 <= r2 && x.c1 >= this.col && x.c2 <= c2;
       return cruza && !contenida;
     });
-    if (parcial) throw new Error("Debes seleccionar todas las celdas de un intervalo combinado para combinarlas o separarlas.");
+    if (parcial) { _diferir("Debes seleccionar todas las celdas de un intervalo combinado para combinarlas o separarlas."); return false; }
+    return true;
   }
   breakApart() {
-    this._validarCombinacionesParciales();
+    if (!this._validarCombinacionesParciales()) return this;
     const r2 = this.row + this.numRows - 1, c2 = this.col + this.numCols - 1;
     this.sheet.merges = this.sheet.merges.filter(m => m.r2 < this.row || m.r1 > r2 || m.c2 < this.col || m.c1 > c2);
     return this;
@@ -301,7 +309,7 @@ const MockSpreadsheetApp = {
     ButtonSet: { OK: "OK", YES_NO: "YES_NO" },
     Button: { YES: "YES", NO: "NO", OK: "OK" }
   }),
-  flush: () => {}
+  flush: () => { _aplicarPendientes(); }
 };
 
 const MockLock = {

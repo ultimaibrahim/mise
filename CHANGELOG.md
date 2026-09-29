@@ -33,6 +33,13 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.5r Altair — Causa Raíz Real de KARDEX_BM: Error Diferido del Badge de BA (Septiembre 2026) [PROD]
+* **Diagnóstico con la traza de PROD** (`miseAuthBDG:5066:37`, el `getValue()` de `G4` de KARDEX_BM): Apps Script aplica las escrituras en lote y **un fallo de `merge()`/`breakApart()` aparece en la SIGUIENTE lectura**, no donde se originó. BA se procesa primero y al final dibuja su badge; `_actualizarBadgeEstadoSemana` separaba `L2:P2`, un **pedazo** del título combinado `D2:AD2`. El error diferido escapaba del `try/catch` del badge y reventaba al leer `G4` de BM. Desde 1.7.5o lo destapó el cambio de `breakAtMerge` (inexistente, no hacía nada) a `breakApart` (sí ejecuta).
+* **`_separarCombinaciones(range)`**: separa cada combinación que toque el rango, completa (`getMergedRanges().forEach(breakApart)`), nunca un pedazo. Aplicado al badge, a la fila 2 de MAESTRO, la fila 1 de VISTA, la fila 5 del Kardex y la limpieza de huérfanos del HISTORIAL.
+* **Badge con `SpreadsheetApp.flush()` dentro del `try`**: cualquier error futuro del dibujo se atrapa ahí (WARN en LOG) y no afecta el avance.
+* **Emulador fiel a Apps Script**: los conflictos de `merge()`/`breakApart()` se difieren hasta la siguiente lectura o `flush()`, igual que en Google.
+* **Testing**: `semana.test.js` reproduce el título `D2:AD2` de PROD (falla con `f505803`, pasa con el fix).
+
 ### Version 1.7.5q Altair — Avance de Semana Indestructible (Septiembre 2026) [PROD]
 * **1.7.5p no bastó en PROD** (mismo error): cada intento fallido alcanzaba a ejecutar `insertColumnsAfter(startCol - 1, 16)` **dentro** del encabezado huérfano antes de fallar en `merge()`, y Google ensanchaba la combinación 16 columnas por intento (fue creciendo a cientos). La limpieza de 1.7.5p separaba solo 16 columnas → "separar parte de una combinación" → mismo error. Ahora se separa y limpia desde el huérfano **hasta el final de la hoja**.
 * **Red de seguridad `_archivarSemanaSeguro()`**: si `_guardarHistHorizontal` falla por cualquier causa, la semana se respalda en `_HISTORIAL_RESPALDO` (filas simples: bodega, semana, lunes, producto, ENT/SAL por día, SLD FIN; sin combinaciones) y el avance continúa (saldos → SALDO ANT, limpieza, G4). Aplica al avance silencioso y al manual.
