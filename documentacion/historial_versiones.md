@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6f Altair (Descuento nocturno idempotente y en bloque) — 2026-09-29 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG)
+* Corrige doble descuento al re-ejecutar una fecha (respaldo por `🗒 LOG_SURTIDO`); ledger en memoria, Kardex sin lecturas intercaladas, log por cola (400) y tiempos por fase en el `🗒 LOG`.
+
+---
+
 ## ⚡ v1.7.6e Altair (Hotfix integrado, adiós ADICIÓN e INICIO) — 2026-09-29 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)

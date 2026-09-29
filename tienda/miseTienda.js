@@ -1357,7 +1357,7 @@ function _aplicarFormatosCondicionales(sheet) {
   sheet.setConditionalFormatRules(rules);
 }
 
-const MISE_VERSION = "1.7.6e";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6f";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "Surtido Rápido: escribe lo recibido y la fila completa se pinta sola",

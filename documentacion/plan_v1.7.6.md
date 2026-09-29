@@ -60,7 +60,7 @@ Objetivo: **nadie escribe en el libro de otro**. Elimina el problema de permisos
 - [ ] **Latido**: cada tienda escribe `_ESTADO` (versión de código, esquema, último reset, última versión de catálogo aplicada, activadores).
 - [ ] **🩺 Panel de salud en Bodega**: una fila por libro con su latido; alerta si una tienda no late en más de 24 h.
 - [ ] **El push remoto se reduce** a refrescar el enlace (carril rápido opcional) y el Powerhouse guarda solo el catálogo (objetivo: **< 5 s**).
-- [ ] **`MiseSmartSync.ejecutarDescuento` tardó 114 s** en PROD (29/sep): perfilar por fase (abrir tiendas, leer Surtido/PEDIDO, escribir Kardex/LOG remoto) y bajarlo; parte se va con eventos (menos lecturas remotas).
+- [~] *(1.7.6f: ledger en memoria, Kardex en bloque, log por cola, tiempos por fase y fix de doble descuento; falta medir en PROD y atacar la fase más lenta)* **`MiseSmartSync.ejecutarDescuento` tardó 114 s** en PROD (29/sep): perfilar por fase (abrir tiendas, leer Surtido/PEDIDO, escribir Kardex/LOG remoto) y bajarlo; parte se va con eventos (menos lecturas remotas).
 - [ ] Cuota: ~4 min/día de los 90 min diarios de Google (medir tras una semana).
 
 ---

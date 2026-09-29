@@ -31,6 +31,11 @@ const MiseIdempotencyLedger = {
     }
   },
 
+  /** Carga la lista una sola vez por corrida (antes se releía y decodificaba por cada renglón). */
+  cargar() {
+    return new Set(this._getHashes());
+  },
+
   has(txId) {
     const list = this._getHashes();
     return list.includes(txId);
@@ -45,6 +50,7 @@ const MiseIdempotencyLedger = {
 };
 
 // ── 2. MOTOR INTELIGENTE DE DESCUENTO DE INVENTARIO (SMARTSYNC) ───────────────
+const SMARTSYNC_LOG_VENTANA = 400; // renglones finales de 🗒 LOG_SURTIDO que revisa el respaldo (varias semanas de margen)
 const MiseSmartSync = {
   /**
    * Ejecuta el descuento con control de fecha (ayer en cronjob nocturno o fecha personalizada)
@@ -111,7 +117,13 @@ const MiseSmartSync = {
       return new Date(NaN);
     };
 
+    // Tiempo por fase (se reporta en el 🗒 LOG para saber dónde se va el tiempo)
+    const fases = { tiendas: 0, log: 0, kardex: 0, vistas: 0, push: 0 };
+    let tFase = Date.now();
+    const _cerrarFase = (nombre) => { const t = Date.now(); fases[nombre] += t - tFase; tFase = t; };
+
     try {
+      const ledger = MiseIdempotencyLedger.cargar();
       // 1. Determinar Fecha Objetivo:
       // Si corre a las 23:00 hrs (cierre nocturno) o en horario operativo, corresponde estrictamente a HOY.
       // Únicamente si se ejecuta por reintento residual de madrugada (00:00 a 04:59 AM) hace fallback a AYER.
@@ -182,6 +194,7 @@ const MiseSmartSync = {
         const acumuladoPorProducto = {};
         const listaDesgloseSucursal = [];
         let remoteSs = null;
+        _cerrarFase("kardex");
 
         // 2. Conectar directamente con la tienda remota (P2P)
         const storeId = key === "BA" 
@@ -271,7 +284,7 @@ const MiseSmartSync = {
                     const cantDeducirKardex = Math.round(cantDeducir * factor * 1000) / 1000;
 
                     const txHash = `${fechaObjetivoStr}_${key}_${normKey}_${cantDeducir}_pedido`;
-                    if (MiseIdempotencyLedger.has(txHash)) {
+                    if (ledger.has(txHash)) {
                       totalOmitidosDuplicados++;
                     } else {
                       acumuladoPorProducto[normKey] = (acumuladoPorProducto[normKey] || 0) + cantDeducirKardex;
@@ -341,23 +354,33 @@ const MiseSmartSync = {
           }
         }
 
-        // B. Fallback / Complemento: Leer también de 🗒 LOG_SURTIDO (remoto o local _SYNC_LOG)
+        _cerrarFase("tiendas");
+
+        // B. Fallback / Complemento: Leer también de 🗒 LOG_SURTIDO (remoto o local _SYNC_LOG).
+        //    Solo los últimos renglones (el log crece para siempre y solo interesa la fecha objetivo);
+        //    logOffset mantiene el índice absoluto del renglón, que forma parte del hash de idempotencia.
         let logRowsData = [];
+        let logOffset = 0;
+        const _leerColaLog = (hoja) => {
+          const lr = hoja.getLastRow();
+          if (lr < 2) return false;
+          const desde = Math.max(2, lr - SMARTSYNC_LOG_VENTANA + 1);
+          logOffset = desde - 2;
+          logRowsData = hoja.getRange(desde, 1, lr - desde + 1, 8).getValues();
+          return true;
+        };
         if (remoteSs) {
           const rLog = remoteSs.getSheetByName("🗒 LOG_SURTIDO");
-          if (rLog && rLog.getLastRow() >= 2) {
-            logRowsData = rLog.getRange(2, 1, rLog.getLastRow() - 1, 8).getValues();
-          }
+          if (rLog) _leerColaLog(rLog);
         }
         if (logRowsData.length === 0) {
           const localLog = ss.getSheetByName(`_SYNC_LOG_${key}`) || ss.getSheetByName("🗒 LOG_SURTIDO");
-          if (localLog && localLog.getLastRow() >= 2) {
-            logRowsData = localLog.getRange(2, 1, localLog.getLastRow() - 1, 8).getValues();
-          }
+          if (localLog) _leerColaLog(localLog);
         }
 
         if (logRowsData.length > 0) {
-          logRowsData.forEach((lRow, rowIdx) => {
+          logRowsData.forEach((lRow, idxCola) => {
+            const rowIdx = idxCola + logOffset;
             const rowDate = _parseFecha(lRow[0]);
             const rowDateStr = _fmtDateKey(rowDate);
             if (rowDateStr !== fechaObjetivoStr) return;
@@ -376,13 +399,19 @@ const MiseSmartSync = {
             }
 
             const txHash = `${rowDateStr}_${key}_${normKey}_${cantRec}_r${rowIdx}`;
-            if (MiseIdempotencyLedger.has(txHash)) {
+            if (ledger.has(txHash)) {
               totalOmitidosDuplicados++;
               return;
             }
 
+            // El renglón puede ser la evidencia de un descuento directo: de ESTA corrida o de una
+            // anterior (reintento de madrugada / botón manual). En ambos casos ya se descontó.
             const directTxHash = `${rowDateStr}_${key}_${normKey}_${cantRec}_pedido`;
             if (txHashesAplicados.includes(directTxHash)) {
+              return;
+            }
+            if (ledger.has(directTxHash)) {
+              totalOmitidosDuplicados++;
               return;
             }
 
@@ -394,22 +423,29 @@ const MiseSmartSync = {
           });
         }
 
-        // 3. Inyección Acumulativa en Kardex
-        Object.keys(acumuladoPorProducto).forEach(normKey => {
+        _cerrarFase("log");
+
+        // 3. Inyección Acumulativa en Kardex: una sola lectura de la columna SAL del día y escrituras
+        //    solo en las celdas que cambian (sin lecturas intercaladas, que obligan a Google a aplicar
+        //    cada escritura pendiente antes de seguir).
+        const productosConDescuento = Object.keys(acumuladoPorProducto).filter(k => acumuladoPorProducto[k] > 0);
+        const salActual = productosConDescuento.length > 0
+          ? kSheet.getRange(KARDEX_START, salColIdx, kCount, 1).getValues() : [];
+        productosConDescuento.forEach(normKey => {
           const targetRow = kRowMap[normKey];
           const cantNueva = acumuladoPorProducto[normKey];
-          if (cantNueva <= 0) return;
-          
-          const valorActualCelda = parseFloat(kSheet.getRange(targetRow, salColIdx).getValue()) || 0;
-          const valorFinal = valorActualCelda + cantNueva;
+
+          const valorActualCelda = parseFloat(salActual[targetRow - KARDEX_START][0]) || 0;
+          const valorFinal = Math.round((valorActualCelda + cantNueva) * 1000) / 1000;
 
           kSheet.getRange(targetRow, salColIdx).setValue(valorFinal === 0 ? "" : valorFinal);
 
-          const nombreProductoOriginal = kSheet.getRange(targetRow, 3).getValue();
+          const nombreProductoOriginal = kProds[targetRow - KARDEX_START][0];
           listaDesgloseSucursal.push(`  • [${targetDayName}] ${nombreProductoOriginal}: +${cantNueva} (Total SAL: ${valorFinal})`);
           totalDescontados++;
         });
 
+        _cerrarFase("kardex");
         if (listaDesgloseSucursal.length > 0) {
           resumenDesglose.push(`📍 ${bConfig.nombre.toUpperCase()} (${fechaObjetivoStr}):\n` + listaDesgloseSucursal.join("\n"));
         }
@@ -421,19 +457,23 @@ const MiseSmartSync = {
 
       // 5. Reconstruir vistas móviles para actualizar Stock Act
       try {
+        _cerrarFase("kardex");
         if (typeof _buildVista === "function") {
           _buildVista("BA");
           _buildVista("BM");
         }
+        _cerrarFase("vistas");
         if (typeof sincronizarRemotamenteTiendasPush === "function") {
           sincronizarRemotamenteTiendasPush();
         }
+        _cerrarFase("push");
       } catch(eRebuild) {
         MiseLogger.warn("MiseSmartSync", `Error refrescando vistas: ${eRebuild.message}`);
       }
 
       const dur = MiseLogger.timeEnd(tId);
-      MiseLogger.info("MiseSmartSync", `Descuento completado: ${totalDescontados} insumos aplicados, ${totalOmitidosDuplicados} omitidos por idempotencia, ${totalVaciadosTiendas} tiendas vaciadas.`, dur);
+      const seg = (ms) => (ms / 1000).toFixed(1) + " s";
+      MiseLogger.info("MiseSmartSync", `Descuento completado: ${totalDescontados} insumos aplicados, ${totalOmitidosDuplicados} omitidos por idempotencia, ${totalVaciadosTiendas} tiendas vaciadas. Fases: tiendas ${seg(fases.tiendas)} · log ${seg(fases.log)} · kardex ${seg(fases.kardex)} · vistas ${seg(fases.vistas)} · push ${seg(fases.push)}.`, dur);
 
       if (!silent) {
         let msg = `Fecha procesada: ${fechaObjetivoStr} (${targetDayName})\nInsumos descontados en Kardex: ${totalDescontados}\nTransacciones previas omitidas: ${totalOmitidosDuplicados}\nTiendas vaciadas y reseteadas: ${totalVaciadosTiendas}\n\n`;

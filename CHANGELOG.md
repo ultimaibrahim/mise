@@ -33,6 +33,14 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.6f Altair — Descuento Nocturno: Sin Doble Descuento al Reintentar y Menos Llamadas (Septiembre 2026) [EN PRUEBAS · DEV]
+* **Bug latente de doble descuento** (`MiseSmartSync.ejecutarDescuento`): la vía de respaldo relee `🗒 LOG_SURTIDO` y solo descartaba los renglones descontados *en la misma corrida*. Al re-ejecutar la misma fecha (reintento de 00:00–05:00 o botón manual), los renglones que escribió la 1a corrida se descontaban otra vez (prueba: Fresa 3 → 5). Ahora también se descartan si su hash directo (`…_pedido`) ya está en el ledger.
+* **Lista de idempotencia cargada una vez** (`MiseIdempotencyLedger.cargar()` → `Set`): antes se leía de Script Properties y se decodificaba (hasta 2000 hashes) por cada renglón procesado.
+* **Kardex sin lecturas intercaladas**: una lectura de la columna SAL del día por bodega y escrituras solo en las celdas que cambian; el nombre del producto sale de la lectura ya hecha. Antes: 3 llamadas por producto alternando lectura/escritura (cada lectura obliga a aplicar las escrituras pendientes).
+* **`🗒 LOG_SURTIDO` por cola** (`SMARTSYNC_LOG_VENTANA = 400`): solo los últimos renglones; el índice absoluto del renglón se conserva en el hash, así que los hashes ya registrados siguen siendo válidos.
+* **Tiempo por fase en el `🗒 LOG`**: `tiendas · log · kardex · vistas · push`, para decidir la siguiente optimización con datos (114 s el 28/sep).
+* **Testing**: `smartsync.test.js` (tiendas remotas emuladas por ID): cantidades por regla, re-ejecución idempotente (falla con 1.7.6e), respaldo desde el log una sola vez y ≤ 2 lecturas del ledger por corrida (antes 7).
+
 ### Version 1.7.6e Altair — Hotfix 1.7.5s Integrado, Retiro de ADICIÓN y de 🏠 INICIO (Septiembre 2026) [EN PRUEBAS · DEV]
 * **Integra el hotfix 1.7.5s** en la fuente única: `setValues` en las tablas mixtas de PEDIDO DIARIO (tienda y escritura remota de Bodega), estado del `🗒 LOG_SURTIDO` normalizado y deducido, encabezado garantizado (`_asegurarEncabezadoLogSurtido`).
 * **Retiro de la función ADICIÓN** (heredada, en desuso desde 1.6.1): sin regla de formato `$J4="🚨 ADICIÓN"`, sin resaltado naranja en Surtido, sin captura/restauración de la columna J y **sin columna `EsAdición` en `🗒 LOG_SURTIDO`** (7 columnas; el encabezado antiguo se limpia). La columna J de PEDIDO DIARIO queda **reservada vacía** (sin desplazar índices); su eliminación física va con la migración de esquema 3.

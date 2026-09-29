@@ -23,6 +23,13 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6f Altair — Descuento Nocturno Más Rápido y a Prueba de Repeticiones (Septiembre 2026) [EN PRUEBAS]
+
+* 🛡️ **Nunca se descuenta dos veces**: si el descuento de la noche se vuelve a correr (reintento automático o botón manual), ya no resta de nuevo lo que ya había restado.
+* ⚡ **Cierre nocturno más ágil**: Bodega hace muchas menos consultas al descontar, y el registro técnico ahora muestra cuánto tarda cada paso.
+
+---
+
 ## Versión 1.7.6e Altair — Menos Cosas que Estorban (Septiembre 2026) [EN PRUEBAS]
 
 * 🧹 **Se retira la marca de "Adición"**: una función antigua que ya no se usaba; desaparece también la columna "EsAdición" del registro de surtido.
