@@ -236,6 +236,7 @@ function onEdit(e) {
 
 function onEditTiendaInstalable(e) {
   _onEditTienda(e);
+  _latidoTienda("edición");   // como máximo 1 escritura cada 10 min; casi siempre solo revisa la hora
 }
 
 function _onEditTienda(e) {
@@ -729,7 +730,24 @@ function resetearPedidoManualmente() {
   }
 }
 
+// Reset diario (activador 00:00, respaldo 04:00 o menú). Envoltura: deja constancia en el latido
+// aunque el reset falle, para que Bodega distinga "no corrió" de "corrió con error".
 function _resetearPedidoSilencioso(e) {
+  const props = PropertiesService.getScriptProperties();
+  try {
+    const r = _resetearPedidoSilenciosoCore(e);
+    props.setProperty("ULTIMO_RESET_TS", String(Date.now()));
+    props.setProperty("ULTIMO_RESET_ERROR", "");
+    return r;
+  } catch (err) {
+    props.setProperty("ULTIMO_RESET_ERROR", String(err.message || err).substring(0, 200));
+    throw err;
+  } finally {
+    _latidoTienda(e && e.triggerUid ? "reset 00:00" : "reset", true);
+  }
+}
+
+function _resetearPedidoSilenciosoCore(e) {
   const tId = "_resetearPedidoSilencioso_" + Date.now();
   MiseLogger.time(tId);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -857,6 +875,7 @@ function _checkAutoResetNuevoDia(e) {
   } catch(err) {}
   // Respaldo de las 04:00: reintenta una actualización de estructura pendiente
   _migrarSiEsActivador(e);
+  if (e && e.triggerUid) _latidoTienda("respaldo 04:00", true);
 }
 
 function _fmtDate(date) {
@@ -1357,9 +1376,10 @@ function _aplicarFormatosCondicionales(sheet) {
   sheet.setConditionalFormatRules(rules);
 }
 
-const MISE_VERSION = "1.7.6f";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6g";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "Bodega ve si esta tienda está al día (latido automático, sin pasos extra)",
   "Surtido Rápido: escribe lo recibido y la fila completa se pinta sola",
   "CANT. FINAL: lo que ves es lo que Bodega descuenta",
   "Producto y cantidad pedida fijos al deslizar en el celular",
@@ -2022,6 +2042,58 @@ function _abrirLibro(ref) {
 function onOpenTiendaInstalable(e) {
   try { _checkAutoResetNuevoDia(); } catch (err) { registrarLog("onOpenTiendaInstalable", "ERROR", err.message); }
   try { _actualizarAvisoPedido(); } catch (err) {}
+  _latidoTienda("apertura");
+}
+
+// ── 💓 LATIDO (1.7.6g) ─────────────────────────────────────────────────────────────────────
+// La tienda deja su estado en su propia hoja técnica _ESTADO (clave/valor); Bodega la LEE para la
+// página de estado. Sin activador propio: late en los activadores que ya existen (00:00, 04:00),
+// al abrir y al editar (como máximo una escritura cada 10 min; el resto de las veces solo compara la hora).
+const SHEET_ESTADO = "_ESTADO";
+const LATIDO_INTERVALO_MS = 10 * 60 * 1000;
+
+function _latidoTienda(origen, forzar) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const ahora = Date.now();
+    const ultimo = parseInt(props.getProperty("LATIDO_TS") || "0", 10);
+    if (!forzar && ahora - ultimo < LATIDO_INTERVALO_MS) return false;
+    props.setProperty("LATIDO_TS", String(ahora));
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let hoja = ss.getSheetByName(SHEET_ESTADO);
+    if (!hoja) {
+      hoja = ss.insertSheet(SHEET_ESTADO);
+      try { hoja.hideSheet(); } catch (e) {}
+      try { _blindarHoja(hoja, "Blindaje técnico — _ESTADO (latido)"); } catch (e) {}
+    }
+    let activadores = "";
+    try { activadores = ScriptApp.getProjectTriggers().map(t => t.getHandlerFunction()).join(", "); } catch (e) { activadores = "?"; }
+    const sync = ss.getSheetByName(SHEET_SYNC);
+    const syncVivo = !!(sync && /IMPORTRANGE/i.test(sync.getRange(4, 1).getFormula()));
+    const tsReset = parseInt(props.getProperty("ULTIMO_RESET_TS") || "0", 10);
+    const filas = [
+      ["CLAVE", "VALOR"],
+      ["LIBRO", BODEGA_NOMBRE],
+      ["BODEGA_KEY", BODEGA_KEY],
+      ["VERSION", MISE_VERSION],
+      ["ESQUEMA", `${props.getProperty(PROP_SCHEMA) || "1"}/${MISE_SCHEMA_TIENDA}`],
+      ["ENTORNO", props.getProperty("MISE_ENV") || "PROD"],
+      ["ULTIMO_LATIDO", new Date(ahora)],
+      ["ORIGEN_LATIDO", String(origen || "")],
+      ["ULTIMO_RESET", tsReset ? new Date(tsReset) : ""],
+      ["ULTIMO_RESET_ERROR", props.getProperty("ULTIMO_RESET_ERROR") || ""],
+      ["ACTIVADORES", activadores],
+      ["SYNC_VIVO", syncVivo ? "SI" : "NO"]
+    ];
+    const lr = hoja.getLastRow();
+    if (lr > filas.length) hoja.getRange(filas.length + 1, 1, lr - filas.length, 2).clearContent();
+    hoja.getRange(1, 1, filas.length, 2).setValues(filas);
+    return true;
+  } catch (err) {
+    try { registrarLog("_latidoTienda", "ERROR", err.message); } catch (e) {}
+    return false;
+  }
 }
 
 // ── 🔗 CONEXIÓN CON BODEGA (a qué libro apunta, por NOMBRE, y si _SYNC está vivo) ──────────

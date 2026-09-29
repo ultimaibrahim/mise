@@ -13,7 +13,7 @@ function runSmartSyncTests() {
   console.log("\n🧪 [TEST SUITE] 🌙 MiseSmartSync: descuento nocturno idempotente y en bloque");
   const props = MockPropertiesService.getScriptProperties();
   const claves = ["PDA_SPREADSHEET_ID", "PDM_SPREADSHEET_ID", "BODEGA_ID_BA", "BODEGA_ID_BM", "BODEGA_URL_BA", "BODEGA_URL_BM",
-    "PDA_SPREADSHEET_URL", "PDM_SPREADSHEET_URL", "PROCESSED_SURTIDO_TX_HASHES"];
+    "PDA_SPREADSHEET_URL", "PDM_SPREADSHEET_URL", "PROCESSED_SURTIDO_TX_HASHES", "HISTORIAL_CIERRES"];
   const previas = {};
   claves.forEach(k => { previas[k] = props.getProperty(k); props.setProperty(k, ""); });
   props.setProperty("PDA_SPREADSHEET_ID", "ID_PDA");
@@ -62,6 +62,8 @@ function runSmartSyncTests() {
     assert.strictEqual(sal("KARDEX_BM", 7), 3, "Mercado Fresa: PARCIAL 3");
     assert.strictEqual(r1.totalDescontados, 3, "3 insumos aplicados");
     assert.strictEqual(r1.totalVaciadosTiendas, 2, "Ambas tiendas vaciadas");
+    const cierre = JSON.parse(props.getProperty("HISTORIAL_CIERRES"))[0];
+    assert.ok(cierre.ok && cierre.descontados === 3 && cierre.manual === false && "push" in cierre.fases, "Historial de cierres con tiempos por fase");
     assert.ok(lecturasLedger <= 2, `La lista de idempotencia se lee una vez por corrida (leída ${lecturasLedger} veces)`);
     console.log("  ✓ Descuenta solo lo recibido, suma sobre la SAL existente y lee la lista de idempotencia una sola vez");
 

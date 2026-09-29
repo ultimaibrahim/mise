@@ -14,6 +14,7 @@ const { runNivel1Tests } = require('./suites/nivel1.test');
 const { runVersionTests } = require('./suites/version.test');
 const { runPowerhouseTests } = require('./suites/powerhouse.test');
 const { runSmartSyncTests } = require('./suites/smartsync.test');
+const { runEstadoTests } = require('./suites/estado.test');
 const { runMetodosTests } = require('./suites/metodos.test');
 const { runTiendaUnicaTests } = require('./suites/tienda_unica.test');
 const { runBlindajeTests } = require('./suites/blindaje.test');
@@ -44,6 +45,7 @@ try {
   runNivel1Tests();
   runPowerhouseTests();
   runSmartSyncTests();
+  runEstadoTests();
   runMetodosTests();
   runTiendaUnicaTests();
   runBlindajeTests();

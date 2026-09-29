@@ -474,6 +474,10 @@ const MiseSmartSync = {
       const dur = MiseLogger.timeEnd(tId);
       const seg = (ms) => (ms / 1000).toFixed(1) + " s";
       MiseLogger.info("MiseSmartSync", `Descuento completado: ${totalDescontados} insumos aplicados, ${totalOmitidosDuplicados} omitidos por idempotencia, ${totalVaciadosTiendas} tiendas vaciadas. Fases: tiendas ${seg(fases.tiendas)} · log ${seg(fases.log)} · kardex ${seg(fases.kardex)} · vistas ${seg(fases.vistas)} · push ${seg(fases.push)}.`, dur);
+      try {
+        _registrarCierre({ fecha: new Date().toISOString(), objetivo: fechaObjetivoStr, ok: true, manual: !silent, ms: dur, fases,
+          descontados: totalDescontados, omitidos: totalOmitidosDuplicados, tiendas: totalVaciadosTiendas });
+      } catch (eHist) {}
 
       if (!silent) {
         let msg = `Fecha procesada: ${fechaObjetivoStr} (${targetDayName})\nInsumos descontados en Kardex: ${totalDescontados}\nTransacciones previas omitidas: ${totalOmitidosDuplicados}\nTiendas vaciadas y reseteadas: ${totalVaciadosTiendas}\n\n`;
@@ -495,6 +499,7 @@ const MiseSmartSync = {
     } catch(err) {
       const dur = MiseLogger.timeEnd(tId);
       MiseLogger.error("MiseSmartSync", `Error al descontar: ${err.message}`, err, dur);
+      try { _registrarCierre({ fecha: new Date().toISOString(), ok: false, manual: !silent, ms: dur, fases, error: String(err.message).substring(0, 200) }); } catch (eHist) {}
       if (!silent) {
         SpreadsheetApp.getUi().alert("❌ Error", `Ocurrió un error al descontar: ${err.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
       }

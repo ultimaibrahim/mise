@@ -23,6 +23,13 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6g Altair — Bodega Sabe si las Tiendas Están al Día (Septiembre 2026) [EN PRUEBAS]
+
+* 🩺 **Estado del sistema**: desde el menú de Bodega se ve en verde, amarillo o rojo si cada tienda está conectada, si corrió su reinicio de medianoche, si el cierre nocturno salió bien y si los Kardex están en la semana correcta.
+* 💓 **Sin pasos extra**: las tiendas avisan solas que están bien cada vez que se usan o en sus procesos nocturnos.
+
+---
+
 ## Versión 1.7.6f Altair — Descuento Nocturno Más Rápido y a Prueba de Repeticiones (Septiembre 2026) [EN PRUEBAS]
 
 * 🛡️ **Nunca se descuenta dos veces**: si el descuento de la noche se vuelve a correr (reintento automático o botón manual), ya no resta de nuevo lo que ya había restado.

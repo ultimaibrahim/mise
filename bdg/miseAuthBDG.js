@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.6f Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.6g Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -210,6 +210,7 @@ function onOpen() {
           .addItem("🧠 Reconciliador Inteligente de Huérfanos", "abrirReconciliadorInteligenteHTML"))
         .addSubMenu(ui.createMenu("⚙️ Automatizaciones y Triggers")
           .addItem("🚚 Descontar pedidos de ayer (Manual)", "descontarSurtidoHoyManualmente")
+          .addItem("🩺 Estado del sistema (Bodega y tiendas)", "mostrarEstadoSistema")
           .addItem("🩺 Diagnosticar activadores", "diagnosticarActivadores")
           .addItem("⏰ Reiniciar activadores (23:00 diario y domingo)", "instalarActivadoresNocturnosBDG")
           .addItem("🔗 Configurar conexión con Logs (IMPORTRANGE)", "configurarConexionLogTiendas")
@@ -2290,9 +2291,11 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.6f";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6g";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "🩺 Estado del sistema: Bodega y tiendas en verde, amarillo o rojo (menú Automatizaciones)",
+  "El descuento nocturno ya no resta dos veces si se vuelve a correr",
   "📊 Kardex simplificado: producto, unidad, saldo anterior y días",
   "📥 Entradas valida la semana de cada tienda por separado",
   "Powerhouse más rápido: Andares y Mercado se actualizan en paralelo",
@@ -3651,9 +3654,9 @@ function _blindarHoja(sheet, desc, libres) {
 
 // Hojas técnicas de Bodega (solo lectura) y cuáles se ocultan para simplificar la vista
 const HOJAS_TECNICAS_BDG = ["VISTA_MOVIL_BA", "VISTA_MOVIL_BM", "HISTORIAL_BA", "HISTORIAL_BM", "_HISTORIAL_RESPALDO",
-  "🗒 LOG", "_DICCIONARIO_ALIAS", "⚠️ REVISIÓN_HUÉRFANOS", "_SYNC_LOG_BA", "_SYNC_LOG_BM", "🔄 TRASPASOS"];
+  "🗒 LOG", "_DICCIONARIO_ALIAS", "⚠️ REVISIÓN_HUÉRFANOS", "_SYNC_LOG_BA", "_SYNC_LOG_BM", "🔄 TRASPASOS", "_ESTADO_SISTEMA"];
 const HOJAS_OCULTAS_BDG = ["VISTA_MOVIL_BA", "VISTA_MOVIL_BM", "_HISTORIAL_RESPALDO", "_DICCIONARIO_ALIAS",
-  "⚠️ REVISIÓN_HUÉRFANOS", "_SYNC_LOG_BA", "_SYNC_LOG_BM"];
+  "⚠️ REVISIÓN_HUÉRFANOS", "_SYNC_LOG_BA", "_SYNC_LOG_BM", "_ESTADO_SISTEMA"];
 
 function _blindarHojasTecnicasBDG() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -6049,6 +6052,13 @@ function descontarSurtidoAutomatico(silent = true) {
     _prepararHojaEntradas(true);
   } catch(e) {
     MiseLogger.warn("descontarSurtidoAutomatico", `Error preparando 📥 ENTRADAS: ${e.message}`);
+  }
+
+  // 4. 🩺 Resumen de salud (lee el latido de las tiendas) para la página de estado
+  try {
+    _recolectarEstadoSistema();
+  } catch(e) {
+    MiseLogger.warn("descontarSurtidoAutomatico", `Error recolectando el estado del sistema: ${e.message}`);
   }
 }
 

@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6g Altair (Latido y resumen de salud) — 2026-09-29 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* Latido por eventos en `_ESTADO` de cada tienda; `bdg/MiseEstado.js` con `obtenerEstadoSistema()` (semáforo, cierres, Kardex, bajo mínimo, incidentes) y `🩺 Estado del sistema` en el menú.
+
+---
+
 ## ⚡ v1.7.6f Altair (Descuento nocturno idempotente y en bloque) — 2026-09-29 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG)

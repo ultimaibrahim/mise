@@ -51,6 +51,12 @@ class MockRange {
     return this;
   }
 
+  // Como Google: devuelve la fórmula de la celda (las fórmulas se guardan como texto que empieza con "=")
+  getFormula() {
+    const v = this.getValue();
+    return (typeof v === "string" && v.startsWith("=")) ? v : "";
+  }
+
   setFormula(formula) {
     this.sheet._setCell(this.row, this.col, formula);
     return this;
