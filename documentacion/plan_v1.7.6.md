@@ -19,7 +19,7 @@
 ### Consolidación
 - [x] *(29/sep)* Fusionar las entradas `1.7.5a … 1.7.5s` en una sola **v1.7.5 oficial** en `CHANGELOG.md`, `CHANGELOG_PUBLIC.md` e `historial_versiones.md`.
 - [x] Badge del README y `package.json` → `1.7.5`; `MISE_VERSION` y cabeceras → `1.7.5` (la prueba `version.test.js` lo exige).
-- [ ] **🔐 Contraseña `LCP-ADMIN-2026`**: está en el código y en la documentación de un repo **público**. Moverla a la propiedad `ADMIN_PASSWORD` (sin respaldo en código), cambiarla y eliminarla del texto.
+- [x] *(1.7.6j)* **🔐 Contraseña de administrador**: ya no está en el código ni en la documentación; solo su huella SHA-256 en `ADMIN_PASSWORD_HASH`, definida por el dueño desde el menú (🔐 Cambiar contraseña de administrador). Sin contraseña, lo destructivo queda bloqueado. La anterior quedó en el historial de git: ya no sirve.
 - [x] **Git**: fusionar `feat/v1.10.0-altair` → `master` *(29/sep, tag `v1.7.5`)* (nombre heredado de la numeración vieja) y abrir `feat/v1.7.6-altair`.
 - [ ] **Trabajo de Atlas sin commit** (`mise-web/`, `database/`, archivos de agentes en la raíz y `tests/`): decidir entre commit aparte en su propia rama o archivarlo. No mezclar con Altair.
 
@@ -38,18 +38,26 @@
 
 - [x] **Un solo archivo de tienda** *(1.7.6b: `tienda/miseTienda.js` + `scripts/build-tienda.js`)*: `pda/miseAuthPDA.js` y `pdm/miseAuthPDM.js` difieren en 3 líneas. Crear `tienda/miseTienda.js` (la sucursal sale de `BODEGA_KEY`/`BODEGA_NOMBRE`) y que `mise-env.js` lo suba a ambos proyectos. Adiós a las divergencias (log de surtido, etc.).
 - [~] **Un solo escritor de PEDIDO DIARIO** *(1.7.6b: `_filaPedido()` unifica las 3 copias de la tienda; falta el escritor remoto de Bodega → Fase 3)*: hoy hay 4 (`_actualizarAvisoPedido`, `ordenarPedido`, `_reconstruirPedidoDiarioCore` y el escritor remoto de Bodega `_reordenarPedidoRemotoDirecto`). Unificar en `_escribirFilasPedido()`; el escritor remoto desaparece en la Fase 3.
-- [ ] **Herramientas de desarrollo fuera de PROD**: mover a `MiseDevTools.js` (solo DEV vía `.claspignore`) — reconciliador del 7/sep, inyección de recuperación, datos aleatorios de prueba, forzar LOG, reconciliador de huérfanos; menús condicionados a `MISE_ENV`.
-- [ ] **Código muerto**: 9 funciones sin referencias en BDG y 4 en tiendas (lista en la sesión del 28/sep: `crearVistaMovilBA/BM` duplicadas, `runTests`, `limpiarProps`, `crearHojaCargaMasiva`, `crearHojaEdicionMasiva`, `abrirPowerhouse`, `obtenerProductosPickingHTML`, `_validarOAvanzarSemanaBDG`, `invalidarCache`, `instalarTriggers`, `desinstalarTriggers`, `avanzarSemanaInfo`). Confirmar con `grep` antes de borrar.
-- [ ] **Logs**: unificar `_log`, `registrarLog` y `MiseLogger` en `MiseLogger`.
+- [x] *(1.7.6j)* **Herramientas de desarrollo fuera de PROD**: `bdg/MiseDevTools.js` y `tienda/MiseDevTools.js` (solo DEV; menús tras guarda `typeof`); la reconciliación de un solo uso del 7/sep se eliminó.
+- [x] *(1.7.6j)* **Código muerto**: 15 funciones fuera (con parser); `limpieza.test.js` impide que vuelva a acumularse.
+- [x] *(1.7.6j)* **Logs**: `_log` y `registrarLog` eliminados; todo usa `MiseLogger`.
 - [~] **Columnas ocultas muertas** (esquema 3 del motor de migración): la función ADICIÓN ya se retiró en 1.7.6e (J queda reservada vacía); falta quitar físicamente `J` y evaluar `G DIFERENCIA`, ajustando los índices en un solo cambio probado. Las demás columnas ocultas son del motor y se quedan. Alternativa sin riesgo: agruparlas (➖/➕).
 
 ---
 
 ## Fase 2.5 — Blindaje y UX de Bodega (pedido 28/sep)
+- [ ] **Revisar los HTML y modales** (Powerhouse, Traspasos Bodega/Tienda, Reconciliador, página de estado): qué hace cada uno, qué sobra y qué otras herramientas de `HtmlService` conviene explotar (pedido 28/sep, se había quedado fuera del plan).
+- [ ] **MAESTRO más amigable**: columnas visibles mínimas, encabezados y validaciones claras, ayudas en celda (el Kardex ya se simplificó en 1.7.6d; MAESTRO no).
 - [x] **Blindaje por capas** *(1.7.6c)*: instalables como dueño, hojas técnicas y Entradas protegidas, Kardex sin F:G ni G4 editables, `🔐 Auditoría de permisos`.
 - [x] **Kardex simplificado** *(1.7.6d)*: visibles solo PRODUCTO, UNIDAD, SALDO ANTERIOR y las columnas de los días.
-- [~] **Hoja `🏠 INICIO` en Bodega** *(hecha en 1.7.6d y retirada en 1.7.6e por decisión de producto; la idea pasa a la Web App, Fase 4)*: accesos y acciones con casillas (funcionan en celular) y estado del sistema en la propia hoja.
+- [x] **Hoja `🏠 INICIO` en Bodega** *(hecha en 1.7.6d, retirada en 1.7.6e; sus accesos y estado viven desde 1.7.6h en la página de estado)*: accesos y acciones con casillas (funcionan en celular) y estado del sistema en la propia hoja.
 - [ ] **Manual visual/tutorial** por rol, con qué funciona sin internet (lo arma Ibrahim; apoyo con página compartible).
+
+## Fase 2.6 — Auditorías pendientes
+- [ ] **`MiseSmartSync.reconciliarSemanaCompleta`**: usa un patrón parecido al del doble descuento corregido en 1.7.6f; auditarlo (y cubrirlo con prueba) antes de que alguien lo use.
+- [x] *(29/sep)* Skill `mise-gas-ops` actualizada con las trampas nuevas (`setFormulas` → `#NAME?`, protecciones vs activadores simples, huella del catálogo, DevTools, webapp versionada).
+
+> Lo que depende de dejar pasar el tiempo (validación en operación real) vive en `documentacion/checklist_observacion.md`, separado de lo que se itera.
 
 ## Fase 3 — Arquitectura por eventos · Nivel 2 (1.7.6e–f)
 

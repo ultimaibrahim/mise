@@ -23,6 +23,15 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6j Altair — Más Seguro y Más Ligero (Septiembre 2026) [EN PRUEBAS]
+
+* 🔐 **Nueva contraseña de administrador**: la anterior deja de funcionar. La nueva la define solo el dueño de cada libro y se guarda cifrada.
+* 🛡️ **Restablecer una tienda ahora respeta el "No"**: antes, cancelar en la confirmación final no evitaba el borrado.
+* 🧹 **Menús más limpios**: las herramientas de prueba ya no aparecen en los libros de operación, y se retiraron funciones antiguas que ya no se usaban.
+* 🚚 "Descontar pedidos de ayer" ahora sí descuenta los de ayer.
+
+---
+
 ## Versión 1.7.6i Altair — Las Tiendas se Ponen al Día Solas con el Catálogo (Septiembre 2026) [EN PRUEBAS]
 
 * 🔔 **Cambios de catálogo que siempre llegan**: si en Bodega se cambia el orden de picking o se desactiva un producto, cada tienda lo aplica sola al abrirse o a medianoche, aunque en ese momento no hubiera conexión.

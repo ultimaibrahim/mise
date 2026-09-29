@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6j Altair (Fase 2: limpieza y contraseña rotada) — 2026-09-29 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* Contraseña de administrador solo como huella cifrada definida por el dueño; restablecimiento de tienda respeta el "No"; herramientas de desarrollo en `MiseDevTools.js` (solo DEV); ~15 funciones muertas fuera; logs unificados en `MiseLogger`; "descontar de ayer" corregido.
+
+---
+
 ## ⚡ v1.7.6i Altair (Suscripción al catálogo por huella) — 2026-09-29 [EN PRUEBAS · DEV]
 
 ### 📱 Tiendas (PDA / PDM) & 🏬 Bodega (BDG)
@@ -524,7 +531,7 @@ Consolida `1.7.5a`–`1.7.5s`: Entradas móviles → Kardex, avance de semana in
   * **Corrección de Historial Desalineado**: Solución del desfasamiento de columnas al utilizar la herramienta "Avanzar Semana" para trasladar inventarios.
   * **Emoji de Reset Móvil**: Estandarización de botones interactivos con el emoji de basurero (`🗑`) en la celda `B2` y su checkbox ejecutor silencioso en `C2`.
   * **Reparación No Destructiva**: Creación de la función `repararSistemaTienda` para restaurar formatos condicionales, visibilidad de inactivos y conexión sin borrar datos activos en tránsito.
-  * **Contraseña en Setup**: Bloqueo de seguridad por contraseña (`LCP-ADMIN-2026`) en el restablecimiento destructivo de las hojas de las tiendas.
+  * **Contraseña en Setup**: Bloqueo de seguridad por contraseña (contraseña de administrador; desde v1.7.6j solo su huella cifrada, definida por el dueño del libro) en el restablecimiento destructivo de las hojas de las tiendas.
 
 ---
 
@@ -536,7 +543,7 @@ Consolida `1.7.5a`–`1.7.5s`: Entradas móviles → Kardex, avance de semana in
 * **Manejo de Errores Robustecido**: Implementación de bloques `try-catch-finally` con alertas informativas en pantalla y toques visuales en rojo en caso de fallo, garantizando la liberación segura de los recursos (`lock.releaseLock()`) y la consistencia del catálogo para reintentos sin riesgos.
 * **Limpiador Automático de Duplicados**: Incorporación de la función `eliminarDuplicadosCatalogo` al menú de `⚙️ Mise`. Identifica de forma inteligente registros redundantes en `MAESTRO` comparando Categoría + Nombre + Presentación, los elimina de forma atómica en todas las bases (Kardex e Historiales) y re-estructura el catálogo secuencialmente.
 * **Protecciones Anti-Dummies (MAESTRO)**: Bloqueo de celdas nativas de Sheets en `MAESTRO` para evitar la edición accidental de columnas críticas y fórmulas de stock. Únicamente se permite la edición directa del usuario en las columnas de selección y límites de stock (`MÍN/MÁX`).
-* **Contraseña en Setup**: Bloqueo de seguridad por contraseña (`LCP-ADMIN-2026`) en el restablecimiento destructivo del catálogo principal.
+* **Contraseña en Setup**: Bloqueo de seguridad por contraseña (contraseña de administrador; desde v1.7.6j solo su huella cifrada, definida por el dueño del libro) en el restablecimiento destructivo del catálogo principal.
 
 ---
 

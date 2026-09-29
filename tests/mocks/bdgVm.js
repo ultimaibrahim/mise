@@ -70,7 +70,7 @@ function crearContextoBDG(opts = {}) {
   };
   vm.createContext(sandbox);
   const bdgDir = path.join(__dirname, "..", "..", "bdg");
-  const code = ["miseAuthBDG.js", "MiseKardexEngine.js", "MiseEstado.js"]
+  const code = ["miseAuthBDG.js", "MiseKardexEngine.js", "MiseEstado.js", "MiseDevTools.js"]
     .map(f => fs.readFileSync(path.join(bdgDir, f), "utf8")).join("\n");
   // Exponer las constantes top-level (const no se cuelga del global de la VM)
   vm.runInContext(code + "\n;this.__c = { SHEET_ENTRADAS, ENTRADAS_START, ENTRADAS_HOY, DIAS, KARDEX_START }; this.MiseSmartSync = MiseSmartSync;", sandbox);

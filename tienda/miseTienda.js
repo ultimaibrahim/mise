@@ -60,6 +60,13 @@ function onOpen() {
   }
   try {
     const ui = SpreadsheetApp.getUi();
+    // Herramientas de prueba (tienda/MiseDevTools.js): solo existen en DEV
+    const pruebas = ui.createMenu("🧪 Diagnóstico y Pruebas")
+      .addItem("🔐 Auditoría de permisos", "auditarPermisos");
+    if (typeof generarDatosPrueba === "function") {
+      pruebas.addItem("🎲 Generar datos aleatorios de prueba", "generarDatosPrueba")
+        .addItem("🗒️ Forzar registro en LOG_SURTIDO", "probadorForzarLogSurtido");
+    }
     const menu = ui.createMenu("⚙️ Mise")
       // Operación Diaria
       .addItem("🚀 Configurar este libro (activadores, estructura, picking)", "configurarEsteLibroTienda")
@@ -80,11 +87,10 @@ function onOpen() {
         .addSubMenu(ui.createMenu("🔒 Blindaje y Permisos")
           .addItem("🔒 Proteger Pedido Diario", "protegerPedidoSeguro")
           .addItem("🛡️ Blindar Pedido y Surtido (Total)", "protegerTodasLasHojasTiendaSeguras"))
-        .addSubMenu(ui.createMenu("🧪 Diagnóstico y Pruebas")
-          .addItem("🎲 Generar datos aleatorios de prueba", "generarDatosPrueba")
-          .addItem("🗒️ Forzar registro en LOG_SURTIDO", "probadorForzarLogSurtido"))
+        .addSubMenu(pruebas)
         .addSubMenu(ui.createMenu("⚠️ Configuración Crítica")
           .addItem(`🔗 Configurar conexión con ${BODEGA_NOMBRE}`, "configurarBodega")
+          .addItem("🔐 Cambiar contraseña de administrador", "cambiarPasswordAdmin")
           .addItem("⚠️ Restablecer sistema desde cero (Destructivo)", "setupCompleto")))
       .addSeparator()
       .addItem("ℹ️ Acerca de Mise",                        "acercaDe");
@@ -220,11 +226,6 @@ function _getProductCount() {
   return lastRow - DATA_START_ROW + 1;
 }
 
-function invalidarCache() {
-  PropertiesService.getScriptProperties().deleteProperty("PRODUCT_COUNT");
-  SpreadsheetApp.getActive().toast("Caché invalidado. Listo para recalcular.", "⚙️ Mise", 4);
-}
-
 // onEdit SIMPLE: corre con los permisos de QUIEN EDITA. Con cuentas propias en tienda, sus escrituras a
 // columnas protegidas (PEDIDO H/I, Surtido D, hojas técnicas) fallaban EN SILENCIO — causa del histórico
 // "Surtido se pinta pero PEDIDO no recibe cantidad/estado". Con el instalable (corre como el dueño), el
@@ -316,9 +317,9 @@ function _onEditTienda(e) {
         e.range.setValue(false);
         try {
           generarSurtidoRapido();
-          registrarLog("surtidoRapido", "SUCCESS", "Pestaña de Surtido Rápido generada desde botón F2.");
+          MiseLogger.info("surtidoRapido", "Pestaña de Surtido Rápido generada desde botón F2.");
         } catch(err) {
-          registrarLog("surtidoRapido", "ERROR", err.message);
+          MiseLogger.error("surtidoRapido", err.message);
         }
       }
     }
@@ -406,119 +407,6 @@ function _validarYAutoRepararSyncSilencioso() {
       }
     }
   } catch(e) {}
-}
-
-function sincronizarEstados() {
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_PEDIDO);
-  const sync  = ss.getSheetByName(SHEET_SYNC);
-  if (!sheet || !sync) return;
-
-  _validarYAutoRepararSyncSilencioso();
-
-  // Forzar recálculo global re-escribiendo el IMPORTRANGE para romper caché
-  const formula = sync.getRange(4, 1).getFormula();
-  if (formula) {
-    sync.getRange(4, 1).clearContent();
-    sync.getRange(4, 1).setFormula(formula);
-  } else {
-    const props = PropertiesService.getScriptProperties();
-    const url = props.getProperty(`BODEGA_URL_${BODEGA_KEY}`);
-    if (url) {
-      _setupSync(url);
-    }
-  }
-
-  // Reordenar automáticamente la lista según el nuevo ranking de picking de Bodega
-  try {
-    ordenarPedido();
-  } catch(e) {}
-
-  const syncCount = Math.max(0, sync.getLastRow() - 3);
-  const currentCount = _getProductCount();
-
-  if (syncCount > currentCount) {
-    const diff = syncCount - currentCount;
-    const DR = DATA_START_ROW;
-    const sRef = "'" + SHEET_SYNC + "'";
-
-    // Insertar nuevas filas al final de la tabla de pedidos
-    const insertStartRow = DR + currentCount;
-    sheet.insertRowsAfter(insertStartRow - 1, diff);
-
-    const highlightColor = "#E8EAF6"; // Morado claro para avisar producto nuevo
-    const newFormulas = [];
-    const newBgs = [];
-
-    for (let i = 0; i < diff; i++) {
-      const r = insertStartRow + i;
-      const sr = 4 + currentCount + i;
-      const prodNo = currentCount + i + 1;
-
-      newFormulas.push([
-        prodNo,                                       // Col A (No)
-        '=' + sRef + '!B' + sr,                       // Col B (CATEGORÍA)
-        '=' + sRef + '!C' + sr,                       // Col C (PRODUCTO)
-        '=' + sRef + '!D' + sr,                       // Col D (UNIDAD)
-        '=IFERROR(' + sRef + '!E' + sr + '*1, 0) & IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "", IF(' + sRef + '!E' + sr + '<' + sRef + '!J' + sr + ', " (-" & (' + sRef + '!J' + sr + '-' + sRef + '!E' + sr + ') & ")", IF(' + sRef + '!E' + sr + '>' + sRef + '!K' + sr + ', " (+" & (' + sRef + '!E' + sr + '-' + sRef + '!K' + sr + ') & ")", " (-)")))', // Col E (SALDO TEÓRICO)
-        "",                                           // Col F (CANT. A PEDIR)
-        '=IF(OR(F' + r + '="", H' + r + '=""), "", H' + r + ' - F' + r + ')', // Col G (DIFERENCIA)
-        "",                                           // Col H
-        "",                                           // Col I
-        ""                                            // Col J (reservada, sin uso)
-      ]);
-
-      const rowBg = Array(NUM_COLS).fill(highlightColor);
-      rowBg[COL_CANT_PEDIR - 1] = COLORS.yellow; // Col F
-      rowBg[4]                  = COLORS.blue;   // Col E
-      newBgs.push(rowBg);
-    }
-
-    // Escribir en bloque
-    sheet.getRange(insertStartRow, 1, diff, NUM_COLS).setValues(newFormulas);
-    sheet.getRange(insertStartRow, 1, diff, NUM_COLS).setBackgrounds(newBgs);
-
-    sheet.getRange(insertStartRow, 1, diff, NUM_COLS)
-      .setFontFamily("Calibri").setFontSize(10).setVerticalAlignment("middle");
-    sheet.getRange(insertStartRow, 1, diff, 1).setHorizontalAlignment("center");
-    sheet.getRange(insertStartRow, 3, diff, 1).setHorizontalAlignment("left");
-    sheet.getRange(insertStartRow, 4, diff, 1).setHorizontalAlignment("center");
-    sheet.getRange(insertStartRow, 5, diff, 1).setHorizontalAlignment("right");
-    sheet.getRange(insertStartRow, 7, diff, 1).setHorizontalAlignment("center");
-    sheet.getRange(insertStartRow, 11, diff, 1).setHorizontalAlignment("center");
-
-    _aplicarFormatosCondicionales(sheet);
-
-    // Mostrar Categoría (Col B) y ocultar No (Col A) para permitir filtrado móvil
-    try {
-      sheet.hideColumns(1);
-      sheet.hideColumns(10);
-      sheet.showColumns(2);
-      let filter = sheet.getFilter();
-      if (filter) filter.remove();
-      sheet.getRange(3, 2, syncCount + 1, 6).createFilter(); // B to G (6 columns)
-    } catch(err) {}
-
-    // Invalidar caché local e indicar el nuevo conteo de productos
-    PropertiesService.getScriptProperties().setProperty("PRODUCT_COUNT", String(syncCount));
-
-    try {
-      SpreadsheetApp.getActive().toast(`Se agregaron ${diff} nuevos productos desde Bodega ✓`, "⚙️ Sincronizar", 5);
-    } catch(e) {}
-  } else {
-    try {
-      SpreadsheetApp.getActive().toast("Sincronización de stocks completada ✓", "⚙️ Sincronizar", 3);
-    } catch(e) {}
-  }
-  _actualizarVisibilidadInactivos(sheet);
-  
-  // Actualizar Surtido Rápido silenciosamente si existe
-  try {
-    const surtido = ss.getSheetByName("🚚 SURTIDO RÁPIDO");
-    if (surtido) {
-      generarSurtidoRapidoSilencioso();
-    }
-  } catch (err) {}
 }
 
 function ordenarPedido() {
@@ -708,17 +596,6 @@ function _ensureDailyResetTrigger() {
   }
 }
 
-function instalarTriggers() {
-  ScriptApp.getProjectTriggers().forEach(t => { if (t.getHandlerFunction() === "sincronizarEstados") ScriptApp.deleteTrigger(t); });
-  ScriptApp.newTrigger("sincronizarEstados").timeBased().everyMinutes(10).create();
-  SpreadsheetApp.getUi().alert("✅ Trigger instalado", "Los estados se sincronizarán cada 10 minutos.", SpreadsheetApp.getUi().ButtonSet.OK);
-}
-
-function desinstalarTriggers() {
-  ScriptApp.getProjectTriggers().forEach(t => { if (t.getHandlerFunction() === "sincronizarEstados") ScriptApp.deleteTrigger(t); });
-  SpreadsheetApp.getActive().toast("Trigger desinstalado.", "⚙️ Mise", 3);
-}
-
 function resetearPedidoManualmente() {
   const ui = SpreadsheetApp.getUi();
   const resp = ui.alert("🗑️ Reiniciar Pedido Diario", "¿Estás seguro de que deseas borrar las cantidades capturadas y reiniciar el pedido del día?", ui.ButtonSet.YES_NO);
@@ -882,10 +759,6 @@ function _checkAutoResetNuevoDia(e) {
 function _fmtDate(date) {
   if (!date || isNaN(date)) return "—";
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
-}
-
-function avanzarSemanaInfo() {
-  SpreadsheetApp.getUi().alert("📅 Avanzar semana","Esta función se ejecuta en el archivo principal Mise_Bodega.");
 }
 
 function repararSistemaTienda() {
@@ -1178,37 +1051,80 @@ function _protegerPedidoDiario(sheet, count) {
   sheetProtection.setUnprotectedRanges([checkboxesFila2, rangeCantPedir]);
 }
 
+// ── 🔐 CONTRASEÑA DE ADMINISTRADOR (1.7.6j) ───────────────────────────────────────────────────
+// Nunca en el código: solo su huella SHA-256 en la propiedad ADMIN_PASSWORD_HASH de este libro (ni los editores del
+// script pueden leerla). Solo el dueño del libro la define o cambia. Sin contraseña definida, lo destructivo queda bloqueado.
+function _hashAdmin(txt) {
+  return Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, "mise-admin:" + txt, Utilities.Charset.UTF_8));
+}
+
+function _validarPasswordAdmin(ui, titulo, mensaje) {
+  const hash = PropertiesService.getScriptProperties().getProperty("ADMIN_PASSWORD_HASH");
+  if (!hash) {
+    ui.alert("🔐 Sin contraseña de administrador",
+      "Esta acción está bloqueada hasta que el dueño del libro defina la contraseña en:\n⚙️ Mise → Mantenimiento Avanzado → 🔐 Cambiar contraseña de administrador.", ui.ButtonSet.OK);
+    return false;
+  }
+  const r = ui.prompt(titulo, mensaje, ui.ButtonSet.OK_CANCEL);
+  if (r.getSelectedButton() !== ui.Button.OK) return false;
+  if (_hashAdmin(r.getResponseText().trim()) !== hash) {
+    MiseLogger.warn("_validarPasswordAdmin", `Contraseña incorrecta en "${titulo}"`);
+    ui.alert("❌ Contraseña incorrecta. Operación abortada.");
+    return false;
+  }
+  return true;
+}
+
+function _esDuenoDelLibro() {
+  try {
+    const dueno = SpreadsheetApp.getActiveSpreadsheet().getOwner();
+    if (!dueno) return true; // Unidad compartida: sin dueño individual
+    return dueno.getEmail() === Session.getActiveUser().getEmail();
+  } catch (e) { return false; }
+}
+
+function cambiarPasswordAdmin() {
+  const ui = SpreadsheetApp.getUi();
+  const props = PropertiesService.getScriptProperties();
+  if (!_esDuenoDelLibro()) { ui.alert("🔐 Solo el dueño del libro puede cambiar la contraseña de administrador."); return; }
+  if (props.getProperty("ADMIN_PASSWORD_HASH") &&
+      !_validarPasswordAdmin(ui, "🔐 Cambiar contraseña de administrador", "Escribe la contraseña ACTUAL:")) return;
+  const n1 = ui.prompt("🔐 Nueva contraseña de administrador",
+    "Mínimo 10 caracteres. No se guarda en el código ni en texto: solo su huella cifrada en este libro.", ui.ButtonSet.OK_CANCEL);
+  if (n1.getSelectedButton() !== ui.Button.OK) return;
+  const nueva = n1.getResponseText().trim();
+  if (nueva.length < 10) { ui.alert("❌ Debe tener al menos 10 caracteres. No se cambió nada."); return; }
+  const n2 = ui.prompt("🔐 Confirmar contraseña", "Escríbela otra vez:", ui.ButtonSet.OK_CANCEL);
+  if (n2.getSelectedButton() !== ui.Button.OK) return;
+  if (n2.getResponseText().trim() !== nueva) { ui.alert("❌ No coinciden. No se cambió nada."); return; }
+  props.setProperty("ADMIN_PASSWORD_HASH", _hashAdmin(nueva));
+  props.deleteProperty("ADMIN_PASSWORD"); // formato anterior (texto plano), si existía
+  MiseLogger.info("cambiarPasswordAdmin", "Contraseña de administrador actualizada");
+  ui.alert("✅ Contraseña actualizada en este libro.\n\nCada libro guarda la suya: repite esto en Bodega, Andares y Mercado (PROD y DEV).");
+}
+
 function setupCompleto() {
   const ui   = SpreadsheetApp.getUi();
-  const pResp = ui.prompt(
-    "⚠️ Restablecer sistema (Acción Destructiva)",
-    "Esta operación borrará y reconstruirá la hoja de Pedido Diario por completo.\n\nIngresa la contraseña de administrador para continuar:",
-    ui.ButtonSet.OK_CANCEL
-  );
-  if (pResp.getSelectedButton() !== ui.Button.OK) return;
-  
-  const psw = pResp.getResponseText().trim();
-  const adminPsw = PropertiesService.getScriptProperties().getProperty("ADMIN_PASSWORD") || "LCP-ADMIN-2026";
-  if (psw !== adminPsw) {
-    ui.alert("❌ Contraseña incorrecta. Operación abortada.");
-    return;
-  }
-  
+  if (!_validarPasswordAdmin(ui, "⚠️ Restablecer sistema (Acción Destructiva)",
+    "Esta operación borrará y reconstruirá la hoja de Pedido Diario por completo.\n\nIngresa la contraseña de administrador para continuar:")) return;
+
   const resp = ui.alert(
     "⚠️ Confirmación Final",
     "¿Estás absolutamente seguro de que deseas borrar y reconstruir el archivo?",
     ui.ButtonSet.YES_NO
   );
-  // Purgar estados de sesión pero PRESERVAR configuraciones de infraestructura (BODEGA_URL y ADMIN_PASSWORD)
+  if (resp !== ui.Button.YES) return; // antes faltaba: con "No" también borraba todo
+
+  // Purgar estados de sesión pero PRESERVAR infraestructura (enlace con Bodega), contraseña y entorno
   const props = PropertiesService.getScriptProperties();
-  const bodegaUrl = props.getProperty(`BODEGA_URL_${BODEGA_KEY}`);
-  const adminPswProp = props.getProperty("ADMIN_PASSWORD");
+  const conservar = {};
+  [`BODEGA_URL_${BODEGA_KEY}`, "BODEGA_KEY", "BODEGA_NOMBRE", "ADMIN_PASSWORD_HASH", "MISE_ENV"]
+    .forEach(k => { const v = props.getProperty(k); if (v) conservar[k] = v; });
 
   props.deleteAllProperties();
   try { SpreadsheetApp.flush(); } catch(e) {}
-  
-  if (bodegaUrl) props.setProperty(`BODEGA_URL_${BODEGA_KEY}`, bodegaUrl);
-  if (adminPswProp) props.setProperty("ADMIN_PASSWORD", adminPswProp);
+
+  if (Object.keys(conservar).length) props.setProperties(conservar);
   
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
   // Forzar configuración regional de México para evitar errores de análisis de fórmula (Inglés + comas)
@@ -1237,7 +1153,7 @@ function setupCompleto() {
   }
 
   _buildPedidoDiario(pedido);
-  registrarLog("setupCompleto", "SUCCESS", "Sistema de Pedido Diario reestructurado desde cero.");
+  MiseLogger.info("setupCompleto", "Sistema de Pedido Diario reestructurado desde cero.");
 }
 
 function _buildPedidoDiario(sheet) {
@@ -1377,7 +1293,7 @@ function _aplicarFormatosCondicionales(sheet) {
   sheet.setConditionalFormatRules(rules);
 }
 
-const MISE_VERSION = "1.7.6i";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6j";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "Los cambios de catálogo de Bodega (orden y productos desactivados) se aplican solos al abrir",
@@ -1774,60 +1690,6 @@ function generarSurtidoRapidoSilencioso() {
   _generarSurtidoRapidoInternal(false);
 }
 
-function generarDatosPrueba() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_PEDIDO);
-  if (!sheet) return;
-  
-  const count = _getProductCount();
-  if (count < 1) return;
-  
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(10000)) return;
-  
-  try {
-    const rangeF = sheet.getRange(DATA_START_ROW, COL_CANT_PEDIR, count, 1);
-    const valuesF = rangeF.getValues();
-    
-    // Choose 15-25 random products to order
-    const numToOrder = Math.floor(Math.random() * 11) + 15; // 15 to 25
-    const selectedIndices = new Set();
-    while (selectedIndices.size < numToOrder) {
-      selectedIndices.add(Math.floor(Math.random() * count));
-    }
-    
-    selectedIndices.forEach(idx => {
-      // Set random quantity to order (integers or decimals)
-      const isFloat = Math.random() > 0.5;
-      const base = Math.floor(Math.random() * 8) + 1; // 1 to 8
-      let val = base;
-      if (isFloat) {
-        const decimals = [0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875];
-        val = base + decimals[Math.floor(Math.random() * decimals.length)];
-      }
-      valuesF[idx][0] = val;
-    });
-    
-    rangeF.setValues(valuesF);
-    
-    SpreadsheetApp.flush();
-    registrarLog("generarDatosPrueba", "SUCCESS", `Se generaron datos de prueba aleatorios para ${numToOrder} productos.`);
-    try { SpreadsheetApp.getActive().toast(`Se generaron datos de prueba para ${numToOrder} productos ✓`, "🎲 Prueba", 4); } catch(e) {}
-  } catch(err) {
-    registrarLog("generarDatosPrueba", "ERROR", err.message);
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function probadorForzarLogSurtido() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_PEDIDO);
-  if (!sheet) return;
-  _registrarLogSurtidoDiario(ss, sheet);
-  SpreadsheetApp.getActive().toast("Evidencias guardadas en 🗒 LOG_SURTIDO ✓", "🧪 Prueba", 4);
-}
-
 // ── BLINDAJE DE SEGURIDAD Y PROTECCIONES (ANTI-MANIPULACIÓN) ─────────────────
 function protegerPedidoSeguro() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1904,7 +1766,7 @@ function _auditarPermisos() {
 
 function auditarPermisos() {
   const lineas = _auditarPermisos();
-  registrarLog("auditarPermisos", "SUCCESS", lineas.join(" | "));
+  MiseLogger.info("auditarPermisos", lineas.join(" | "));
   SpreadsheetApp.getUi().alert("🔐 Auditoría de permisos", lineas.join("\n"), SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
@@ -1996,10 +1858,6 @@ const MiseLogger = {
 };
 
 // ── SISTEMA DE REGISTRO TRANSACCIONAL Y AUDITORÍA DE LOGS ─────────────────────
-function registrarLog(accion, estado, detalle) {
-  const level = estado === "ERROR" ? "ERROR" : "INFO";
-  MiseLogger.log(level, accion, detalle);
-}
 
 /**
  * Instala el activador automático por tiempo para ejecutar el reseteo y registro en LOG
@@ -2021,7 +1879,7 @@ function _reiniciarActivadoresTienda() {
   PropertiesService.getScriptProperties().setProperties({ ONEDIT_INSTALABLE: "1", ONOPEN_INSTALABLE: "1" });
   const creados = ["_resetearPedidoSilencioso (00:00)", "_checkAutoResetNuevoDia (04:00)",
                    "onEditTiendaInstalable (al editar)", "onOpenTiendaInstalable (al abrir)"];
-  registrarLog("instalarActivadores", "SUCCESS", `Borrados (${borrados.length}): [${borrados.join(", ")}]. Creados: ${creados.join(", ")}.`);
+  MiseLogger.info("instalarActivadores", `Borrados (${borrados.length}): [${borrados.join(", ")}]. Creados: ${creados.join(", ")}.`);
   return { borrados, creados };
 }
 
@@ -2042,7 +1900,7 @@ function _abrirLibro(ref) {
 
 // onOpen INSTALABLE: reinicio del día (si no ocurrió) y aviso de conexión, con permisos del dueño
 function onOpenTiendaInstalable(e) {
-  try { _checkAutoResetNuevoDia(); } catch (err) { registrarLog("onOpenTiendaInstalable", "ERROR", err.message); }
+  try { _checkAutoResetNuevoDia(); } catch (err) { MiseLogger.error("onOpenTiendaInstalable", err.message); }
   _sincronizarSiCambioCatalogo("apertura");
   try { _actualizarAvisoPedido(); } catch (err) {}
   _latidoTienda("apertura");
@@ -2086,10 +1944,10 @@ function _sincronizarSiCambioCatalogo(origen) {
     if (PropertiesService.getScriptProperties().getProperty("CATALOGO_HUELLA") === huella) return false;
     ordenarPedido();
     _registrarHuellaCatalogo(huella);
-    registrarLog("_sincronizarSiCambioCatalogo", "SUCCESS", `Catálogo de Bodega cambió (${origen}): pedido reordenado e inactivos aplicados. Huella ${huella}`);
+    MiseLogger.info("_sincronizarSiCambioCatalogo", `Catálogo de Bodega cambió (${origen}): pedido reordenado e inactivos aplicados. Huella ${huella}`);
     return true;
   } catch (err) {
-    registrarLog("_sincronizarSiCambioCatalogo", "ERROR", err.message);
+    MiseLogger.error("_sincronizarSiCambioCatalogo", err.message);
     return false;
   }
 }
@@ -2142,7 +2000,7 @@ function _latidoTienda(origen, forzar) {
     hoja.getRange(1, 1, filas.length, 2).setValues(filas);
     return true;
   } catch (err) {
-    try { registrarLog("_latidoTienda", "ERROR", err.message); } catch (e) {}
+    try { MiseLogger.error("_latidoTienda", err.message); } catch (e) {}
     return false;
   }
 }
@@ -2170,7 +2028,7 @@ function configurarEsteLibroTienda() {
   const pasos = [];
   const paso = (nombre, fn) => {
     try { const d = fn(); pasos.push(`✅ ${nombre}${d ? " — " + d : ""}`); }
-    catch (err) { pasos.push(`❌ ${nombre} — ${err.message}`); registrarLog("configurarEsteLibro", "ERROR", `${nombre}: ${err.message}`); }
+    catch (err) { pasos.push(`❌ ${nombre} — ${err.message}`); MiseLogger.error("configurarEsteLibro", `${nombre}: ${err.message}`); }
   };
   paso("Activadores", () => { const r = _reiniciarActivadoresTienda(); return `${r.borrados.length} viejos borrados, ${r.creados.length} creados`; });
   paso("Enlace con Bodega", () => { _validarYAutoRepararSyncSilencioso(); _asegurarSyncVivo(); return ""; });
@@ -2197,7 +2055,7 @@ function configurarEsteLibroTienda() {
   paso("Conexión", () => { con = _diagnosticarConexionTienda(); return con.ok ? "correcta" : "por revisar"; });
 
   const ok = pasos.every(p => p.startsWith("✅")) && con.ok;
-  registrarLog("configurarEsteLibro", ok ? "SUCCESS" : "WARN", pasos.join(" | "));
+  MiseLogger[ok ? "info" : "warn"]("configurarEsteLibro", pasos.join(" | "));
   ui.alert(ok ? `🚀 ${BODEGA_NOMBRE} lista` : `🚀 ${BODEGA_NOMBRE} configurada con observaciones`,
     `${pasos.join("\n")}\n\n🔗 ${con.linea}`, ui.ButtonSet.OK);
 }
@@ -2400,7 +2258,7 @@ function registrarTraspasoTiendaRPC(payload) {
       };
     })() : null;
 
-    registrarLog("registrarTraspasoTienda", "SUCCESS", `Folio ${res ? res.folio : 'OK'}: ${payload.cantidad} ${payload.unidad} [${payload.producto}]`);
+    MiseLogger.info("registrarTraspasoTienda", `Folio ${res ? res.folio : 'OK'}: ${payload.cantidad} ${payload.unidad} [${payload.producto}]`);
 
     return res || { success: true, mensaje: "Traspaso aplicado." };
   } finally {

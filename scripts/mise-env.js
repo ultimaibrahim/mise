@@ -21,7 +21,7 @@ const CONFIG_PATH = path.join(__dirname, "mise-env.config.json");
 const PROYECTOS = { BDG: "bdg", PDA: "pda", PDM: "pdm" };
 
 const IGNORE_COMUN = [".clasp*.json", ".claspignore*"];
-const IGNORE_PROD = [...IGNORE_COMUN, "**/MiseDevEnv.js"];
+const IGNORE_PROD = [...IGNORE_COMUN, "**/MiseDevEnv.js", "**/MiseDevTools.js"]; // DevTools: solo DEV
 
 function cargarConfig() {
   if (!fs.existsSync(CONFIG_PATH)) {

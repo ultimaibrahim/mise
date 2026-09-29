@@ -353,7 +353,8 @@ const MockProperties = {
   getProperty: (k) => mockPropsStorage[k] || null,
   setProperty: (k, v) => { mockPropsStorage[k] = String(v); },
   getProperties: () => ({ ...mockPropsStorage }),
-  setProperties: (obj) => { Object.assign(mockPropsStorage, obj); }
+  setProperties: (obj) => { Object.assign(mockPropsStorage, obj); },
+  deleteProperty: (k) => { delete mockPropsStorage[k]; }
 };
 
 const MockPropertiesService = {

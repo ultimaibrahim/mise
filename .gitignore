@@ -19,6 +19,8 @@ scripts/mise-env.config.json
 pda/miseAuthPDA.js
 pda/TraspasoTiendaDialog.html
 pda/appsscript.json
+pda/MiseDevTools.js
 pdm/miseAuthPDM.js
 pdm/TraspasoTiendaDialog.html
 pdm/appsscript.json
+pdm/MiseDevTools.js

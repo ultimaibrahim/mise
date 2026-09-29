@@ -9,6 +9,8 @@ const filesToValidate = [
   'bdg/miseAuthBDG.js',
   'bdg/MiseKardexEngine.js',
   'bdg/MiseEstado.js',
+  'bdg/MiseDevTools.js',
+  'tienda/MiseDevTools.js',
   'tienda/miseTienda.js',
   'pda/miseAuthPDA.js',
   'pdm/miseAuthPDM.js',
