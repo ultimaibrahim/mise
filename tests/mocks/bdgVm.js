@@ -24,12 +24,22 @@ function crearContextoBDG(opts = {}) {
     .forEach(m => { if (!sheetProto[m]) sheetProto[m] = function() { return this; }; });
   if (!sheetProto.getConditionalFormatRules) sheetProto.getConditionalFormatRules = function() { return []; };
   if (!sheetProto.getMaxColumns) sheetProto.getMaxColumns = function() { return Math.max(this.getLastColumn(), 30); };
+  // Protecciones registrables (igual que tiendaVm): sheet._proteccion.libres = rangos editables
+  sheetProto.getProtections = function() { return this._proteccion ? [this._proteccion] : []; };
+  sheetProto.protect = function() {
+    const p = { libres: [], setDescription: () => p, setWarningOnly: () => p, canDomainEdit: () => false, setDomainEdit: () => p,
+      removeEditors: () => p, addEditor: () => p, getEditors: () => [], remove: () => { this._proteccion = null; },
+      setUnprotectedRanges: (r) => { p.libres = r; return p; }, getUnprotectedRanges: () => p.libres };
+    this._proteccion = p;
+    return p;
+  };
   const validaciones = {};
   rangeProto.setDataValidation = function(rule) { validaciones[`${this.sheet.name}!${this.row},${this.col}`] = rule; return this; };
 
   const sandbox = {
     console: { log() {}, warn() {}, error() {} },
     SpreadsheetApp: Object.assign({}, MockSpreadsheetApp, {
+      ProtectionType: { SHEET: "SHEET", RANGE: "RANGE" }, BorderStyle: { SOLID: "SOLID" },
       getActiveSpreadsheet: () => ss,
       getActive: () => ss,
       setActiveSheet: () => {},

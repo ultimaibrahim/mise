@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.6c Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.6d Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -381,6 +381,15 @@ function _onEditBodega(e) {
         e.range.setValue(false); // Reset inmediato preventivo contra dobles ejecuciones
         procesarEdicionMasiva();
       }
+    }
+    return;
+  }
+
+  // 1.6b 🏠 INICIO: casillas de acción (columna A)
+  if (name === SHEET_INICIO) {
+    if (col === 1 && row >= INICIO_FILA_ACCIONES && row < INICIO_FILA_ACCIONES + INICIO_ACCIONES.length && e.range.getValue() === true) {
+      e.range.setValue(false);
+      _accionInicio(row);
     }
     return;
   }
@@ -880,7 +889,7 @@ function _buildKardex(sheet, nombre) {
   ]);
 
   sheet.setFrozenColumns(3);
-  sheet.hideColumns(6, 2); // Ocultar CADUCIDAD y LOTE (deja 🚦 visible)
+  _simplificarVistaKardex(sheet);
   sheet.hideRows(1);       // Ocultar leyenda de caducidades
 }
 
@@ -2290,9 +2299,11 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.6c";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6d";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "🏠 Hoja INICIO: accesos, acciones y estado del sistema desde el celular",
+  "📊 Kardex simplificado: producto, unidad, saldo anterior y días",
   "📥 Entradas valida la semana de cada tienda por separado",
   "Powerhouse más rápido: Andares y Mercado se actualizan en paralelo",
   "Configurar este libro en un clic (🚀)",
@@ -3606,6 +3617,144 @@ function protegerKardexSeguro(keyOrSheet) {
 
   sheetProtection.setUnprotectedRanges(unprotectedRanges);
   MiseLogger.info("protegerKardexSeguro", `${kardexName} blindado: ENT, SAL y Checkboxes fila 4 desprotegidos y 100% operativos.`);
+}
+
+// ── 📊 KARDEX SIMPLIFICADO: visibles solo PRODUCTO, UNIDAD, SALDO ANT y los 7 días (ENT/SAL/SLD) ─────
+// Ocultas: A No · B CATEGORÍA · D PRESENTACIÓN · F CADUCIDAD · G LOTE (+ fecha G4) · H 🚦 (siguen existiendo:
+// el código las usa por posición). La semana se lee en el badge (L2) y en E4/I4.
+const KARDEX_COLS_OCULTAS = [1, 2, 4, 6, 7, 8];
+function _simplificarVistaKardex(sheet) {
+  if (!sheet) return;
+  sheet.showColumns(1, Math.min(KARDEX_TOTAL_COLS, sheet.getMaxColumns()));
+  KARDEX_COLS_OCULTAS.forEach(c => sheet.hideColumns(c));
+}
+
+// ── 🏠 INICIO: portada de Bodega pensada para el celular ─────────────────────────────────────────────
+// Enlaces a las hojas de uso diario, acciones con casillas (las procesa onEditBodegaInstalable como el dueño,
+// así funcionan con cualquier cuenta y en la app móvil, donde los menús no existen) y el estado del sistema
+// escrito en la propia hoja.
+const SHEET_INICIO = "🏠 INICIO";
+const INICIO_ACCIONES = [
+  { id: "semana",   etiqueta: "⏩ Avanzar semana (si toca)" },
+  { id: "tiendas",  etiqueta: "🔄 Enviar catálogo y picking a tiendas" },
+  { id: "entradas", etiqueta: "📥 Recargar lista de Entradas" },
+  { id: "estado",   etiqueta: "🩺 Actualizar estado del sistema" }
+];
+const INICIO_FILA_ACCIONES = 12; // primera fila de acciones
+
+function _estadoSistemaBDG() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const props = PropertiesService.getScriptProperties();
+  const filas = [
+    ["Versión", `Mise v${MISE_VERSION} · ${MISE_EPOCA}`],
+    ["Entorno", props.getProperty("MISE_ENV") === "DEV" ? "🧪 DEV (pruebas)" : "🟢 PRODUCCIÓN"]
+  ];
+  Object.keys(BODEGAS).forEach(k => {
+    const kSheet = ss.getSheetByName(BODEGAS[k].kardex);
+    filas.push([`Semana ${BODEGAS[k].nombre}`, kSheet ? String(kSheet.getRange(2, 12).getValue() || "—") : "sin Kardex"]);
+  });
+  filas.push(["Último cierre nocturno", props.getProperty("ULTIMO_CIERRE") || "sin registro aún"]);
+  try {
+    const presentes = ScriptApp.getProjectTriggers().map(t => t.getHandlerFunction());
+    const faltan = ACTIVADORES_ESPERADOS_BDG.filter(f => presentes.indexOf(f) === -1);
+    filas.push(["Tareas automáticas", faltan.length ? `⚠️ faltan ${faltan.length} (🚀 Configurar)` : `✅ ${presentes.length} activas`]);
+  } catch (e) { filas.push(["Tareas automáticas", "no disponible"]); }
+  try { _diagnosticarConexionesBDG().lineas.forEach(l => filas.push(["Conexión", l])); } catch (e) {}
+  filas.push(["Actualizado", Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm")]);
+  return filas;
+}
+
+function _prepararHojaInicio() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SHEET_INICIO);
+  if (!sh) sh = ss.insertSheet(SHEET_INICIO, 0);
+  sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(p => { try { p.remove(); } catch (e) {} });
+  sh.setFrozenRows(0);
+  sh.setFrozenColumns(0);
+  _separarCombinaciones(sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns()));
+  sh.clear();
+  sh.setHiddenGridlines(true);
+  sh.setColumnWidth(1, 42); sh.setColumnWidth(2, 230); sh.setColumnWidth(3, 150);
+
+  sh.getRange("A1:C1").merge().setValue("🏠 MISE · BODEGA").setBackground(C.dark).setFontColor("#FFFFFF")
+    .setFontWeight("bold").setFontSize(14).setHorizontalAlignment("center").setVerticalAlignment("middle");
+  sh.setRowHeight(1, 40);
+  sh.getRange("A2:C2").merge().setValue("La Crêpe Parisienne · toca un enlace o marca una casilla")
+    .setBackground(C.cream).setFontColor(C.dark).setFontSize(9).setHorizontalAlignment("center");
+
+  // Ir a… (enlaces internos: funcionan también en la app móvil)
+  sh.getRange("A4:C4").merge().setValue("IR A").setFontWeight("bold").setFontColor(C.dark).setFontSize(10);
+  const destinos = [[SHEET_ENTRADAS, "📥 Entradas de mercancía"], [BODEGAS.BA.kardex, "📊 Kardex Andares"],
+                    [BODEGAS.BM.kardex, "📊 Kardex Mercado"], [SHEET_MAESTRO, "📋 Catálogo (MAESTRO)"], [SHEET_LOG, "🗒 Bitácora (LOG)"]];
+  let r = 5;
+  destinos.forEach(([nombre, texto]) => {
+    const d = ss.getSheetByName(nombre);
+    if (!d) return;
+    sh.getRange(r, 2, 1, 2).merge().setFormula(`=HYPERLINK("#gid=${d.getSheetId()}", "${texto}")`)
+      .setFontSize(12).setFontWeight("bold").setFontColor(C.dkGreen);
+    sh.setRowHeight(r, 30);
+    r++;
+  });
+
+  // Acciones (casillas)
+  sh.getRange(INICIO_FILA_ACCIONES - 1, 1, 1, 3).merge().setValue("ACCIONES").setFontWeight("bold").setFontColor(C.dark).setFontSize(10);
+  INICIO_ACCIONES.forEach((a, i) => {
+    const fila = INICIO_FILA_ACCIONES + i;
+    sh.getRange(fila, 1).insertCheckboxes().setValue(false).setBackground(C.yellow);
+    sh.getRange(fila, 2).setValue(a.etiqueta).setFontSize(11);
+    sh.getRange(fila, 3).setFontSize(8).setFontColor("#757575").setWrap(true);
+    sh.setRowHeight(fila, 34);
+  });
+
+  _escribirEstadoInicio(sh);
+  // Solo las casillas de acción son editables; el resto lo escribe el sistema
+  _blindarHoja(sh, "Blindaje — 🏠 INICIO", [sh.getRange(INICIO_FILA_ACCIONES, 1, INICIO_ACCIONES.length, 1)]);
+  return sh;
+}
+
+function _escribirEstadoInicio(sh) {
+  const filaEstado = INICIO_FILA_ACCIONES + INICIO_ACCIONES.length + 1;
+  const estado = _estadoSistemaBDG();
+  const zona = sh.getRange(filaEstado, 1, Math.max(sh.getMaxRows() - filaEstado + 1, 1), 3);
+  _separarCombinaciones(zona);
+  zona.clearContent();
+  sh.getRange(filaEstado, 1, 1, 3).merge().setValue("🩺 ESTADO DEL SISTEMA").setFontWeight("bold").setFontColor(C.dark).setFontSize(10);
+  sh.getRange(filaEstado + 1, 2, estado.length, 2).setValues(estado).setFontSize(9).setWrap(true).setVerticalAlignment("middle");
+  sh.getRange(filaEstado + 1, 2, estado.length, 1).setFontWeight("bold").setFontColor(C.dark);
+}
+
+function _accionInicio(fila) {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_INICIO);
+  const a = INICIO_ACCIONES[fila - INICIO_FILA_ACCIONES];
+  if (!sh || !a) return;
+  const hora = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "HH:mm");
+  let res = "";
+  try {
+    if (a.id === "semana") { const n = _autoVerificarYAvanzarSemanaSilencioso(true); res = n ? `✅ ${n} semana(s) avanzada(s)` : "✅ Ya estaban al día"; }
+    else if (a.id === "tiendas") { sincronizarRemotamenteTiendasPush(); res = "✅ Enviado a Andares y Mercado"; }
+    else if (a.id === "entradas") { _prepararHojaEntradas(true); res = "✅ Lista recargada"; }
+    else res = "✅ Estado actualizado";
+  } catch (err) {
+    res = `❌ ${err.message}`;
+    MiseLogger.error("_accionInicio", `${a.etiqueta}: ${err.message}`, err);
+  }
+  sh.getRange(fila, 3).setValue(`${res} · ${hora}`);
+  _escribirEstadoInicio(sh);
+}
+
+// Orden y color de pestañas por uso: captura → consulta → sistema
+function _organizarPestanasBDG() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const orden = [[SHEET_INICIO, C.dark], [SHEET_ENTRADAS, "#F9A825"], [BODEGAS.BA.kardex, C.sage], [BODEGAS.BM.kardex, C.sage],
+                 [SHEET_MAESTRO, C.mdGreen], ["HISTORIAL_BA", "#B0BEC5"], ["HISTORIAL_BM", "#B0BEC5"], ["🔄 TRASPASOS", "#B0BEC5"], [SHEET_LOG, "#B0BEC5"]];
+  let pos = 1;
+  orden.forEach(([n, color]) => {
+    const sh = ss.getSheetByName(n);
+    if (!sh) return;
+    try { sh.setTabColor(color); ss.setActiveSheet(sh); ss.moveActiveSheet(pos++); } catch (e) {}
+  });
+  const inicio = ss.getSheetByName(SHEET_INICIO);
+  if (inicio) ss.setActiveSheet(inicio);
 }
 
 // Protege una hoja completa: solo el dueño edita; `libres` = rangos de captura para los usuarios
@@ -6007,6 +6156,7 @@ function descontarSurtidoAutomatico(silent = true) {
   MiseSmartSync.ejecutarDescuento(silent);
   PropertiesService.getScriptProperties().setProperty("ULTIMO_CIERRE",
     Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm"));
+  try { const ini = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_INICIO); if (ini) _escribirEstadoInicio(ini); } catch (e) {}
 
   // 2. Verificar y auto-avanzar semana silenciosamente (ej. lunes en la madrugada)
   try {
@@ -6223,6 +6373,7 @@ function ejecutarMantenimientoSemanalBDG() {
     _buildVista("BA");
     _buildVista("BM");
     protegerTodasLasHojasSeguras();
+    Object.values(BODEGAS).forEach(b => _simplificarVistaKardex(ss.getSheetByName(b.kardex)));
 
     const dur = MiseLogger.timeEnd(tId);
     MiseLogger.info("ejecutarMantenimientoSemanalBDG", `Mantenimiento Semanal Exitoso: ${purgasCount} filas purgadas, ${semanasAvanzadas} bodegas avanzadas, fórmulas saneadas y blindaje activo.`, dur);
@@ -6321,6 +6472,8 @@ function configurarEsteLibroBDG() {
   paso("Hoja 📥 ENTRADAS", () => { _prepararHojaEntradas(true); return "lista"; });
   paso("Vistas móviles", () => { _buildVista("BA"); _buildVista("BM"); return "BA y BM reconstruidas"; });
   paso("Tiendas actualizadas", () => { sincronizarRemotamenteTiendasPush(); return "catálogo, picking y activos enviados"; });
+  paso("Kardex simplificado", () => { Object.values(BODEGAS).forEach(b => _simplificarVistaKardex(SpreadsheetApp.getActiveSpreadsheet().getSheetByName(b.kardex))); return "solo producto, unidad, saldo anterior y días"; });
+  paso("🏠 INICIO y pestañas", () => { _prepararHojaInicio(); _organizarPestanasBDG(); return "portada lista y pestañas ordenadas"; });
   paso("Blindaje", () => {
     protegerTodasLasHojasSeguras();
     const abiertas = _auditarPermisos().filter(l => l.startsWith("🔓")).length;

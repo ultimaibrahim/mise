@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6d Altair (Kardex simplificado y 🏠 INICIO) — 2026-09-28 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG)
+* Kardex con solo PRODUCTO, UNIDAD, SALDO ANT y días visibles; portada `🏠 INICIO` con enlaces, acciones por casillas y estado del sistema; pestañas ordenadas por uso.
+
+---
+
 ## ⚡ v1.7.6c Altair (Blindaje por capas) — 2026-09-28 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)

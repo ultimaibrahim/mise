@@ -47,8 +47,8 @@
 
 ## Fase 2.5 — Blindaje y UX de Bodega (pedido 28/sep)
 - [x] **Blindaje por capas** *(1.7.6c)*: instalables como dueño, hojas técnicas y Entradas protegidas, Kardex sin F:G ni G4 editables, `🔐 Auditoría de permisos`.
-- [ ] **Kardex simplificado**: visibles solo PRODUCTO, UNIDAD, SALDO ANTERIOR y las columnas de los días.
-- [ ] **Hoja `🏠 INICIO` en Bodega**: accesos y acciones con casillas (funcionan en celular) y estado del sistema en la propia hoja.
+- [x] **Kardex simplificado** *(1.7.6d)*: visibles solo PRODUCTO, UNIDAD, SALDO ANTERIOR y las columnas de los días.
+- [x] **Hoja `🏠 INICIO` en Bodega** *(1.7.6d)*: accesos y acciones con casillas (funcionan en celular) y estado del sistema en la propia hoja.
 - [ ] **Manual visual/tutorial** por rol, con qué funciona sin internet (lo arma Ibrahim; apoyo con página compartible).
 
 ## Fase 3 — Arquitectura por eventos · Nivel 2 (1.7.6e–f)

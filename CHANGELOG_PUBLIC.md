@@ -23,6 +23,17 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6d Altair — Bodega Más Fácil de Leer y de Usar (Septiembre 2026) [EN PRUEBAS]
+
+* 📊 **Kardex más limpio**:  
+  Ahora solo se ven el producto, la unidad, el saldo anterior y los días de la semana. El resto de la información sigue ahí, pero ya no estorba ni confunde.
+* 🏠 **Nueva portada de Bodega**:  
+  La primera pestaña (INICIO) reúne accesos directos a lo de uso diario, acciones rápidas con casillas que también funcionan desde el celular y un resumen del estado del sistema: semana de cada inventario, último cierre nocturno y si todo está conectado.
+* 🗂️ **Pestañas en orden**:  
+  Las hojas quedan ordenadas y con color según su uso: primero lo que se captura, luego lo que se consulta y al final lo del sistema.
+
+---
+
 ## Versión 1.7.6c Altair — Archivos Blindados y Recepción que Siempre se Registra (Septiembre 2026) [EN PRUEBAS]
 
 * ✅ **Lo que se marca en Surtido Rápido siempre llega al Pedido Diario**:  
