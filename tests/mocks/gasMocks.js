@@ -260,9 +260,26 @@ class MockSheet {
     return this;
   }
   insertRowsAfter(row, count = 1) {}
-  deleteColumns(col, count = 1) {}
+  // Como Google: las celdas a la derecha se recorren (contenido y combinaciones)
+  _recorrerColumnas(desde, delta) {
+    const nuevo = {};
+    Object.keys(this.grid).forEach(k => {
+      const [r, c] = k.split(",").map(Number);
+      if (c < desde) nuevo[k] = this.grid[k];
+      else if (delta > 0 || c >= desde - delta) nuevo[`${r},${c + delta}`] = this.grid[k];
+    });
+    this.grid = nuevo;
+  }
+  deleteColumns(col, count = 1) {
+    this._recorrerColumnas(col + count, -count);
+    this.merges = this.merges.filter(m => m.c2 < col || m.c1 >= col + count || (m.c1 < col && m.c2 >= col + count))
+      .map(m => { if (m.c1 >= col + count) { m.c1 -= count; m.c2 -= count; } else if (m.c2 >= col + count) { m.c2 -= count; } return m; });
+    return this;
+  }
+  deleteColumn(col) { return this.deleteColumns(col, 1); }
   insertColumnsAfter(col, count = 1) {
-    // Como Google: insertar dentro de una combinación la ensancha; las que están a la derecha se desplazan
+    this._recorrerColumnas(col + 1, count);
+    // Insertar dentro de una combinación la ensancha; las que están a la derecha se desplazan
     this.merges.forEach(m => { if (m.c1 > col) { m.c1 += count; m.c2 += count; } else if (m.c2 > col) { m.c2 += count; } });
   }
   clear() { this.grid = {}; return this; }

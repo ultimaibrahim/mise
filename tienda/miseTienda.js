@@ -22,7 +22,31 @@ const COL_CANT_PEDIR = 6;   // F — CANT. A PEDIR
 const COL_RECIBIDA   = 8;   // H — CANT. RECIBIDA (oculta)
 const COL_ESTADO     = 9;   // I — ESTADO (oculta)
 const DATA_START_ROW = 4;
-const NUM_COLS       = 11;
+// Estructura de 📋 PEDIDO DIARIO. El esquema 3 (1.7.6k) quitó la columna J reservada (ex ADICIÓN): MÍN|MÁX pasa
+// de K a J y las auxiliares de L:O a K:N. Se detecta por el ENCABEZADO real (fila 3), no por una constante: el
+// código nuevo opera igual sobre una tienda que aún no migra, a media migración o en un reintento.
+let _layoutCache = null;
+function _layoutPedido(sheet) {
+  if (_layoutCache && !sheet) return _layoutCache;
+  const hoja = sheet || SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PEDIDO);
+  let viejo = false;
+  if (hoja) {
+    try {
+      const enc = hoja.getRange(3, 10, 1, 2).getValues()[0];
+      viejo = /MÍN/i.test(String(enc[1])) && !/MÍN/i.test(String(enc[0]));
+    } catch (e) {}
+  }
+  const l = viejo ? { esquema: 2, numCols: 11, colMinMax: 11, colAux: 12 } : { esquema: 3, numCols: 10, colMinMax: 10, colAux: 11 };
+  l.letrasAux = [0, 1, 2, 3].map(i => _letraColumna(l.colAux + i));
+  if (!sheet) _layoutCache = l;
+  return l;
+}
+
+function _letraColumna(n) {
+  let txt = "";
+  while (n > 0) { const m = (n - 1) % 26; txt = String.fromCharCode(65 + m) + txt; n = Math.floor((n - 1) / 26); }
+  return txt;
+}
 
 // Colores institucionales
 const COLORS = {
@@ -162,19 +186,19 @@ function _actualizarAvisoPedido() {
 
     outputGrid.push(_filaPedido(r, sr, i + 1, {}));
 
-    const rowBg = Array(NUM_COLS).fill(bg);
+    const rowBg = Array(_layoutPedido().numCols).fill(bg);
     rowBg[COL_CANT_PEDIR - 1] = COLORS.yellow; // Col F
     rowBg[4]                  = COLORS.blue;   // Col E
     bgs.push(rowBg);
   }
 
   // Escribir en una sola llamada Batch 2D de alta velocidad (<100ms)
-  const fullRange = pedido.getRange(DR, 1, count, NUM_COLS);
+  const fullRange = pedido.getRange(DR, 1, count, _layoutPedido().numCols);
   fullRange.clearContent();
   fullRange.setBackgrounds(bgs);
   fullRange.setValues(outputGrid); // setValues: "=…" sigue siendo fórmula; el texto NO se vuelve #NAME?
 
-  pedido.getRange(DR, 1, count, NUM_COLS)
+  pedido.getRange(DR, 1, count, _layoutPedido().numCols)
     .setFontFamily("Calibri").setFontSize(10).setVerticalAlignment("middle");
   
   pedido.getRange(DR, 1, count, 1).setHorizontalAlignment("center"); 
@@ -182,7 +206,7 @@ function _actualizarAvisoPedido() {
   pedido.getRange(DR, 4, count, 1).setHorizontalAlignment("center"); 
   pedido.getRange(DR, 5, count, 1).setHorizontalAlignment("right");  
   pedido.getRange(DR, 7, count, 1).setHorizontalAlignment("center"); 
-  pedido.getRange(DR, 11, count, 1).setHorizontalAlignment("center"); 
+  pedido.getRange(DR, _layoutPedido().colMinMax, count, 1).setHorizontalAlignment("center");
   
   _aplicarAnchosColumnas(pedido);
   _aplicarOcultamientoColumnas(pedido);
@@ -191,13 +215,14 @@ function _actualizarAvisoPedido() {
 
 function _aplicarOcultamientoColumnas(sheet) {
   try {
-    sheet.showColumns(1, 11);  // Asegurar estado base limpio hasta Col 11
+    const L = _layoutPedido(sheet);
+    sheet.showColumns(1, L.numCols); // Estado base limpio
     sheet.hideColumns(1, 2);   // Ocultar Col A (No) y Col B (CATEGORÍA)
     sheet.showColumns(3, 2);   // Mostrar Col C (PRODUCTO) y Col D (UNIDAD TIENDA)
     sheet.hideColumns(5);      // Ocultar Col E (SALDO TEÓRICO)
     sheet.showColumns(6);      // Mostrar Col F (CANT. A PEDIR)
-    sheet.hideColumns(7, 4);   // Ocultar Col G (DIFERENCIA), Col H (RECIBIDA), Col I (ESTADO), Col J (reservada, sin uso desde 1.7.6e)
-    sheet.showColumns(11);     // Mostrar Col K (MÍN/MÁX QUIOSCO)
+    sheet.hideColumns(7, L.esquema === 2 ? 4 : 3); // Ocultar G (DIFERENCIA), H (RECIBIDA), I (ESTADO) [+ J reservada en esquema 2]
+    sheet.showColumns(L.colMinMax); // Mostrar MÍN/MÁX QUIOSCO
     
     let filter = sheet.getFilter();
     if (filter) filter.remove();
@@ -214,7 +239,8 @@ function _aplicarAnchosColumnas(sheet) {
   sheet.setColumnWidth(7, 100);  // DIFERENCIA
   sheet.setColumnWidth(8, 120);  // H
   sheet.setColumnWidth(9, 60);   // I
-  sheet.setColumnWidth(10, 40);  // J
+  if (_layoutPedido(sheet).esquema === 2) sheet.setColumnWidth(10, 40); // J reservada (esquema 2)
+  else sheet.setColumnWidth(10, 110);                                     // J MÍN | MÁX (esquema 3)
 }
 
 function _getProductCount() {
@@ -420,7 +446,7 @@ function ordenarPedido() {
 
     const count  = _getProductCount();
     if (count < 1) return;
-    const range  = sheet.getRange(DATA_START_ROW, 1, count, NUM_COLS);
+    const range  = sheet.getRange(DATA_START_ROW, 1, count, _layoutPedido().numCols);
     const values = range.getValues();
 
     const sync = ss.getSheetByName(SHEET_SYNC);
@@ -492,13 +518,13 @@ function ordenarPedido() {
       
       // Generar fondos estándar
       const bgRow = i % 2 === 0 ? COLORS.neutral_a : COLORS.neutral_b;
-      const rowBg = Array(NUM_COLS).fill(bgRow);
+      const rowBg = Array(_layoutPedido().numCols).fill(bgRow);
       rowBg[4] = COLORS.blue;                    // Col E
       rowBg[COL_CANT_PEDIR - 1] = COLORS.yellow; // Col F
       bgs.push(rowBg);
 
       // Tipografía estándar limpia
-      const rowFont = Array(NUM_COLS).fill("normal");
+      const rowFont = Array(_layoutPedido().numCols).fill("normal");
       rowFont[COL_CANT_PEDIR - 1] = "bold";
       cleanFonts.push(rowFont);
 
@@ -508,23 +534,23 @@ function ordenarPedido() {
 
     // Escribir en bloque
     range.clearContent();
-    sheet.getRange(DATA_START_ROW, 1, count, NUM_COLS).setValues(outputData); // texto (ESTADO) no se vuelve #NAME?
+    sheet.getRange(DATA_START_ROW, 1, count, _layoutPedido().numCols).setValues(outputData); // texto (ESTADO) no se vuelve #NAME?
     range.setBackgrounds(bgs);
     range.setFontWeights(cleanFonts);
 
     // Formatear
-    sheet.getRange(DATA_START_ROW, 1, count, NUM_COLS)
+    sheet.getRange(DATA_START_ROW, 1, count, _layoutPedido().numCols)
       .setFontFamily("Calibri").setFontSize(10).setVerticalAlignment("middle");
     sheet.getRange(DATA_START_ROW, 1, count, 1).setHorizontalAlignment("center");
     sheet.getRange(DATA_START_ROW, 3, count, 1).setHorizontalAlignment("left");
     sheet.getRange(DATA_START_ROW, 4, count, 1).setHorizontalAlignment("center");
     sheet.getRange(DATA_START_ROW, 5, count, 1).setHorizontalAlignment("right");
     sheet.getRange(DATA_START_ROW, 7, count, 1).setHorizontalAlignment("center");
-    sheet.getRange(DATA_START_ROW, 11, count, 1).setHorizontalAlignment("center");
+    sheet.getRange(DATA_START_ROW, _layoutPedido().colMinMax, count, 1).setHorizontalAlignment("center");
 
     _aplicarFormatosCondicionales(sheet);
     _actualizarVisibilidadInactivos(sheet);
-    sheet.hideColumns(10);
+    if (_layoutPedido(sheet).esquema === 2) sheet.hideColumns(10); // J reservada solo existe en esquema 2
     protegerPedidoSeguro();
 
     PropertiesService.getScriptProperties().setProperty("IS_ORDER_SORTED", "true");
@@ -638,16 +664,16 @@ function _resetearPedidoSilenciosoCore(e) {
   const count = _getProductCount();
   sheet.getRange(DATA_START_ROW, COL_CANT_PEDIR, count, 1).clearContent();
   sheet.getRange(DATA_START_ROW, COL_RECIBIDA, count, 2).clearContent(); // Limpiar Col H (Cant. Recibida) y Col I (Estado)
-  sheet.getRange(DATA_START_ROW, 10, count, 1).clearContent(); // Col J reservada: limpia restos de la antigua ADICIÓN
+  if (_layoutPedido(sheet).esquema === 2) sheet.getRange(DATA_START_ROW, 10, count, 1).clearContent(); // J reservada (esquema 2); en el 3 J es MÍN|MÁX
   
   const bgs = [];
   for (let i = 0; i < count; i++) {
-    const row = Array(NUM_COLS).fill(i % 2 === 0 ? COLORS.neutral_a : COLORS.neutral_b);
+    const row = Array(_layoutPedido().numCols).fill(i % 2 === 0 ? COLORS.neutral_a : COLORS.neutral_b);
     row[COL_CANT_PEDIR - 1] = COLORS.yellow; // Col F
     row[4]                  = COLORS.blue;   // Col E
     bgs.push(row);
   }
-  sheet.getRange(DATA_START_ROW, 1, count, NUM_COLS).setBackgrounds(bgs);
+  sheet.getRange(DATA_START_ROW, 1, count, _layoutPedido().numCols).setBackgrounds(bgs);
 
   // Limpiar la pestaña de Surtido Rápido si existe para reiniciar recepción sin romper fórmulas
   const surtido = ss.getSheetByName("🚚 SURTIDO RÁPIDO");
@@ -669,7 +695,7 @@ function _resetearPedidoSilenciosoCore(e) {
   // Re-aplicar formatos condicionales y visibilidad de inactivos
   _aplicarFormatosCondicionales(sheet);
   _actualizarVisibilidadInactivos(sheet);
-  sheet.hideColumns(10); // Asegurar que Columna J esté oculta
+  if (_layoutPedido(sheet).esquema === 2) sheet.hideColumns(10); // J reservada solo existe en esquema 2
 
   // Resetear los flags de ordenamiento y surtido activo
   PropertiesService.getScriptProperties().setProperty("IS_ORDER_SORTED", "false");
@@ -869,13 +895,13 @@ function _reconstruirPedidoDiarioCore(backupData) {
 
     outputGrid.push(_filaPedido(r, sr, i + 1, b));
 
-    const rowBg = Array(NUM_COLS).fill(i % 2 === 0 ? COLORS.neutral_a : COLORS.neutral_b);
+    const rowBg = Array(_layoutPedido().numCols).fill(i % 2 === 0 ? COLORS.neutral_a : COLORS.neutral_b);
     rowBg[4] = COLORS.blue;                    // Col E (Saldo Teórico)
     rowBg[COL_CANT_PEDIR - 1] = COLORS.yellow; // Col F (Cant a pedir)
     cleanBgs.push(rowBg);
   }
 
-  const rangeData = pedido.getRange(DR, 1, syncCount, NUM_COLS);
+  const rangeData = pedido.getRange(DR, 1, syncCount, _layoutPedido().numCols);
   rangeData.clearContent();
   rangeData.setBackgrounds(cleanBgs);
   rangeData.setValues(outputGrid); // texto (ESTADO) no se vuelve #NAME?
@@ -888,13 +914,13 @@ function _reconstruirPedidoDiarioCore(backupData) {
   return syncCount;
 }
 
-// ÚNICO constructor de filas de 📋 PEDIDO DIARIO (A:K). Antes había 3 copias idénticas de estas fórmulas
+// ÚNICO constructor de filas de 📋 PEDIDO DIARIO (A:J en esquema 3; A:K en el 2). Antes había 3 copias idénticas de estas fórmulas
 // (_actualizarAvisoPedido, ordenarPedido, _reconstruirPedidoDiarioCore): un cambio en una no llegaba a las otras.
 //   r = fila en PEDIDO · sr = fila de ESE producto en _SYNC · no = número · c = capturas {pedir, recibida, estado}
 function _filaPedido(r, sr, no, c) {
   const S = "'" + SHEET_SYNC + "'!";
   const v = (x) => (x !== "" && x !== null && x !== undefined) ? x : "";
-  return [
+  const fila = [
     no,                                                            // A No
     '=' + S + 'B' + sr,                                            // B CATEGORÍA
     '=' + S + 'C' + sr,                                            // C PRODUCTO
@@ -904,9 +930,10 @@ function _filaPedido(r, sr, no, c) {
     '=IF(OR(F' + r + '="", H' + r + '=""), "", H' + r + ' - F' + r + ')', // G DIFERENCIA
     v(c.recibida),                                                 // H RECIBIDA
     v(c.estado),                                                   // I ESTADO
-    "",                                                            // J (reservada; ADICIÓN retirada en 1.7.6e)
-    '=IF(AND(' + S + 'J' + sr + '=0, ' + S + 'K' + sr + '=0), "—", ' + S + 'J' + sr + ' & "  |  " & ' + S + 'K' + sr + ')' // K MÍN | MÁX
+    '=IF(AND(' + S + 'J' + sr + '=0, ' + S + 'K' + sr + '=0), "—", ' + S + 'J' + sr + ' & "  |  " & ' + S + 'K' + sr + ')' // J MÍN | MÁX (K en esquema 2)
   ];
+  if (_layoutPedido().esquema === 2) fila.splice(9, 0, "");         // esquema 2: J reservada vacía
+  return fila;
 }
 
 // Índices de _SYNC ordenados como ordenarPedido(): PICKING (col L) → CATEGORÍA → No
@@ -928,7 +955,7 @@ function _ordenPickingSync(syncVals) {
 //    no de la hoja a medio reconstruir.
 //  • Idempotente: solo corre si la versión guardada es menor que la del código.
 //  • Compatible: mientras no migra, el código nuevo opera sobre la estructura vieja sin romperla.
-const MISE_SCHEMA_TIENDA = 2; // 2 = v1.7.5 (DIFERENCIA intra-fila, Surtido Rápido con CANT. FINAL)
+const MISE_SCHEMA_TIENDA = 3; // 2 = v1.7.5 (DIFERENCIA intra-fila, CANT. FINAL) · 3 = v1.7.6k (sin columna J reservada)
 const PROP_SCHEMA        = "MISE_SCHEMA_VERSION";
 const PROP_MIGRANDO      = "MISE_SCHEMA_MIGRANDO";
 const SHEET_SURTIDO      = "🚚 SURTIDO RÁPIDO";
@@ -968,6 +995,13 @@ function _migrarEsquemaTienda() {
     const respSurtido = _respaldoMigracion(ss, surtido, "SURTIDO", reintento);
     props.setProperty(PROP_MIGRANDO, String(MISE_SCHEMA_TIENDA));
     const capturas = _leerCapturasTienda(respPedido, respSurtido);
+
+    // Esquema 3: quitar físicamente la J reservada; MÍN|MÁX y las auxiliares se recorren solas (y Google
+    // ajusta sus rangos). Idempotente: si ya no está (reintento), no se toca.
+    if (_layoutPedido(pedido).esquema === 2) {
+      pedido.deleteColumn(10);
+      _layoutCache = null;
+    }
 
     const n = _reconstruirPedidoDiarioCore(capturas);
     if (surtido || respSurtido) _generarSurtidoRapidoInternal(false);
@@ -1157,13 +1191,13 @@ function setupCompleto() {
 }
 
 function _buildPedidoDiario(sheet) {
-  if (sheet.getMaxColumns() < NUM_COLS) {
-    sheet.insertColumnsAfter(sheet.getMaxColumns(), Math.max(1, NUM_COLS - sheet.getMaxColumns()));
+  if (sheet.getMaxColumns() < _layoutPedido().numCols) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), Math.max(1, _layoutPedido().numCols - sheet.getMaxColumns()));
   }
 
   // Banner superior partiendo de la Columna C visible (C1)
-  sheet.getRange(1, 1, 1, NUM_COLS).clearContent().setBackground(null);
-  sheet.getRange(1, 3, 1, NUM_COLS - 2).clearContent().setBackground("#3D5A47");
+  sheet.getRange(1, 1, 1, _layoutPedido().numCols).clearContent().setBackground(null);
+  sheet.getRange(1, 3, 1, _layoutPedido().numCols - 2).clearContent().setBackground("#3D5A47");
   sheet.getRange("C1")
     .setFormula('="MISE — PEDIDO DIARIO · ' + BODEGA_NOMBRE + '   |   La Crêpe Parisienne   ·   " & TEXT(TODAY(),"dd/mmm/yyyy")')
     .setFontColor("#FFFFFF").setFontWeight("bold").setFontSize(10).setFontFamily("Arial").setHorizontalAlignment("left").setVerticalAlignment("middle");
@@ -1171,8 +1205,8 @@ function _buildPedidoDiario(sheet) {
 
   // Fila 2: Botón Interactivo Único (F2 = 🚚 Surtido Rápido)
   sheet.getRange("A2:ZZ2").setBackground(null).clearContent().clearDataValidations();
-  sheet.getRange(2, 1, 1, NUM_COLS).setBackground("#7A9E8A");
-  sheet.getRange(3, 1, 1, NUM_COLS).setBackground(null).clearContent().clearDataValidations();
+  sheet.getRange(2, 1, 1, _layoutPedido().numCols).setBackground("#7A9E8A");
+  sheet.getRange(3, 1, 1, _layoutPedido().numCols).setBackground(null).clearContent().clearDataValidations();
 
   // Col C: Etiqueta explicativa del botón único
   sheet.getRange("C2").setValue("🚚  Surtido Rápido:").setFontWeight("bold").setFontColor("#FFFFFF").setHorizontalAlignment("right").setVerticalAlignment("middle").setFontSize(9);
@@ -1182,8 +1216,10 @@ function _buildPedidoDiario(sheet) {
   sheet.setRowHeight(2, 26);
 
   // Fila 3: Headers (Encabezados institucionales de la tabla)
-  sheet.getRange(3, 1, 1, NUM_COLS)
-    .setValues([["No","CATEGORÍA","PRODUCTO","UNIDAD","SALDO TEÓRICO","CANT. A PEDIR","DIFERENCIA","","","","MÍN  |  MÁX"]])
+  sheet.getRange(3, 1, 1, _layoutPedido().numCols)
+    .setValues([_layoutPedido(sheet).esquema === 2
+      ? ["No","CATEGORÍA","PRODUCTO","UNIDAD","SALDO TEÓRICO","CANT. A PEDIR","DIFERENCIA","","","","MÍN  |  MÁX"]
+      : ["No","CATEGORÍA","PRODUCTO","UNIDAD","SALDO TEÓRICO","CANT. A PEDIR","DIFERENCIA","","","MÍN  |  MÁX"]])
     .setBackground("#3D5A47").setFontColor("#FFFFFF").setFontWeight("bold").setFontSize(9).setHorizontalAlignment("center").setVerticalAlignment("middle");
   sheet.setRowHeight(3, 32);
   
@@ -1208,11 +1244,11 @@ function _buildPedidoDiario(sheet) {
   _actualizarAvisoPedido();
 }
 
-// Columnas auxiliares ocultas L:O (ACTIVO, SALDO, MÍN, MÁX) buscadas por NOMBRE en _SYNC.
-// Una sola ARRAYFORMULA en L4: ningún escritor de A:K la pisa y siempre corresponde al producto
+// Columnas auxiliares ocultas (ACTIVO, SALDO, MÍN, MÁX) buscadas por NOMBRE en _SYNC: K:N en esquema 3, L:O en el 2.
+// Una sola ARRAYFORMULA: ningún escritor de la tabla la pisa y siempre corresponde al producto
 // de la fila, sin importar el orden de picking. Reemplaza las reglas INDIRECT(... & ROW()).
-const COL_AUX = 12; // L
 function _asegurarColumnasAuxiliaresPedido(sheet) {
+  const COL_AUX = _layoutPedido(sheet).colAux;
   if (sheet.getMaxColumns() < COL_AUX + 3) {
     sheet.insertColumnsAfter(sheet.getMaxColumns(), COL_AUX + 3 - sheet.getMaxColumns());
   }
@@ -1231,13 +1267,15 @@ function _aplicarFormatosCondicionales(sheet) {
   sheet.clearConditionalFormatRules();
   const count = _getProductCount();
   if (count < 1) return;
-  const range = sheet.getRange(DATA_START_ROW, 1, count, NUM_COLS);
+  const L = _layoutPedido(sheet);
+  const [cA, cS, cMin, cMax] = L.letrasAux; // _ACTIVO, _SALDO, _MÍN, _MÁX
+  const range = sheet.getRange(DATA_START_ROW, 1, count, L.numCols);
   const rangeE = sheet.getRange(DATA_START_ROW, 5, count, 1);
   // (Regla de ADICIÓN retirada en 1.7.6e)
       
   // Regla 1.5: Inactivos (gris)
   const ruleInactivo = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=$L4="NO"')
+    .whenFormulaSatisfied(`=$${cA}4="NO"`)
     .setBackground("#EEEEEE")
     .setFontColor("#9E9E9E")
     .setItalic(true)
@@ -1281,21 +1319,23 @@ function _aplicarFormatosCondicionales(sheet) {
 
   const rules = [ruleCompleto, ruleParcial, ruleExcedente, ruleInexistente, rulePendiente, ruleInactivo];
   
-  // Reglas Semáforo en Columna E (SALDO TEÓRICO) — leen L:O de su propia fila (M saldo, N mín, O máx)
+  // Reglas Semáforo en Columna E (SALDO TEÓRICO) — leen las auxiliares de su propia fila (saldo, mín, máx)
   const _sem = (f, bg, fg) => rules.push(SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied(f).setBackground(bg).setFontColor(fg).setRanges([rangeE]).build());
-  _sem('=AND($N4>0, $M4<0.5*$N4)',                    "#FFCDD2", "#B71C1C");
-  _sem('=AND($N4>0, $M4<$N4, $M4>=0.5*$N4)',          "#FFE0B2", "#BF360C");
-  _sem('=AND(OR($N4>0, $O4>0), $M4>=$N4, $M4<=$O4)',  "#C8E6C9", "#1B5E20");
-  _sem('=AND($O4>0, $M4>$O4)',                        "#B3E5FC", "#0D47A1");
-  _sem('=AND($C4<>"", $N4=0, $O4=0)',                 "#CFD8DC", "#37474F");
+  const [S, N, X] = [`$${cS}4`, `$${cMin}4`, `$${cMax}4`];
+  _sem(`=AND(${N}>0, ${S}<0.5*${N})`,                     "#FFCDD2", "#B71C1C");
+  _sem(`=AND(${N}>0, ${S}<${N}, ${S}>=0.5*${N})`,         "#FFE0B2", "#BF360C");
+  _sem(`=AND(OR(${N}>0, ${X}>0), ${S}>=${N}, ${S}<=${X})`, "#C8E6C9", "#1B5E20");
+  _sem(`=AND(${X}>0, ${S}>${X})`,                         "#B3E5FC", "#0D47A1");
+  _sem(`=AND($C4<>"", ${N}=0, ${X}=0)`,                   "#CFD8DC", "#37474F");
       
   sheet.setConditionalFormatRules(rules);
 }
 
-const MISE_VERSION = "1.7.6j";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6k";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "Pedido Diario más limpio: se retiró una columna vacía que quedaba de una función antigua",
   "Los cambios de catálogo de Bodega (orden y productos desactivados) se aplican solos al abrir",
   "Bodega ve si esta tienda está al día (latido automático, sin pasos extra)",
   "Surtido Rápido: escribe lo recibido y la fila completa se pinta sola",
@@ -1410,7 +1450,7 @@ function _generarSurtidoRapidoInternal(activateSheet) {
   }
 
   // Leer todos los datos del pedido (10 columnas: No, CATEGORÍA, PRODUCTO, UNIDAD, SALDO, CANT. PEDIR, DIFERENCIA, H, I, J)
-  const dataRange = pSheet.getRange(DATA_START_ROW, 1, lr - DATA_START_ROW + 1, NUM_COLS);
+  const dataRange = pSheet.getRange(DATA_START_ROW, 1, lr - DATA_START_ROW + 1, _layoutPedido().numCols);
   const data = dataRange.getValues();
   const backgrounds = pSheet.getRange(DATA_START_ROW, 3, lr - DATA_START_ROW + 1, 1).getBackgrounds(); // Col C background
 

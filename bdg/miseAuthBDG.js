@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.6j Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.6k Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -2233,7 +2233,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.6j";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6k";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "🌐 Página de estado: todo el sistema de un vistazo, también desde el celular",
@@ -4482,11 +4482,18 @@ function sincronizarRemotamenteTiendasPush(sourceKey = null, sourceRankMap = nul
             syncSheet = targetSs.getSheets().find(s => s.getName().startsWith("_SYNC"));
           }
 
-          // 3. PRIMERO reordenar 📋 PEDIDO DIARIO (lee las capturas del día mientras _SYNC está estable;
-          //    si se refresca antes, los nombres del pedido quedan "cargando" y se perderían las cantidades)
+          // 3. Reordenar 📋 PEDIDO DIARIO a distancia SOLO si cambiaron las POSICIONES de productos en la vista
+          //    (altas/bajas reconstruyen el Kardex y recorren filas: las filas del pedido apuntan a _SYNC por número
+          //    de fila y, sin reordenar antes de refrescar, las capturas quedarían en el producto equivocado).
+          //    Picking, activos y el cierre nocturno no mueven filas: basta refrescar el enlace y la tienda se
+          //    reordena sola por la huella del catálogo (1.7.6i). Menos escritura cruzada y push más rápido.
           const pedidoSheet = targetSs.getSheetByName("📋 PEDIDO DIARIO");
           if (pedidoSheet && syncSheet) {
-            _reordenarPedidoRemotoDirecto(targetSs, syncSheet, pedidoSheet, datosFrescos);
+            const nSync = Math.max(syncSheet.getLastRow() - 3, 0);
+            const actuales = nSync > 0 ? syncSheet.getRange(4, 3, nSync, 1).getValues().map(r => String(r[0]).trim()) : [];
+            const nuevos = datosFrescos.map(r => String(r[2]).trim());
+            const mismasPosiciones = actuales.length === nuevos.length && actuales.every((p, i) => p === nuevos[i]);
+            if (!mismasPosiciones) _reordenarPedidoRemotoDirecto(targetSs, syncSheet, pedidoSheet, datosFrescos);
           }
 
           // 4. AL FINAL refrescar el enlace vivo (re-escribir la fórmula rompe la caché). NUNCA pisar A4 con
@@ -4512,8 +4519,12 @@ function sincronizarRemotamenteTiendasPush(sourceKey = null, sourceRankMap = nul
 function _reordenarPedidoRemotoDirecto(targetSs, syncSheet, pedidoSheet, syncValues = null) {
   try {
     const DATA_START_ROW = 4;
-    const NUM_COLS = 11;
     const COL_CANT_PEDIR = 6;
+    // Estructura de la tienda por su ENCABEZADO (misma regla que _layoutPedido en tienda): esquema 3 = A:J con
+    // MÍN|MÁX en J; esquema 2 (aún no migra) = A:K con J reservada y MÍN|MÁX en K
+    const enc = pedidoSheet.getRange(3, 10, 1, 2).getValues()[0];
+    const esquema2 = /MÍN/i.test(String(enc[1])) && !/MÍN/i.test(String(enc[0]));
+    const NUM_COLS = esquema2 ? 11 : 10;
 
     const COLORS = {
       yellow:    "#FFFCD0",
@@ -4624,7 +4635,7 @@ function _reordenarPedidoRemotoDirecto(targetSs, syncSheet, pedidoSheet, syncVal
       rowFont[COL_CANT_PEDIR - 1] = "bold";
       cleanFonts.push(rowFont);
 
-      outputData.push([
+      const fila = [
         prodNo,
         '=' + sRef + '!B' + sr,
         '=' + sRef + '!C' + sr,
@@ -4634,9 +4645,10 @@ function _reordenarPedidoRemotoDirecto(targetSs, syncSheet, pedidoSheet, syncVal
         '=IF(OR(F' + r + '="", H' + r + '=""), "", H' + r + ' - F' + r + ')',
         items[i].vals[7] === "" ? "" : items[i].vals[7],
         items[i].vals[8] || "",
-        items[i].vals[9] || "",
         '=IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "—", ' + sRef + '!J' + sr + ' & "  |  " & ' + sRef + '!K' + sr + ')'
-      ]);
+      ];
+      if (esquema2) fila.splice(9, 0, ""); // J reservada vacía (ADICIÓN retirada en 1.7.6e)
+      outputData.push(fila);
     }
 
     if (currentCount > 0) {

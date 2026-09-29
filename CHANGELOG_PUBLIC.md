@@ -23,6 +23,13 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6k Altair — Pedido Diario Más Limpio y Cambios de Catálogo Más Rápidos (Septiembre 2026) [EN PRUEBAS]
+
+* 🧹 **Una columna vacía menos en el Pedido Diario**: se retira sola por la noche, con respaldo automático y sin perder lo capturado.
+* ⚡ **Guardar cambios de orden o de productos activos es más ligero**: Bodega ya no reescribe el pedido de cada tienda; la tienda lo aplica sola al abrirse.
+
+---
+
 ## Versión 1.7.6j Altair — Más Seguro y Más Ligero (Septiembre 2026) [EN PRUEBAS]
 
 * 🔐 **Nueva contraseña de administrador**: la anterior deja de funcionar. La nueva la define solo el dueño de cada libro y se guarda cifrada.

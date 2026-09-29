@@ -321,17 +321,17 @@ const MiseSmartSync = {
                 // VACIAR Y RESETEAR PEDIDO DIARIO EN LA TIENDA
                 pedidoSheet.getRange(4, 6, pCount, 1).clearContent(); // Col F (CANT. A PEDIR)
                 pedidoSheet.getRange(4, 8, pCount, 2).clearContent(); // Col H y Col I (RECIBIDA y ESTADO)
-                pedidoSheet.getRange(4, 10, pCount, 1).clearContent(); // Col J (ADICIÓN)
+                // (La J ya no se limpia: en el esquema 3 de tienda es MÍN|MÁX; en el 2 está vacía y reservada)
                 
                 // Restaurar backgrounds institucionales
                 const bgs = [];
                 for (let i = 0; i < pCount; i++) {
-                  const rowBg = Array(11).fill(i % 2 === 0 ? "#FAFAFA" : "#FFFFFF");
+                  const rowBg = Array(10).fill(i % 2 === 0 ? "#FAFAFA" : "#FFFFFF"); // A:J en ambos esquemas
                   rowBg[5] = "#FFFCD0"; // Col F
                   rowBg[4] = "#D0E8FF"; // Col E
                   bgs.push(rowBg);
                 }
-                pedidoSheet.getRange(4, 1, pCount, 11).setBackgrounds(bgs);
+                pedidoSheet.getRange(4, 1, pCount, 10).setBackgrounds(bgs);
 
                 // Limpiar hoja 🚚 SURTIDO RÁPIDO remota
                 const surtidoRem = remoteSs.getSheetByName("🚚 SURTIDO RÁPIDO");

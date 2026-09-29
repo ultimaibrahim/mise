@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6k Altair (Esquema 3 y push remoto condicional) — 2026-09-29 [EN PRUEBAS · DEV]
+
+### 📱 Tiendas (PDA / PDM) & 🏬 Bodega (BDG)
+* Migración nocturna quita la J reservada (MÍN|MÁX → J, auxiliares → K:N); estructura detectada por encabezado en tienda y en el escritor remoto de Bodega; el push solo reordena a distancia si cambiaron posiciones.
+
+---
+
 ## ⚡ v1.7.6j Altair (Fase 2: limpieza y contraseña rotada) — 2026-09-29 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)

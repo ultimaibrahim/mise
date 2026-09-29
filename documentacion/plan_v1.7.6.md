@@ -37,11 +37,11 @@
 ## Fase 2 — Limpieza y una sola fuente de verdad (1.7.6b–d)
 
 - [x] **Un solo archivo de tienda** *(1.7.6b: `tienda/miseTienda.js` + `scripts/build-tienda.js`)*: `pda/miseAuthPDA.js` y `pdm/miseAuthPDM.js` difieren en 3 líneas. Crear `tienda/miseTienda.js` (la sucursal sale de `BODEGA_KEY`/`BODEGA_NOMBRE`) y que `mise-env.js` lo suba a ambos proyectos. Adiós a las divergencias (log de surtido, etc.).
-- [~] **Un solo escritor de PEDIDO DIARIO** *(1.7.6b: `_filaPedido()` unifica las 3 copias de la tienda; falta el escritor remoto de Bodega → Fase 3)*: hoy hay 4 (`_actualizarAvisoPedido`, `ordenarPedido`, `_reconstruirPedidoDiarioCore` y el escritor remoto de Bodega `_reordenarPedidoRemotoDirecto`). Unificar en `_escribirFilasPedido()`; el escritor remoto desaparece en la Fase 3.
+- [~] **Un solo escritor de PEDIDO DIARIO** *(1.7.6b tienda unificada; 1.7.6k: el escritor remoto de Bodega solo actúa con altas/bajas —cuando las filas se recorren— y respeta el esquema de cada tienda. Quitarlo del todo exige que las filas del pedido no dependan del número de fila de `_SYNC`, p. ej. Developer Metadata o búsqueda por nombre: Fase 4)*
 - [x] *(1.7.6j)* **Herramientas de desarrollo fuera de PROD**: `bdg/MiseDevTools.js` y `tienda/MiseDevTools.js` (solo DEV; menús tras guarda `typeof`); la reconciliación de un solo uso del 7/sep se eliminó.
 - [x] *(1.7.6j)* **Código muerto**: 15 funciones fuera (con parser); `limpieza.test.js` impide que vuelva a acumularse.
 - [x] *(1.7.6j)* **Logs**: `_log` y `registrarLog` eliminados; todo usa `MiseLogger`.
-- [~] **Columnas ocultas muertas** (esquema 3 del motor de migración): la función ADICIÓN ya se retiró en 1.7.6e (J queda reservada vacía); falta quitar físicamente `J` y evaluar `G DIFERENCIA`, ajustando los índices en un solo cambio probado. Las demás columnas ocultas son del motor y se quedan. Alternativa sin riesgo: agruparlas (➖/➕).
+- [x] *(1.7.6k)* **Columnas ocultas muertas** — esquema 3: la J reservada se elimina en la migración nocturna; G DIFERENCIA (oculta, fórmula `H−F`) se queda por ahora: no se auditó si algo la lee; quitarla sería un esquema 4. Estructura detectada por encabezado.
 
 ---
 
@@ -67,7 +67,7 @@ Objetivo: **nadie escribe en el libro de otro**. Elimina el problema de permisos
 - [x] *(1.7.6i)* **Tiendas se suscriben** *(decisión 29/sep: sin activador de 10 min; se revisa en `onOpen` instalable, reset 00:00 y, si hace falta, un activador cada hora)*: `_sincronizarSiCambioCatalogo()`: lee `_META` de Bodega; si cambió, se reordena y oculta inactivos localmente; no corre si alguien editó en los últimos 60 s.
 - [x] *(1.7.6g)* **Latido** *(por eventos, sin activador propio: reset 00:00, respaldo 04:00, `onOpen` y `onEdit` instalables con máximo 1 escritura cada 10 min)*: cada tienda escribe `_ESTADO` (versión de código, esquema, último reset, última versión de catálogo aplicada, activadores).
 - [x] *(1.7.6g resumen · 1.7.6h página)* **🩺 Página de estado (webapp `doGet` de Bodega, tipo Downdetector; solo Ibrahim al inicio)**: semáforo por componente (libros, cierre 23:00, reset 00:00, respaldo 04:00, `_SYNC`, semana de Kardex), historial de noches con tiempos por fase, incidentes del `🗒 LOG` (7 días), minutos de activadores consumidos, y lo que era 🏠 INICIO (accesos, versiones, próximas ejecuciones, saldos bajo mínimo). Lee un resumen en Bodega (no abre tiendas por visita) y lo expone como JSON para `mise-web`.
-- [ ] **El push remoto se reduce** a refrescar el enlace (carril rápido opcional) y el Powerhouse guarda solo el catálogo (objetivo: **< 5 s**).
+- [~] *(1.7.6k: el push solo refresca el enlace si no cambiaron posiciones; falta medir Powerhouse y cierre en la página de estado)* **El push remoto se reduce** a refrescar el enlace y el Powerhouse guarda solo el catálogo (objetivo: **< 5 s**).
 - [~] *(1.7.6f: ledger en memoria, Kardex en bloque, log por cola, tiempos por fase y fix de doble descuento; falta medir en PROD y atacar la fase más lenta)* **`MiseSmartSync.ejecutarDescuento` tardó 114 s** en PROD (29/sep): perfilar por fase (abrir tiendas, leer Surtido/PEDIDO, escribir Kardex/LOG remoto) y bajarlo; parte se va con eventos (menos lecturas remotas).
 - [ ] Cuota: ~4 min/día de los 90 min diarios de Google (medir tras una semana).
 

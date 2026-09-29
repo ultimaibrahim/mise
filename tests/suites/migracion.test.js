@@ -1,7 +1,8 @@
 /**
  * Suite de Pruebas: Motor de migración de esquema de tiendas (pda/pdm) — código real en VM
- * Escenario: tienda con estructura del 2026-09-06 (VLOOKUP en DIFERENCIA, Surtido de 7 columnas)
- * y capturas a medio día, incluida una cantidad que solo quedó en SURTIDO RÁPIDO.
+ * Escenario: tienda con estructura vieja (VLOOKUP en DIFERENCIA, Surtido de 7 columnas, J reservada, MÍN|MÁX en K,
+ * auxiliares en L:O) y capturas a medio día, incluida una cantidad que solo quedó en SURTIDO RÁPIDO.
+ * Esquema 3 (1.7.6k): la J reservada desaparece físicamente; MÍN|MÁX pasa a J y las auxiliares a K:N.
  */
 const assert = require("assert");
 const { crearContextoTienda } = require("../mocks/tiendaVm");
@@ -54,6 +55,8 @@ function _preparar(ctx) {
 
   // PEDIDO DIARIO con estructura vieja y capturas
   const pedido = ss.insertSheet("📋 PEDIDO DIARIO");
+  pedido.getRange(3, 1, 1, 15).setValues([["No", "CATEGORÍA", "PRODUCTO", "UNIDAD", "SALDO TEÓRICO", "CANT. A PEDIR", "DIFERENCIA",
+    "", "", "", "MÍN  |  MÁX", "_ACTIVO", "_SALDO", "_MÍN", "_MÁX"]]);
   pedido.getRange(4, 1, 4, 11).setValues([
     [1, "REF", "Fresa",         "DOMO", 10, 5, "VLOOKUP-viejo", 5,  "✅ Completo", "",        ""],
     [2, "LAC", "Leche",         "LT",   8,  4, "VLOOKUP-viejo", "", "",         "🚨 ADICIÓN", ""],
@@ -86,30 +89,46 @@ function runMigracionTests() {
     const pedidoFila = (r) => pedido.getRange(r, 1, 1, 10).getValues()[0];
     const filaDe = (nombre) => { for (let r = 4; r <= 6; r++) if (String(pedido.getRange(r, 3).getValue()).includes(`!C${ {Fresa: 4, Leche: 5, Harina: 6}[nombre] }`)) return r; return -1; };
 
+    // 0. Compatibilidad: con el código nuevo, una tienda que AÚN no migra conserva su estructura (J reservada,
+    //    MÍN|MÁX en K, auxiliares L:O); nada escribe las auxiliares encima de su MÍN|MÁX
+    assert.strictEqual(sandbox._layoutPedido(pedido).esquema, 2, `${tag}: detecta la estructura vieja por el encabezado`);
+    sandbox._aplicarFormatosCondicionales(pedido);
+    assert.ok(pedido._cf.map(r => r.formula).includes('=$L4="NO"'), `${tag}: sin migrar, las reglas siguen en L:O`);
+    assert.strictEqual(pedido.getRange(3, 11).getValue(), "MÍN  |  MÁX", `${tag}: sin migrar, MÍN|MÁX sigue en K`);
+    assert.ok(String(ctx._formulas["📋 PEDIDO DIARIO!4,12"] || "").startsWith("=ARRAYFORMULA("), `${tag}: sin migrar, auxiliares en L`);
+    console.log(`  ✓ ${tag}: antes de migrar, el código nuevo respeta la estructura vieja`);
+
     // 1. Onopen / edición normal (sin triggerUid) no migra
     sandbox._migrarSiEsActivador(undefined);
     assert.ok(!props.MISE_SCHEMA_VERSION, `${tag}: sin activador no migra`);
 
     // 2. Activador nocturno: migra, respalda y restaura capturas
     sandbox._migrarSiEsActivador({ triggerUid: "t-1" });
-    assert.strictEqual(props.MISE_SCHEMA_VERSION, "2", `${tag}: esquema actualizado`);
+    assert.strictEqual(props.MISE_SCHEMA_VERSION, "3", `${tag}: esquema actualizado`);
     assert.ok(!("MISE_SCHEMA_MIGRANDO" in props), `${tag}: bandera de reintento limpia`);
     // Orden de picking (Leche, Harina, Fresa) y cada captura en SU producto
     eq([filaDe("Leche"), filaDe("Harina"), filaDe("Fresa")], [4, 5, 6], `${tag}: reconstruye en orden de picking, no de _SYNC`);
-    eq(pedidoFila(6).slice(5, 10), [5, "=IF(OR(F6=\"\", H6=\"\"), \"\", H6 - F6)", 5, "COMPLETO", ""], `${tag}: Fresa restaurada con DIFERENCIA intra-fila`);
-    eq(pedidoFila(4).slice(5, 10), [4, "=IF(OR(F4=\"\", H4=\"\"), \"\", H4 - F4)", 2, "PARCIAL", ""], `${tag}: Leche toma la captura de SURTIDO (la antigua ADICIÓN ya no se conserva)`);
+    eq(pedidoFila(6).slice(5, 9), [5, "=IF(OR(F6=\"\", H6=\"\"), \"\", H6 - F6)", 5, "COMPLETO"], `${tag}: Fresa restaurada con DIFERENCIA intra-fila`);
+    eq(pedidoFila(4).slice(5, 9), [4, "=IF(OR(F4=\"\", H4=\"\"), \"\", H4 - F4)", 2, "PARCIAL"], `${tag}: Leche toma la captura de SURTIDO (la antigua ADICIÓN ya no se conserva)`);
+    // Esquema 3: MÍN|MÁX en J (del propio producto), auxiliares en K:N, nada en la vieja J reservada
+    assert.strictEqual(pedido.getRange(3, 10).getValue(), "MÍN  |  MÁX", `${tag}: encabezado MÍN|MÁX en J`);
+    assert.strictEqual(pedido.getRange(3, 11).getValue(), "_ACTIVO", `${tag}: auxiliares recorridas a K:N`);
+    assert.ok(String(pedidoFila(6)[9]).startsWith("=IF(AND('_SYNC_BA'!J4=0"), `${tag}: J de Fresa = MÍN|MÁX de Fresa (_SYNC fila 4)`);
+    assert.ok(String(pedidoFila(4)[9]).startsWith("=IF(AND('_SYNC_BA'!J5=0"), `${tag}: J de Leche = MÍN|MÁX de Leche (_SYNC fila 5)`);
     eq(pedidoFila(5).slice(5, 10)[0], "", `${tag}: Harina sin captura`);
     // Inactivo y semáforo por producto (columnas auxiliares por nombre), sin INDIRECT(ROW())
-    assert.ok(String(ctx._formulas["📋 PEDIDO DIARIO!4,12"]).startsWith("=ARRAYFORMULA(IF(C4:C=\"\",,IFERROR(VLOOKUP(C4:C,'_SYNC_BA'!C4:K,{7,3,8,9},FALSE)"), `${tag}: auxiliares L:O por nombre`);
+    assert.ok(String(ctx._formulas["📋 PEDIDO DIARIO!4,11"]).startsWith("=ARRAYFORMULA(IF(C4:C=\"\",,IFERROR(VLOOKUP(C4:C,'_SYNC_BA'!C4:K,{7,3,8,9},FALSE)"), `${tag}: auxiliares K:N por nombre`);
     const reglas = pedido._cf.map(r => r.formula);
-    assert.ok(reglas.includes('=$L4="NO"'), `${tag}: gris de inactivo por la fila del propio producto`);
+    assert.ok(reglas.includes('=$K4="NO"'), `${tag}: gris de inactivo por la fila del propio producto (auxiliar K)`);
+    assert.ok(reglas.includes('=AND($M4>0, $L4<0.5*$M4)'), `${tag}: semáforo lee saldo (L) y mínimo (M) recorridos`);
+    assert.ok(reglas.every(f => !/\$O4/.test(f)) && !reglas.includes('=$L4="NO"'), `${tag}: ninguna regla apunta a las auxiliares viejas (L:O)`);
     assert.ok(reglas.every(f => !f.includes("INDIRECT")), `${tag}: sin reglas INDIRECT(ROW())`);
-    assert.ok(ss.getSheetByName("_RESPALDO_PEDIDO_v2"), `${tag}: respaldo nativo de PEDIDO`);
-    assert.ok(ss.getSheetByName("_RESPALDO_SURTIDO_v2"), `${tag}: respaldo nativo de SURTIDO`);
-    assert.strictEqual(ss.getSheetByName("_RESPALDO_PEDIDO_v2").getRange(7, 3).getValue(), "Descontinuado", `${tag}: el respaldo conserva todo`);
+    assert.ok(ss.getSheetByName("_RESPALDO_PEDIDO_v3"), `${tag}: respaldo nativo de PEDIDO`);
+    assert.ok(ss.getSheetByName("_RESPALDO_SURTIDO_v3"), `${tag}: respaldo nativo de SURTIDO`);
+    assert.strictEqual(ss.getSheetByName("_RESPALDO_PEDIDO_v3").getRange(7, 3).getValue(), "Descontinuado", `${tag}: el respaldo conserva todo`);
     const surtido = ss.getSheetByName("🚚 SURTIDO RÁPIDO");
     assert.strictEqual(surtido.getRange(3, 8).getValue(), "CANT. FINAL", `${tag}: Surtido regenerado con estructura nueva`);
-    console.log(`  ✓ ${tag}: activador nocturno migra, respalda (copia nativa + RAM) y restaura F/H/I/J`);
+    console.log(`  ✓ ${tag}: activador nocturno migra, respalda (copia nativa + RAM) y restaura F/H/I y quita la J reservada (esquema 3)`);
     console.log(`  ✓ ${tag}: reconstrucción respeta el picking custom; inactivo/semáforo pintan al producto correcto`);
 
     // 3. Idempotente
@@ -117,7 +136,7 @@ function runMigracionTests() {
 
     // 4. Reintento tras fallo: toma capturas del respaldo original, no de la hoja a medias
     props.MISE_SCHEMA_VERSION = "1";
-    props.MISE_SCHEMA_MIGRANDO = "2";
+    props.MISE_SCHEMA_MIGRANDO = "3";
     pedido.getRange(4, 6, 3, 1).clearContent();           // la corrida fallida dejó F vacía
     assert.strictEqual(sandbox._migrarEsquemaTienda(), true, `${tag}: reintento`);
     eq([pedidoFila(6)[5], pedidoFila(4)[5]], [5, 4], `${tag}: cantidades recuperadas del respaldo original`);

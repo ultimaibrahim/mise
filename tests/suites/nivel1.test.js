@@ -114,11 +114,39 @@ function runNivel1Tests() {
     sandbox._reordenarPedidoRemotoDirecto = () => { eventos.push("reordenar"); };
     const setFormulaBase = rp.setFormula;
     rp.setFormula = function(f) { if (this.sheet === sync) eventos.push("refrescar"); return setFormulaBase.call(this, f); };
+    // a) Mismas posiciones (picking/activos/cierre nocturno): solo refresca; la tienda se reordena sola por huella
+    sync.getRange(4, 3).setValue("Fresa");
     sandbox.sincronizarRemotamenteTiendasPush("BA");
-    assert.deepStrictEqual(eventos, ["reordenar", "refrescar"], "Primero reordenar (capturas estables), al final refrescar el IMPORTRANGE");
+    assert.deepStrictEqual(eventos, ["refrescar"], "Mismas posiciones: no escribe en el pedido de la tienda, solo refresca el enlace");
+    // b) Posiciones cambiadas (alta/baja): PRIMERO reordenar con _SYNC estable, al final refrescar
+    eventos.length = 0;
+    sync.getRange(4, 3).setValue("Leche");
+    sandbox.sincronizarRemotamenteTiendasPush("BA");
+    assert.deepStrictEqual(eventos, ["reordenar", "refrescar"], "Posiciones cambiadas: primero reordenar (capturas estables), al final refrescar el IMPORTRANGE");
     sandbox._reordenarPedidoRemotoDirecto = reordenarReal;
     rp.setFormula = setFormulaBase;
-    console.log("  ✓ Push: reordena el pedido antes de refrescar el enlace (no pierde capturas del día)");
+    console.log("  ✓ Push: solo reordena a distancia si cambiaron las posiciones (y entonces antes de refrescar el enlace)");
+
+    // El escritor remoto respeta la estructura de CADA tienda (detectada por su encabezado)
+    const filasSync = [[1, "REF", "Fresa", "kg", 5, "🟢", 0, 0, "SÍ", 1, 5, 2], [2, "LAC", "Leche", "lt", 3, "🟢", 0, 0, "SÍ", 2, 6, 1]];
+    [[3, ["No","CATEGORÍA","PRODUCTO","UNIDAD","SALDO TEÓRICO","CANT. A PEDIR","DIFERENCIA","","","MÍN  |  MÁX"]],
+     [2, ["No","CATEGORÍA","PRODUCTO","UNIDAD","SALDO TEÓRICO","CANT. A PEDIR","DIFERENCIA","","","","MÍN  |  MÁX"]]].forEach(([esq, enc]) => {
+      const t = new base();
+      const sy = t.insertSheet("_SYNC_BA");
+      sy.getRange(4, 1, 2, 12).setValues(filasSync);
+      const ped = t.insertSheet("📋 PEDIDO DIARIO");
+      ped.getRange(3, 1, 1, enc.length).setValues([enc]);
+      ped.getRange(4, 1, 2, 9).setValues([[1, "REF", "Fresa", "kg", "", 4, "", "", ""], [2, "LAC", "Leche", "lt", "", 2, "", "", ""]]);
+      if (esq === 3) ped.getRange(4, 11).setValue("ARRAYFORMULA-AUX"); // auxiliar _ACTIVO en K (no debe pisarse)
+      reordenarReal(t, sy, ped, filasSync);
+      const colMinMax = esq === 3 ? 10 : 11;
+      assert.ok(String(ped.getRange(4, colMinMax).getValue()).startsWith("=IF(AND('_SYNC_BA'!J"), `Esquema ${esq}: MÍN|MÁX en la columna ${colMinMax}`);
+      assert.strictEqual(ped.getRange(4, 3).getValue(), "='_SYNC_BA'!C5", `Esquema ${esq}: Leche (picking 1) primero, enlazada a SU fila de _SYNC`);
+      assert.strictEqual(ped.getRange(4, 6).getValue(), 2, `Esquema ${esq}: Leche conserva su captura`);
+      if (esq === 3) assert.strictEqual(ped.getRange(4, 11).getValue(), "ARRAYFORMULA-AUX", "Esquema 3: no pisa las auxiliares (K)");
+      else assert.strictEqual(ped.getRange(4, 10).getValue(), "", "Esquema 2: J reservada vacía");
+    });
+    console.log("  ✓ Escritor remoto de Bodega: respeta la estructura de cada tienda (esquema 2 y 3) y no pisa auxiliares");
 
     sandbox.PropertiesService.getScriptProperties().setProperty("PDA_SPREADSHEET_ID", ""); // no contaminar otras suites
     console.log("  ✓ Push de Bodega refresca el IMPORTRANGE y des-congela un _SYNC con valores fijos");
