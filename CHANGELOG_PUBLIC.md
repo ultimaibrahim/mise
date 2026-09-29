@@ -23,6 +23,15 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.5s Altair — Colores del Pedido Diario y Registro de Surtido Corregidos (Septiembre 2026) [PROD]
+
+* 🎨 **El Pedido Diario vuelve a pintarse según lo recibido**:  
+  Después de la actualización de estructura, algunos estados de recepción se guardaban como un error (#NAME?) y por eso el Pedido Diario se quedaba sin colores. Ya se guardan correctamente.
+* 🧾 **Registro de surtido más preciso**:  
+  El historial de recepción ya no marca "sin registro" a productos que sí se recibieron; indica si llegaron completos, de menos o de más. El encabezado del registro también se restablece si se había perdido.
+
+---
+
 ## Versión 1.7.5r Altair — Mercado Avanza de Semana: Causa Real Encontrada (Septiembre 2026) [PROD]
 
 * 📅 **Se encontró y corrigió la causa real**:  

@@ -289,7 +289,7 @@ const MiseSmartSync = {
                       catName,
                       cantPed,
                       cantDeducir,
-                      estado || (sInfo && sInfo.sComp ? "COMPLETO" : (sInfo && sInfo.sInex ? "INEXISTENTE" : "SIN_REGISTRO")),
+                      _estadoLogSurtido(estado, sInfo, cantPed, cantDeducir),
                       esAdicion
                     ]);
                   }
@@ -304,7 +304,8 @@ const MiseSmartSync = {
                       .setBackground("#3D5A47").setFontColor("#FFFFFF").setFontWeight("bold");
                     remLogSheet.setFrozenRows(1);
                   }
-                  remLogSheet.getRange(remLogSheet.getLastRow() + 1, 1, itemsAEvidenciarEnLog.length, 8).setValues(itemsAEvidenciarEnLog);
+                  _asegurarEncabezadoLogSurtido(remLogSheet);
+                  remLogSheet.getRange(Math.max(remLogSheet.getLastRow() + 1, 2), 1, itemsAEvidenciarEnLog.length, 8).setValues(itemsAEvidenciarEnLog);
                 }
 
                 // VACIAR Y RESETEAR PEDIDO DIARIO EN LA TIENDA
@@ -1158,4 +1159,27 @@ const MiseTraspasos = {
  */
 function registrarTraspasoRPC(payload) {
   return MiseTraspasos.registrar(payload);
+}
+
+
+// Estado para 🗒 LOG_SURTIDO: el de la tienda si es válido (un "#NAME?" o texto roto no cuenta); si no, lo que
+// marcó el Surtido (✅/❌); si no, se deduce de la cantidad descontada; sin nada registrado → SIN_REGISTRO.
+function _estadoLogSurtido(estado, sInfo, cantPed, cantDeducir) {
+  const t = String(estado || "").toUpperCase();
+  const valido = ["INEXISTENTE", "EXCEDENTE", "PARCIAL", "COMPLETO"].find(k => t.indexOf(k) !== -1);
+  if (valido) return valido;
+  if (sInfo && sInfo.sInex) return "INEXISTENTE";
+  if (sInfo && sInfo.sComp) return "COMPLETO";
+  if (cantDeducir > 0) return cantDeducir === cantPed ? "COMPLETO" : (cantDeducir > cantPed ? "EXCEDENTE" : "PARCIAL");
+  return "SIN_REGISTRO";
+}
+
+// Garantiza el encabezado de 🗒 LOG_SURTIDO en la fila 1. Si una escritura previa cayó en la fila 1
+// (hoja vacía + getLastRow()+1), inserta una fila arriba para no perder ese dato.
+function _asegurarEncabezadoLogSurtido(logSheet) {
+  if (String(logSheet.getRange(1, 1).getValue()).trim() === "Fecha") return;
+  if (logSheet.getLastRow() >= 1) logSheet.insertRowBefore(1);
+  logSheet.getRange(1, 1, 1, 8).setValues([["Fecha", "Bodega", "Producto", "Categoría", "Cant.Pedida", "Cant.Recibida", "Estado", "EsAdición"]])
+    .setBackground("#3D5A47").setFontColor("#FFFFFF").setFontWeight("bold");
+  logSheet.setFrozenRows(1);
 }

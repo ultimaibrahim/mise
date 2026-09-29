@@ -1,5 +1,5 @@
 /**
- * MISE — Pedidos Andares Script v1.7.5r Altair (Configuración en un Clic · Picking y Colores por Producto · Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Pedidos Andares Script v1.7.5s Altair (Configuración en un Clic · Picking y Colores por Producto · Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Pedidos Andares (Google Sheets de B-Andares)
@@ -169,7 +169,7 @@ function _actualizarAvisoPedido() {
   const fullRange = pedido.getRange(DR, 1, count, NUM_COLS);
   fullRange.clearContent();
   fullRange.setBackgrounds(bgs);
-  fullRange.setFormulas(outputGrid);
+  fullRange.setValues(outputGrid); // setValues: "=…" sigue siendo fórmula; el texto NO se vuelve #NAME?
 
   pedido.getRange(DR, 1, count, NUM_COLS)
     .setFontFamily("Calibri").setFontSize(10).setVerticalAlignment("middle");
@@ -467,7 +467,7 @@ function sincronizarEstados() {
     }
 
     // Escribir en bloque
-    sheet.getRange(insertStartRow, 1, diff, NUM_COLS).setFormulas(newFormulas);
+    sheet.getRange(insertStartRow, 1, diff, NUM_COLS).setValues(newFormulas);
     sheet.getRange(insertStartRow, 1, diff, NUM_COLS).setBackgrounds(newBgs);
 
     sheet.getRange(insertStartRow, 1, diff, NUM_COLS)
@@ -624,7 +624,7 @@ function ordenarPedido() {
 
     // Escribir en bloque
     range.clearContent();
-    sheet.getRange(DATA_START_ROW, 1, count, NUM_COLS).setFormulas(outputData);
+    sheet.getRange(DATA_START_ROW, 1, count, NUM_COLS).setValues(outputData); // texto (ESTADO) no se vuelve #NAME?
     range.setBackgrounds(bgs);
     range.setFontWeights(cleanFonts);
 
@@ -827,10 +827,12 @@ function _registrarLogSurtidoDiario(ss, sheet) {
     const esAdicion = alerta.includes("ADICIÓN") ? "SÍ" : "NO";
 
     // Misma regla que el descuento de Bodega: solo cuenta lo registrado (número, ✅ o ❌). Sin registro → 0.
-    if (prodName && (cantPed > 0 || cantRec > 0 || estado)) {
-      const cantEfectiva = (estado === "INEXISTENTE") ? 0
+    // El estado se normaliza (un "#NAME?" o variante no cuenta) y, si falta, se deduce de la cantidad recibida.
+    const est = _normalizarEstado(estado);
+    if (prodName && (cantPed > 0 || cantRec > 0 || est)) {
+      const cantEfectiva = (est === "INEXISTENTE") ? 0
         : (cantRec > 0) ? cantRec
-        : (estado === "COMPLETO") ? cantPed : 0;
+        : (est === "COMPLETO") ? cantPed : 0;
       logRows.push([
         fechaStr,
         BODEGA_NOMBRE,
@@ -838,13 +840,14 @@ function _registrarLogSurtidoDiario(ss, sheet) {
         catName,
         cantPed,
         cantEfectiva,
-        estado || "SIN_REGISTRO",
+        est || (cantEfectiva > 0 ? _estadoRecepcion(cantEfectiva, cantPed) : "SIN_REGISTRO"),
         esAdicion
       ]);
     }
   }
 
   if (logRows.length > 0) {
+    _asegurarEncabezadoLogSurtido(logSheet);
     const startRow = Math.max(logSheet.getLastRow() + 1, 2);
     logSheet.getRange(startRow, 1, logRows.length, 8).setValues(logRows);
   }
@@ -1003,7 +1006,7 @@ function _reconstruirPedidoDiarioCore(backupData) {
   const rangeData = pedido.getRange(DR, 1, syncCount, NUM_COLS);
   rangeData.clearContent();
   rangeData.setBackgrounds(cleanBgs);
-  rangeData.setFormulas(outputGrid);
+  rangeData.setValues(outputGrid); // texto (ESTADO/ADICIÓN) no se vuelve #NAME?
 
   // 5. Visibilidad, formatos condicionales y protecciones
   _aplicarFormatosCondicionales(pedido);
@@ -1359,7 +1362,7 @@ function _aplicarFormatosCondicionales(sheet) {
   sheet.setConditionalFormatRules(rules);
 }
 
-const MISE_VERSION = "1.7.5r";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.5s";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "Surtido Rápido: escribe lo recibido y la fila completa se pinta sola",
@@ -2221,4 +2224,14 @@ function registrarTraspasoTiendaRPC(payload) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// Garantiza el encabezado de 🗒 LOG_SURTIDO en la fila 1. Si una escritura previa cayó en la fila 1
+// (hoja vacía + getLastRow()+1), inserta una fila arriba para no perder ese dato.
+function _asegurarEncabezadoLogSurtido(logSheet) {
+  if (String(logSheet.getRange(1, 1).getValue()).trim() === "Fecha") return;
+  if (logSheet.getLastRow() >= 1) logSheet.insertRowBefore(1);
+  logSheet.getRange(1, 1, 1, 8).setValues([["Fecha", "Bodega", "Producto", "Categoría", "Cant.Pedida", "Cant.Recibida", "Estado", "EsAdición"]])
+    .setBackground("#3D5A47").setFontColor("#FFFFFF").setFontWeight("bold");
+  logSheet.setFrozenRows(1);
 }

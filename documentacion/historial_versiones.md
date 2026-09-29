@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.5s Altair (Hotfix #NAME? y log de surtido) — 2026-09-29 [PROD]
+
+### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* `setValues` en lugar de `setFormulas` para tablas con texto; estado del log normalizado y deducido; encabezado de `🗒 LOG_SURTIDO` garantizado.
+
+---
+
 ## ⚡ v1.7.5r Altair (Error diferido del badge) — 2026-09-28 [PROD]
 
 ### 🏬 Bodega (BDG)
