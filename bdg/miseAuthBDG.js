@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.5p Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.5q Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -1474,8 +1474,8 @@ function _avanzarSemana(key) {
     const saldosFin = sheet.getRange(KARDEX_START, KARDEX_SLD_FIN, numRows, 1).getValues();
     const saldosAnt = saldosFin.map(r => [typeof r[0] === "number" ? r[0] : 0]);
 
-    // 2. Guardar en HISTORIAL horizontal
-    _guardarHistHorizontal(key, sheet, numRows, d4, sem);
+    // 2. Guardar en HISTORIAL horizontal (con respaldo si falla: la semana debe avanzar igual)
+    _archivarSemanaSeguro(key, sheet, numRows, d4, sem);
 
     // 3. Escribir saldos finales en SALDO ANT (col I = 9)
     sheet.getRange(KARDEX_START, KARDEX_SLD_ANT, numRows, 1).setValues(saldosAnt);
@@ -1498,6 +1498,34 @@ function _avanzarSemana(key) {
   }
 }
 
+// Archiva la semana; si el HISTORIAL horizontal falla (formato dañado, combinaciones, etc.), guarda los
+// mismos datos en _HISTORIAL_RESPALDO (filas simples, sin combinaciones) para no bloquear el avance.
+function _archivarSemanaSeguro(key, sheet, numRows, d4, sem) {
+  try {
+    _guardarHistHorizontal(key, sheet, numRows, d4, sem);
+  } catch (err) {
+    MiseLogger.error("_archivarSemanaSeguro", `HISTORIAL_${key} falló (${err.message}); semana ${sem} respaldada en _HISTORIAL_RESPALDO y el avance continúa.`, err);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let r = ss.getSheetByName("_HISTORIAL_RESPALDO");
+    if (!r) {
+      r = ss.insertSheet("_HISTORIAL_RESPALDO");
+      const enc = ["BODEGA", "SEMANA", "LUNES", "PRODUCTO"];
+      DIAS.forEach(d => enc.push(`ENT ${d}`, `SAL ${d}`));
+      enc.push("SLD FIN");
+      r.getRange(1, 1, 1, enc.length).setValues([enc]).setFontWeight("bold");
+      r.setFrozenRows(1);
+    }
+    const kv = sheet.getRange(KARDEX_START, 1, numRows, KARDEX_SLD_FIN).getValues();
+    const filas = kv.filter(row => String(row[2]).trim()).map(row => {
+      const f = [key, sem, d4, row[2]];
+      for (let d = 0; d < KARDEX_DAYS; d++) f.push(row[9 + d * 3] === "" ? 0 : row[9 + d * 3], row[10 + d * 3] === "" ? 0 : row[10 + d * 3]);
+      f.push(row[KARDEX_SLD_FIN - 1]);
+      return f;
+    });
+    if (filas.length) r.getRange(r.getLastRow() + 1, 1, filas.length, filas[0].length).setValues(filas);
+  }
+}
+
 // Columna donde empieza el siguiente bloque semanal del HISTORIAL.
 // 1) Limpia bloques HUÉRFANOS: encabezado combinado (fila 2) sin datos debajo, que deja un archivado
 //    interrumpido (p. ej., onOpen simple cortado a los 30 s). Si no se limpian, el siguiente bloque cae
@@ -1515,8 +1543,10 @@ function _siguienteColumnaHistorial(hSheet, numRows) {
     const datos = numRows > 0 ? hSheet.getRange(5, c, numRows, ancho).getValues() : [];
     const vacio = datos.every(r => r.every(v => v === "" || v === null));
     if (!vacio) break;
-    // Huérfano: deshacer combinaciones y limpiar su zona de encabezado (filas 1–4)
-    hSheet.getRange(1, c, 4, Math.min(16, maxCols - c + 1)).breakApart().clearContent().setBackground(null);
+    // Huérfano: deshacer combinaciones y limpiar su zona de encabezado (filas 1–4) HASTA EL FINAL de la hoja.
+    // Cada intento fallido insertaba 16 columnas dentro de él y Google lo ensanchaba: puede medir cientos
+    // de columnas, así que limpiar solo 16 volvería a "separar parte de una combinación".
+    hSheet.getRange(1, c, 4, maxCols - c + 1).breakApart().clearContent().setBackground(null);
     MiseLogger.warn("_siguienteColumnaHistorial", `${hSheet.getName()}: bloque huérfano en columna ${c} limpiado (archivado previo interrumpido).`);
   }
   let finCombinado = 0;
@@ -2244,7 +2274,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.5p";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.5q";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "Powerhouse más rápido: Andares y Mercado se actualizan en paralelo",
@@ -5087,9 +5117,10 @@ function _autoVerificarYAvanzarSemanaSilencioso(silent = true, presupuestoMs = n
       }
     }
   } catch(e) {
-    _log("_autoVerificarYAvanzarSemanaSilencioso ERROR", e.toString());
+    const donde = (String(e.stack || "").match(/at ([A-Za-z_$][\w$]*)/) || [])[1] || "desconocido";
+    MiseLogger.error("_autoVerificarYAvanzarSemanaSilencioso", `${e.message} (en ${donde})`, e);
     if (!silent) {
-      SpreadsheetApp.getUi().alert("❌ Error", `Error al verificar semanas: ${e.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
+      SpreadsheetApp.getUi().alert("❌ Error", `Error al verificar semanas: ${e.message}\n\nOcurrió en: ${donde}\n(detalle completo en 🗒 LOG)`, SpreadsheetApp.getUi().ButtonSet.OK);
     }
   }
   return bodegasAvanzadas;
@@ -5141,8 +5172,8 @@ function _ejecutarAvanzarSemanaSilencioso(key, sheet, d4) {
     const saldosFin = sheet.getRange(KARDEX_START, KARDEX_SLD_FIN, numRows, 1).getValues();
     const saldosAnt = saldosFin.map(r => [typeof r[0] === "number" ? r[0] : 0]);
 
-    // 2. Guardar en HISTORIAL horizontal
-    _guardarHistHorizontal(key, sheet, numRows, d4, sem);
+    // 2. Guardar en HISTORIAL horizontal (con respaldo si falla: la semana debe avanzar igual)
+    _archivarSemanaSeguro(key, sheet, numRows, d4, sem);
 
     // 3. Escribir saldos finales en SALDO ANT (col I = 9)
     sheet.getRange(KARDEX_START, KARDEX_SLD_ANT, numRows, 1).setValues(saldosAnt);

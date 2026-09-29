@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.5q Altair (Avance indestructible) — 2026-09-28 [PROD]
+
+### 🏬 Bodega (BDG)
+* Limpieza del huérfano ensanchado hasta el final de la hoja; `_archivarSemanaSeguro()` con respaldo en `_HISTORIAL_RESPALDO`; error con ubicación.
+
+---
+
 ## ⚡ v1.7.5p Altair (HISTORIAL sin bloques huérfanos) — 2026-09-28 [PROD]
 
 ### 🏬 Bodega (BDG)

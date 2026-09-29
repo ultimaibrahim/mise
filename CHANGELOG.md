@@ -33,6 +33,12 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.5q Altair — Avance de Semana Indestructible (Septiembre 2026) [PROD]
+* **1.7.5p no bastó en PROD** (mismo error): cada intento fallido alcanzaba a ejecutar `insertColumnsAfter(startCol - 1, 16)` **dentro** del encabezado huérfano antes de fallar en `merge()`, y Google ensanchaba la combinación 16 columnas por intento (fue creciendo a cientos). La limpieza de 1.7.5p separaba solo 16 columnas → "separar parte de una combinación" → mismo error. Ahora se separa y limpia desde el huérfano **hasta el final de la hoja**.
+* **Red de seguridad `_archivarSemanaSeguro()`**: si `_guardarHistHorizontal` falla por cualquier causa, la semana se respalda en `_HISTORIAL_RESPALDO` (filas simples: bodega, semana, lunes, producto, ENT/SAL por día, SLD FIN; sin combinaciones) y el avance continúa (saldos → SALDO ANT, limpieza, G4). Aplica al avance silencioso y al manual.
+* **Diagnóstico**: el error de `_autoVerificarYAvanzarSemanaSilencioso` indica la función donde ocurrió (desde `e.stack`) y queda en `🗒 LOG` como `ERROR`.
+* **Testing**: `semana.test.js` simula el huérfano ensanchado por 3 intentos (falla con `9c4f728`, pasa con el fix) y el respaldo cuando el historial falla.
+
 ### Version 1.7.5p Altair — HISTORIAL: Bloques Huérfanos ya no Bloquean el Avance (Septiembre 2026) [PROD]
 * **Causa raíz de "KARDEX_BM no avanza"**: un archivado interrumpido (p. ej., el `onOpen` simple cortado a los 30 s) dejó en `HISTORIAL_BM` un encabezado combinado de 15 columnas **sin datos debajo**. `_guardarHistHorizontal` calculaba el siguiente bloque con `getLastColumn()+1`, que solo ve la primera celda con texto de esa combinación: el bloque nuevo caía dentro de ella, `insertColumnsAfter` la ensanchaba y la nueva `merge()` fallaba con "Debes seleccionar todas las celdas de un intervalo combinado…". El error se repetía en cada intento, así que Mercado no volvía a avanzar sola; Andares nunca tuvo un archivado interrumpido.
 * **`_siguienteColumnaHistorial(hSheet, numRows)`**: detecta bloques huérfanos al final (encabezado combinado en fila 2 sin datos en filas 5+), los separa y limpia (con `WARN` en `🗒 LOG`), y calcula la columna siguiente con el fin de las celdas combinadas (`getMergedRanges`) además de la última columna con contenido.

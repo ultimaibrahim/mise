@@ -96,13 +96,32 @@ function runSemanaTests() {
     h.getRange(2, 4, 1, 15).merge().setValue("SEMANA 38 (2026)");        // bloque completo
     h.getRange(5, 4, 2, 15).setValues([[1,0,0,0,0,0,0,0,0,0,0,0,0,0,5],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,3]]);
     h.getRange(2, 19, 1, 15).merge().setValue("SEMANA 39 (2026)");       // huérfano: sin datos debajo
+    // Cada intento fallido insertaba 16 columnas dentro del huérfano (Google lo ensancha): 3 intentos
+    for (let i = 0; i < 3; i++) h.insertColumnsAfter(19, 16);
     const n = ctx.sandbox._autoVerificarYAvanzarSemanaSilencioso(false);
     assert.strictEqual(g4("KARDEX_BM"), lunesPasado.getTime() + semana, "BM avanza pese al bloque huérfano");
     assert.strictEqual(n, 2, "Ambas bodegas avanzan");
     const encabezadosFila2 = h.getRange(2, 1, 1, 60).getMergedRanges().map(m => m.getColumn());
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(encabezadosFila2)), [4, 19], "Bloque nuevo ocupa el lugar del huérfano, sin enciman");
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(encabezadosFila2)), [4, 19], "Bloque nuevo ocupa el lugar del huérfano (aunque se haya ensanchado), sin encimarse");
     assert.deepStrictEqual([h.getRange(5, 33).getValue(), h.getRange(6, 33).getValue()], [5, 3], "Datos del bloque nuevo escritos (SLD FIN de Fresa y Leche)");
     console.log("  ✓ HISTORIAL con bloque huérfano: se limpia y la semana avanza (antes fallaba en cada intento)");
+  }
+
+  // 6. Red de seguridad: si el HISTORIAL horizontal falla por CUALQUIER causa, la semana avanza igual
+  //    y los datos de la semana quedan en _HISTORIAL_RESPALDO
+  {
+    const lock = { held: false, libre: true };
+    const { ctx, lunesPasado, g4, semana } = _escenario(lock);
+    ctx.sandbox._guardarHistHorizontal = () => { throw new Error("Debes seleccionar todas las celdas de un intervalo combinado"); };
+    const n = ctx.sandbox._autoVerificarYAvanzarSemanaSilencioso(true);
+    assert.strictEqual(n, 2, "Ambas bodegas avanzan aunque el historial falle");
+    assert.strictEqual(g4("KARDEX_BM"), lunesPasado.getTime() + semana, "BM avanzó");
+    const r = ctx.ss.getSheetByName("_HISTORIAL_RESPALDO");
+    assert.ok(r, "Existe el respaldo");
+    const filas = r.getRange(2, 1, 4, 4).getValues().map(f => [f[0], f[3]]);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(filas)), [["BA", "Fresa"], ["BA", "Leche"], ["BM", "Fresa"], ["BM", "Leche"]], "Semana respaldada por bodega y producto");
+    assert.strictEqual(r.getRange(5, 19).getValue(), 3, "SLD FIN de Leche (BM) respaldado");
+    console.log("  ✓ Si el historial falla, la semana avanza igual y los datos quedan en _HISTORIAL_RESPALDO");
   }
 
   // 4. onOpen INSTALABLE (sin tope de 30 s): pone al día AMBOS Kardex de una vez

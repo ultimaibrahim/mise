@@ -23,6 +23,15 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.5q Altair — El Cambio de Semana Ya No se Puede Trabar (Septiembre 2026) [PROD]
+
+* 📅 **Mercado se destraba por completo**:  
+  La marca del historial que bloqueaba el cambio de semana había crecido con cada intento fallido; ahora se limpia completa.
+* 🛟 **Red de seguridad**:  
+  Si en el futuro el historial semanal tuviera cualquier problema, la semana avanza de todas formas y los movimientos de esa semana se guardan en una hoja de respaldo, sin perder información.
+
+---
+
 ## Versión 1.7.5p Altair — Mercado Vuelve a Cambiar de Semana Solo (Septiembre 2026) [PROD]
 
 * 📅 **Se destrabó el cambio de semana de Mercado**:  
