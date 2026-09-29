@@ -247,8 +247,6 @@ const MiseSmartSync = {
                   cantRec = parseFloat(cantRec) || 0;
 
                   const estado = String(row[8] || "").trim().toUpperCase(); // Col I
-                  const adicion = String(row[9] || "").trim().toUpperCase(); // Col J
-                  const esAdicion = adicion.includes("ADICIÓN") ? "SÍ" : "NO";
                   const sInfo = surtidoMap[normKey];
 
                   // Determinar cantidad a descontar (tienda) con Doble Candado de Respaldo
@@ -289,8 +287,7 @@ const MiseSmartSync = {
                       catName,
                       cantPed,
                       cantDeducir,
-                      estado || (sInfo && sInfo.sComp ? "COMPLETO" : (sInfo && sInfo.sInex ? "INEXISTENTE" : "SIN_REGISTRO")),
-                      esAdicion
+                      _estadoLogSurtido(estado, sInfo, cantPed, cantDeducir)
                     ]);
                   }
                 });
@@ -300,11 +297,12 @@ const MiseSmartSync = {
                   let remLogSheet = remoteSs.getSheetByName("🗒 LOG_SURTIDO");
                   if (!remLogSheet) {
                     remLogSheet = remoteSs.insertSheet("🗒 LOG_SURTIDO");
-                    remLogSheet.getRange(1, 1, 1, 8).setValues([["Fecha", "Bodega", "Producto", "Categoría", "Cant.Pedida", "Cant.Recibida", "Estado", "EsAdición"]])
+                    remLogSheet.getRange(1, 1, 1, 7).setValues([["Fecha", "Bodega", "Producto", "Categoría", "Cant.Pedida", "Cant.Recibida", "Estado"]])
                       .setBackground("#3D5A47").setFontColor("#FFFFFF").setFontWeight("bold");
                     remLogSheet.setFrozenRows(1);
                   }
-                  remLogSheet.getRange(remLogSheet.getLastRow() + 1, 1, itemsAEvidenciarEnLog.length, 8).setValues(itemsAEvidenciarEnLog);
+                  _asegurarEncabezadoLogSurtido(remLogSheet);
+                  remLogSheet.getRange(Math.max(remLogSheet.getLastRow() + 1, 2), 1, itemsAEvidenciarEnLog.length, 7).setValues(itemsAEvidenciarEnLog);
                 }
 
                 // VACIAR Y RESETEAR PEDIDO DIARIO EN LA TIENDA
@@ -1158,4 +1156,29 @@ const MiseTraspasos = {
  */
 function registrarTraspasoRPC(payload) {
   return MiseTraspasos.registrar(payload);
+}
+
+
+// Estado para 🗒 LOG_SURTIDO: el de la tienda si es válido (un "#NAME?" o texto roto no cuenta); si no, lo que
+// marcó el Surtido (✅/❌); si no, se deduce de la cantidad descontada; sin nada registrado → SIN_REGISTRO.
+function _estadoLogSurtido(estado, sInfo, cantPed, cantDeducir) {
+  const t = String(estado || "").toUpperCase();
+  const valido = ["INEXISTENTE", "EXCEDENTE", "PARCIAL", "COMPLETO"].find(k => t.indexOf(k) !== -1);
+  if (valido) return valido;
+  if (sInfo && sInfo.sInex) return "INEXISTENTE";
+  if (sInfo && sInfo.sComp) return "COMPLETO";
+  if (cantDeducir > 0) return cantDeducir === cantPed ? "COMPLETO" : (cantDeducir > cantPed ? "EXCEDENTE" : "PARCIAL");
+  return "SIN_REGISTRO";
+}
+
+// Garantiza el encabezado de 🗒 LOG_SURTIDO en la fila 1 (7 columnas; "EsAdición" retirada en 1.7.6e).
+// Si una escritura previa cayó en la fila 1 (hoja vacía + getLastRow()+1), inserta una fila arriba.
+function _asegurarEncabezadoLogSurtido(logSheet) {
+  if (String(logSheet.getRange(1, 1).getValue()).trim() !== "Fecha") {
+    if (logSheet.getLastRow() >= 1) logSheet.insertRowBefore(1);
+    logSheet.getRange(1, 1, 1, 7).setValues([["Fecha", "Bodega", "Producto", "Categoría", "Cant.Pedida", "Cant.Recibida", "Estado"]])
+      .setBackground("#3D5A47").setFontColor("#FFFFFF").setFontWeight("bold");
+    logSheet.setFrozenRows(1);
+  }
+  if (String(logSheet.getRange(1, 8).getValue()).trim() === "EsAdición") logSheet.getRange(1, 8).clearContent().setBackground(null);
 }

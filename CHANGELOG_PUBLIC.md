@@ -23,12 +23,19 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6e Altair — Menos Cosas que Estorban (Septiembre 2026) [EN PRUEBAS]
+
+* 🧹 **Se retira la marca de "Adición"**: una función antigua que ya no se usaba; desaparece también la columna "EsAdición" del registro de surtido.
+* 🚚 **Cancelar un producto del pedido lo quita del Surtido Rápido**: si se borra la cantidad a pedir, el producto ya no aparece por surtir.
+* 🏠 **La portada INICIO se retira** por ahora; la idea se retomará en la futura app móvil.
+* Incluye las correcciones de la versión 1.7.5s (colores del Pedido Diario y registro de surtido).
+
+---
+
 ## Versión 1.7.6d Altair — Bodega Más Fácil de Leer y de Usar (Septiembre 2026) [EN PRUEBAS]
 
 * 📊 **Kardex más limpio**:  
   Ahora solo se ven el producto, la unidad, el saldo anterior y los días de la semana. El resto de la información sigue ahí, pero ya no estorba ni confunde.
-* 🏠 **Nueva portada de Bodega**:  
-  La primera pestaña (INICIO) reúne accesos directos a lo de uso diario, acciones rápidas con casillas que también funcionan desde el celular y un resumen del estado del sistema: semana de cada inventario, último cierre nocturno y si todo está conectado.
 * 🗂️ **Pestañas en orden**:  
   Las hojas quedan ordenadas y con color según su uso: primero lo que se captura, luego lo que se consulta y al final lo del sistema.
 
@@ -58,6 +65,15 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
   Si una tienda tuviera la semana atrasada, la hoja de Entradas ya no registra su mercancía en la semana equivocada: avisa cuál tienda hay que poner al día antes de enviar.
 * 🧹 **Se retira el Registro Rápido de PC**:  
   La captura de entradas se hace desde la hoja 📥 ENTRADAS, pensada para el celular. El Registro Rápido se retiró porque podía sobrescribir movimientos ya registrados.
+
+---
+
+## Versión 1.7.5s Altair — Colores del Pedido Diario y Registro de Surtido Corregidos (Septiembre 2026) [PROD]
+
+* 🎨 **El Pedido Diario vuelve a pintarse según lo recibido**:  
+  Después de la actualización de estructura, algunos estados de recepción se guardaban como un error (#NAME?) y por eso el Pedido Diario se quedaba sin colores. Ya se guardan correctamente.
+* 🧾 **Registro de surtido más preciso**:  
+  El historial de recepción ya no marca "sin registro" a productos que sí se recibieron; indica si llegaron completos, de menos o de más. El encabezado del registro también se restablece si se había perdido.
 
 ---
 

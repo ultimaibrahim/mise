@@ -36,7 +36,9 @@ function _preparar(ctx) {
     setFormulasBase.call(this, m);
     // Los valores no-fórmula quedan como valor en la celda (igual que en Sheets)
     m.forEach((fila, r) => fila.forEach((f, c) => {
-      this.sheet._setCell(this.row + r, this.col + c, (typeof f === "string" && f.startsWith("=")) ? `ƒ${f}` : f);
+      // Como Google: fórmula → "ƒ…"; texto sin "=" en setFormulas → #NAME?; números/vacío tal cual
+      const txt = typeof f === "string" && f !== "" && !f.startsWith("=");
+      this.sheet._setCell(this.row + r, this.col + c, (typeof f === "string" && f.startsWith("=")) ? `ƒ${f}` : (txt ? "#NAME?" : f));
     }));
     return this;
   };
@@ -94,8 +96,8 @@ function runMigracionTests() {
     assert.ok(!("MISE_SCHEMA_MIGRANDO" in props), `${tag}: bandera de reintento limpia`);
     // Orden de picking (Leche, Harina, Fresa) y cada captura en SU producto
     eq([filaDe("Leche"), filaDe("Harina"), filaDe("Fresa")], [4, 5, 6], `${tag}: reconstruye en orden de picking, no de _SYNC`);
-    eq(pedidoFila(6).slice(5, 10), [5, "ƒ=IF(OR(F6=\"\", H6=\"\"), \"\", H6 - F6)", 5, "COMPLETO", ""], `${tag}: Fresa restaurada con DIFERENCIA intra-fila`);
-    eq(pedidoFila(4).slice(5, 10), [4, "ƒ=IF(OR(F4=\"\", H4=\"\"), \"\", H4 - F4)", 2, "PARCIAL", "🚨 ADICIÓN"], `${tag}: Leche toma la captura de SURTIDO y conserva la adición`);
+    eq(pedidoFila(6).slice(5, 10), [5, "=IF(OR(F6=\"\", H6=\"\"), \"\", H6 - F6)", 5, "COMPLETO", ""], `${tag}: Fresa restaurada con DIFERENCIA intra-fila`);
+    eq(pedidoFila(4).slice(5, 10), [4, "=IF(OR(F4=\"\", H4=\"\"), \"\", H4 - F4)", 2, "PARCIAL", ""], `${tag}: Leche toma la captura de SURTIDO (la antigua ADICIÓN ya no se conserva)`);
     eq(pedidoFila(5).slice(5, 10)[0], "", `${tag}: Harina sin captura`);
     // Inactivo y semáforo por producto (columnas auxiliares por nombre), sin INDIRECT(ROW())
     assert.ok(String(ctx._formulas["📋 PEDIDO DIARIO!4,12"]).startsWith("=ARRAYFORMULA(IF(C4:C=\"\",,IFERROR(VLOOKUP(C4:C,'_SYNC_BA'!C4:K,{7,3,8,9},FALSE)"), `${tag}: auxiliares L:O por nombre`);

@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6e Altair (Hotfix integrado, adiós ADICIÓN e INICIO) — 2026-09-29 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* Integra 1.7.5s; retira ADICIÓN (columna J reservada vacía, log de 7 columnas); cancelar un producto lo quita de Surtido; se retira 🏠 INICIO.
+
+---
+
 ## ⚡ v1.7.6d Altair (Kardex simplificado y 🏠 INICIO) — 2026-09-28 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG)
@@ -30,6 +37,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ### 🏬 Bodega (BDG)
 * `📥 ENTRADAS` valida la semana activa por bodega; se retira el Registro Rápido (PC) y su diálogo.
+
+---
+
+## ⚡ v1.7.5s Altair (Hotfix #NAME? y log de surtido) — 2026-09-29 [PROD]
+
+### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* `setValues` en lugar de `setFormulas` para tablas con texto; estado del log normalizado y deducido; encabezado de `🗒 LOG_SURTIDO` garantizado.
 
 ---
 

@@ -166,7 +166,7 @@ function _actualizarAvisoPedido() {
   const fullRange = pedido.getRange(DR, 1, count, NUM_COLS);
   fullRange.clearContent();
   fullRange.setBackgrounds(bgs);
-  fullRange.setFormulas(outputGrid);
+  fullRange.setValues(outputGrid); // setValues: "=…" sigue siendo fórmula; el texto NO se vuelve #NAME?
 
   pedido.getRange(DR, 1, count, NUM_COLS)
     .setFontFamily("Calibri").setFontSize(10).setVerticalAlignment("middle");
@@ -190,7 +190,7 @@ function _aplicarOcultamientoColumnas(sheet) {
     sheet.showColumns(3, 2);   // Mostrar Col C (PRODUCTO) y Col D (UNIDAD TIENDA)
     sheet.hideColumns(5);      // Ocultar Col E (SALDO TEÓRICO)
     sheet.showColumns(6);      // Mostrar Col F (CANT. A PEDIR)
-    sheet.hideColumns(7, 4);   // Ocultar Col G (DIFERENCIA), Col H (RECIBIDA), Col I (ESTADO), Col J (ADICIÓN)
+    sheet.hideColumns(7, 4);   // Ocultar Col G (DIFERENCIA), Col H (RECIBIDA), Col I (ESTADO), Col J (reservada, sin uso desde 1.7.6e)
     sheet.showColumns(11);     // Mostrar Col K (MÍN/MÁX QUIOSCO)
     
     let filter = sheet.getFilter();
@@ -330,20 +330,17 @@ function _onEditTienda(e) {
   if (col === COL_CANT_PEDIR) {
     let val = e.range.getValue();
 
-    // Si la celda está vacía o es null, limpiamos la alerta de adición y terminamos
-    if (val === "" || val === null || val === undefined) {
-      sheet.getRange(row, 10).clearContent();
-      return;
-    }
+    // Vacía: no hay nada que validar, pero SÍ hay que sacar el producto de Surtido Rápido (más abajo).
+    // (Antes terminaba aquí para limpiar la marca de ADICIÓN y el producto cancelado seguía en Surtido.)
+    const vacia = (val === "" || val === null || val === undefined);
 
-    if (Object.prototype.toString.call(val) === '[object Date]') {
+    if (!vacia && Object.prototype.toString.call(val) === '[object Date]') {
       e.range.clearContent();
-      sheet.getRange(row, 10).clearContent();
       try { SpreadsheetApp.getActive().toast("El valor debe ser un número positivo (no se permiten fechas).", "❌ Mise", 5); } catch(err) {}
       return;
     }
 
-    if (typeof val === "string") {
+    if (!vacia && typeof val === "string") {
       const cleanVal = val.replace(',', '.').trim();
       const num = Number(cleanVal);
       if (!isNaN(num)) {
@@ -353,13 +350,13 @@ function _onEditTienda(e) {
     }
 
     const checkVal = Number(val);
-    if (isNaN(checkVal) || checkVal < 0) {
+    if (!vacia && (isNaN(checkVal) || checkVal < 0)) {
       e.range.clearContent();
       return;
     }
   }
 
-  // Si existe la pestaña de Surtido Rápido, gestionar adiciones y ajustes sin lag
+  // Si existe la pestaña de Surtido Rápido, reflejar altas, cambios y cancelaciones sin lag
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const surtido = ss.getSheetByName("🚚 SURTIDO RÁPIDO");
@@ -387,7 +384,7 @@ function _onEditTienda(e) {
           generarSurtidoRapidoSilencioso();
         }
       } else if (cantPed > 0) {
-        // Es un producto nuevo (adición real): regenerar para insertarlo en secuencia de picking
+        // Producto nuevo en el pedido: regenerar para insertarlo en secuencia de picking
         generarSurtidoRapidoSilencioso();
       }
     }
@@ -467,7 +464,7 @@ function sincronizarEstados() {
         '=IF(OR(F' + r + '="", H' + r + '=""), "", H' + r + ' - F' + r + ')', // Col G (DIFERENCIA)
         "",                                           // Col H
         "",                                           // Col I
-        ""                                            // Col J (ADICIÓN)
+        ""                                            // Col J (reservada, sin uso)
       ]);
 
       const rowBg = Array(NUM_COLS).fill(highlightColor);
@@ -477,7 +474,7 @@ function sincronizarEstados() {
     }
 
     // Escribir en bloque
-    sheet.getRange(insertStartRow, 1, diff, NUM_COLS).setFormulas(newFormulas);
+    sheet.getRange(insertStartRow, 1, diff, NUM_COLS).setValues(newFormulas);
     sheet.getRange(insertStartRow, 1, diff, NUM_COLS).setBackgrounds(newBgs);
 
     sheet.getRange(insertStartRow, 1, diff, NUM_COLS)
@@ -617,12 +614,12 @@ function ordenarPedido() {
       cleanFonts.push(rowFont);
 
       // Generar fórmulas y valores limpios (Col G es DIFERENCIA, Col K es MÍN/MÁX QUIOSCO)
-      outputData.push(_filaPedido(r, sr, prodNo, { pedir: items[i].vals[5], recibida: items[i].vals[7], estado: items[i].vals[8], adicion: items[i].vals[9] }));
+      outputData.push(_filaPedido(r, sr, prodNo, { pedir: items[i].vals[5], recibida: items[i].vals[7], estado: _normalizarEstado(items[i].vals[8]) }));
     }
 
     // Escribir en bloque
     range.clearContent();
-    sheet.getRange(DATA_START_ROW, 1, count, NUM_COLS).setFormulas(outputData);
+    sheet.getRange(DATA_START_ROW, 1, count, NUM_COLS).setValues(outputData); // texto (ESTADO) no se vuelve #NAME?
     range.setBackgrounds(bgs);
     range.setFontWeights(cleanFonts);
 
@@ -745,7 +742,7 @@ function _resetearPedidoSilencioso(e) {
   const count = _getProductCount();
   sheet.getRange(DATA_START_ROW, COL_CANT_PEDIR, count, 1).clearContent();
   sheet.getRange(DATA_START_ROW, COL_RECIBIDA, count, 2).clearContent(); // Limpiar Col H (Cant. Recibida) y Col I (Estado)
-  sheet.getRange(DATA_START_ROW, 10, count, 1).clearContent(); // Limpiar Columna J (Adición)
+  sheet.getRange(DATA_START_ROW, 10, count, 1).clearContent(); // Col J reservada: limpia restos de la antigua ADICIÓN
   
   const bgs = [];
   for (let i = 0; i < count; i++) {
@@ -799,7 +796,7 @@ function _registrarLogSurtidoDiario(ss, sheet) {
   let logSheet = ss.getSheetByName("🗒 LOG_SURTIDO");
   if (!logSheet) {
     logSheet = ss.insertSheet("🗒 LOG_SURTIDO");
-    logSheet.getRange(1, 1, 1, 8).setValues([["Fecha", "Bodega", "Producto", "Categoría", "Cant.Pedida", "Cant.Recibida", "Estado", "EsAdición"]])
+    logSheet.getRange(1, 1, 1, 7).setValues([["Fecha", "Bodega", "Producto", "Categoría", "Cant.Pedida", "Cant.Recibida", "Estado"]])
       .setBackground(COLORS.logHeader).setFontColor("#FFFFFF").setFontWeight("bold");
     logSheet.setFrozenRows(1);
   }
@@ -821,14 +818,14 @@ function _registrarLogSurtidoDiario(ss, sheet) {
     const cantPed  = parseFloat(row[5]) || 0;
     const cantRec  = parseFloat(row[7]) || 0;
     const estado   = String(row[8] || "").trim();
-    const alerta   = String(row[9] || "").trim();
-    const esAdicion = alerta.includes("ADICIÓN") ? "SÍ" : "NO";
 
     // Misma regla que el descuento de Bodega: solo cuenta lo registrado (número, ✅ o ❌). Sin registro → 0.
-    if (prodName && (cantPed > 0 || cantRec > 0 || estado)) {
-      const cantEfectiva = (estado === "INEXISTENTE") ? 0
+    // El estado se normaliza (un "#NAME?" o variante no cuenta) y, si falta, se deduce de la cantidad recibida.
+    const est = _normalizarEstado(estado);
+    if (prodName && (cantPed > 0 || cantRec > 0 || est)) {
+      const cantEfectiva = (est === "INEXISTENTE") ? 0
         : (cantRec > 0) ? cantRec
-        : (estado === "COMPLETO") ? cantPed : 0;
+        : (est === "COMPLETO") ? cantPed : 0;
       logRows.push([
         fechaStr,
         BODEGA_NOMBRE,
@@ -836,15 +833,15 @@ function _registrarLogSurtidoDiario(ss, sheet) {
         catName,
         cantPed,
         cantEfectiva,
-        estado || "SIN_REGISTRO",
-        esAdicion
+        est || (cantEfectiva > 0 ? _estadoRecepcion(cantEfectiva, cantPed) : "SIN_REGISTRO")
       ]);
     }
   }
 
   if (logRows.length > 0) {
+    _asegurarEncabezadoLogSurtido(logSheet);
     const startRow = Math.max(logSheet.getLastRow() + 1, 2);
-    logSheet.getRange(startRow, 1, logRows.length, 8).setValues(logRows);
+    logSheet.getRange(startRow, 1, logRows.length, 7).setValues(logRows);
   }
 }
 
@@ -905,7 +902,7 @@ function _normalizarEstado(v) {
 }
 
 // Captura en RAM (por nombre de producto) todo lo que el usuario o el sistema escribió en el día:
-// PEDIDO DIARIO F (pedir), H (recibida), I (estado), J (adición) + lo marcado en SURTIDO RÁPIDO (E/F/G),
+// PEDIDO DIARIO F (pedir), H (recibida), I (estado) + lo marcado en SURTIDO RÁPIDO (E/F/G),
 // que tiene prioridad porque es la captura directa del surtidor.
 function _leerCapturasTienda(pedido, surtido) {
   const capturas = {};
@@ -914,8 +911,8 @@ function _leerCapturasTienda(pedido, surtido) {
     pedido.getRange(DATA_START_ROW, 1, n, 10).getValues().forEach(r => {
       const name = String(r[2] || "").trim();
       if (!name) return;
-      const c = { pedir: r[COL_CANT_PEDIR - 1], recibida: r[COL_RECIBIDA - 1], estado: _normalizarEstado(r[COL_ESTADO - 1]), adicion: r[9] };
-      if ([c.pedir, c.recibida, c.estado, c.adicion].some(v => v !== "" && v !== null)) capturas[name] = c;
+      const c = { pedir: r[COL_CANT_PEDIR - 1], recibida: r[COL_RECIBIDA - 1], estado: _normalizarEstado(r[COL_ESTADO - 1]) };
+      if ([c.pedir, c.recibida, c.estado].some(v => v !== "" && v !== null)) capturas[name] = c;
     });
   }
   if (surtido && surtido.getLastRow() >= 4) {
@@ -929,7 +926,7 @@ function _leerCapturasTienda(pedido, surtido) {
         recibida = parseFloat(String(r[4]).replace(",", ".")); estado = _estadoRecepcion(recibida, ped);
       } else if (r[5] === true) { recibida = ped; estado = "COMPLETO"; }
       if (estado) {
-        const c = capturas[name] || { pedir: ped, recibida: "", estado: "", adicion: "" };
+        const c = capturas[name] || { pedir: ped, recibida: "", estado: "" };
         c.recibida = recibida; c.estado = estado;
         capturas[name] = c;
       }
@@ -988,7 +985,7 @@ function _reconstruirPedidoDiarioCore(backupData) {
   const rangeData = pedido.getRange(DR, 1, syncCount, NUM_COLS);
   rangeData.clearContent();
   rangeData.setBackgrounds(cleanBgs);
-  rangeData.setFormulas(outputGrid);
+  rangeData.setValues(outputGrid); // texto (ESTADO) no se vuelve #NAME?
 
   // 5. Visibilidad, formatos condicionales y protecciones
   _aplicarFormatosCondicionales(pedido);
@@ -1000,7 +997,7 @@ function _reconstruirPedidoDiarioCore(backupData) {
 
 // ÚNICO constructor de filas de 📋 PEDIDO DIARIO (A:K). Antes había 3 copias idénticas de estas fórmulas
 // (_actualizarAvisoPedido, ordenarPedido, _reconstruirPedidoDiarioCore): un cambio en una no llegaba a las otras.
-//   r = fila en PEDIDO · sr = fila de ESE producto en _SYNC · no = número · c = capturas {pedir, recibida, estado, adicion}
+//   r = fila en PEDIDO · sr = fila de ESE producto en _SYNC · no = número · c = capturas {pedir, recibida, estado}
 function _filaPedido(r, sr, no, c) {
   const S = "'" + SHEET_SYNC + "'!";
   const v = (x) => (x !== "" && x !== null && x !== undefined) ? x : "";
@@ -1014,7 +1011,7 @@ function _filaPedido(r, sr, no, c) {
     '=IF(OR(F' + r + '="", H' + r + '=""), "", H' + r + ' - F' + r + ')', // G DIFERENCIA
     v(c.recibida),                                                 // H RECIBIDA
     v(c.estado),                                                   // I ESTADO
-    v(c.adicion),                                                  // J ADICIÓN
+    "",                                                            // J (reservada; ADICIÓN retirada en 1.7.6e)
     '=IF(AND(' + S + 'J' + sr + '=0, ' + S + 'K' + sr + '=0), "—", ' + S + 'J' + sr + ' & "  |  " & ' + S + 'K' + sr + ')' // K MÍN | MÁX
   ];
 }
@@ -1300,12 +1297,7 @@ function _aplicarFormatosCondicionales(sheet) {
   if (count < 1) return;
   const range = sheet.getRange(DATA_START_ROW, 1, count, NUM_COLS);
   const rangeE = sheet.getRange(DATA_START_ROW, 5, count, 1);
-  // Regla 1: Alerta adición de última hora (naranja brillante)
-  const ruleAdicion = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=$J4="🚨 ADICIÓN"')
-    .setBackground("#FFD54F")
-    .setRanges([range])
-    .build();
+  // (Regla de ADICIÓN retirada en 1.7.6e)
       
   // Regla 1.5: Inactivos (gris)
   const ruleInactivo = SpreadsheetApp.newConditionalFormatRule()
@@ -1351,7 +1343,7 @@ function _aplicarFormatosCondicionales(sheet) {
     .setRanges([range])
     .build();
 
-  const rules = [ruleCompleto, ruleParcial, ruleExcedente, ruleAdicion, ruleInexistente, rulePendiente, ruleInactivo];
+  const rules = [ruleCompleto, ruleParcial, ruleExcedente, ruleInexistente, rulePendiente, ruleInactivo];
   
   // Reglas Semáforo en Columna E (SALDO TEÓRICO) — leen L:O de su propia fila (M saldo, N mín, O máx)
   const _sem = (f, bg, fg) => rules.push(SpreadsheetApp.newConditionalFormatRule()
@@ -1365,7 +1357,7 @@ function _aplicarFormatosCondicionales(sheet) {
   sheet.setConditionalFormatRules(rules);
 }
 
-const MISE_VERSION = "1.7.6d";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6e";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "Surtido Rápido: escribe lo recibido y la fila completa se pinta sola",
@@ -1500,11 +1492,9 @@ function _generarSurtidoRapidoInternal(activateSheet) {
       const completo = (estado === "COMPLETO");
       const inexistente = (estado === "INEXISTENTE");
 
-      // Detect highlight color (Adición si Col J tiene "🚨 ADICIÓN", o morado si Col C background es morado)
+      // Producto recién dado de alta (fondo morado en PRODUCTO) se resalta también en Surtido
       let highlightBg = null;
-      if (data[i][9] === "🚨 ADICIÓN") {
-        highlightBg = "#FFD54F"; // Orange addition alert
-      } else if (bgColC === "#e8eaf6" || bgColC === "rgb(232, 234, 246)") {
+      if (bgColC === "#e8eaf6" || bgColC === "rgb(232, 234, 246)") {
         highlightBg = "#E8EAF6"; // Lavender
       }
 
@@ -2287,4 +2277,16 @@ function registrarTraspasoTiendaRPC(payload) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// Garantiza el encabezado de 🗒 LOG_SURTIDO en la fila 1 (7 columnas; "EsAdición" retirada en 1.7.6e).
+// Si una escritura previa cayó en la fila 1 (hoja vacía + getLastRow()+1), inserta una fila arriba.
+function _asegurarEncabezadoLogSurtido(logSheet) {
+  if (String(logSheet.getRange(1, 1).getValue()).trim() !== "Fecha") {
+    if (logSheet.getLastRow() >= 1) logSheet.insertRowBefore(1);
+    logSheet.getRange(1, 1, 1, 7).setValues([["Fecha", "Bodega", "Producto", "Categoría", "Cant.Pedida", "Cant.Recibida", "Estado"]])
+      .setBackground("#3D5A47").setFontColor("#FFFFFF").setFontWeight("bold");
+    logSheet.setFrozenRows(1);
+  }
+  if (String(logSheet.getRange(1, 8).getValue()).trim() === "EsAdición") logSheet.getRange(1, 8).clearContent().setBackground(null);
 }

@@ -41,14 +41,14 @@
 - [ ] **Herramientas de desarrollo fuera de PROD**: mover a `MiseDevTools.js` (solo DEV vía `.claspignore`) — reconciliador del 7/sep, inyección de recuperación, datos aleatorios de prueba, forzar LOG, reconciliador de huérfanos; menús condicionados a `MISE_ENV`.
 - [ ] **Código muerto**: 9 funciones sin referencias en BDG y 4 en tiendas (lista en la sesión del 28/sep: `crearVistaMovilBA/BM` duplicadas, `runTests`, `limpiarProps`, `crearHojaCargaMasiva`, `crearHojaEdicionMasiva`, `abrirPowerhouse`, `obtenerProductosPickingHTML`, `_validarOAvanzarSemanaBDG`, `invalidarCache`, `instalarTriggers`, `desinstalarTriggers`, `avanzarSemanaInfo`). Confirmar con `grep` antes de borrar.
 - [ ] **Logs**: unificar `_log`, `registrarLog` y `MiseLogger` en `MiseLogger`.
-- [ ] **Columnas ocultas muertas** (esquema 3 del motor de migración): quitar `J ADICIÓN` (función retirada en v1.6.1) y evaluar `G DIFERENCIA`, ajustando los índices en un solo cambio probado. Las demás columnas ocultas son del motor y se quedan. Alternativa sin riesgo: agruparlas (➖/➕).
+- [~] **Columnas ocultas muertas** (esquema 3 del motor de migración): la función ADICIÓN ya se retiró en 1.7.6e (J queda reservada vacía); falta quitar físicamente `J` y evaluar `G DIFERENCIA`, ajustando los índices en un solo cambio probado. Las demás columnas ocultas son del motor y se quedan. Alternativa sin riesgo: agruparlas (➖/➕).
 
 ---
 
 ## Fase 2.5 — Blindaje y UX de Bodega (pedido 28/sep)
 - [x] **Blindaje por capas** *(1.7.6c)*: instalables como dueño, hojas técnicas y Entradas protegidas, Kardex sin F:G ni G4 editables, `🔐 Auditoría de permisos`.
 - [x] **Kardex simplificado** *(1.7.6d)*: visibles solo PRODUCTO, UNIDAD, SALDO ANTERIOR y las columnas de los días.
-- [x] **Hoja `🏠 INICIO` en Bodega** *(1.7.6d)*: accesos y acciones con casillas (funcionan en celular) y estado del sistema en la propia hoja.
+- [~] **Hoja `🏠 INICIO` en Bodega** *(hecha en 1.7.6d y retirada en 1.7.6e por decisión de producto; la idea pasa a la Web App, Fase 4)*: accesos y acciones con casillas (funcionan en celular) y estado del sistema en la propia hoja.
 - [ ] **Manual visual/tutorial** por rol, con qué funciona sin internet (lo arma Ibrahim; apoyo con página compartible).
 
 ## Fase 3 — Arquitectura por eventos · Nivel 2 (1.7.6e–f)
@@ -60,13 +60,14 @@ Objetivo: **nadie escribe en el libro de otro**. Elimina el problema de permisos
 - [ ] **Latido**: cada tienda escribe `_ESTADO` (versión de código, esquema, último reset, última versión de catálogo aplicada, activadores).
 - [ ] **🩺 Panel de salud en Bodega**: una fila por libro con su latido; alerta si una tienda no late en más de 24 h.
 - [ ] **El push remoto se reduce** a refrescar el enlace (carril rápido opcional) y el Powerhouse guarda solo el catálogo (objetivo: **< 5 s**).
+- [ ] **`MiseSmartSync.ejecutarDescuento` tardó 114 s** en PROD (29/sep): perfilar por fase (abrir tiendas, leer Surtido/PEDIDO, escribir Kardex/LOG remoto) y bajarlo; parte se va con eventos (menos lecturas remotas).
 - [ ] Cuota: ~4 min/día de los 90 min diarios de Google (medir tras una semana).
 
 ---
 
 ## Fase 4 — Roadmap (fuera de la 1.7.6)
 
-- **Mise Móvil (Web App `doGet`)**: teclado numérico real (`inputmode="decimal"`), botones grandes, sin problemas de permisos ni de varias cuentas; empezar por 📥 Entradas o Surtido Rápido para que lo pruebe el gerente.
+- **Mise Móvil (Web App `doGet`)** — incluir la portada tipo INICIO (accesos, acciones, estado del sistema) que se probó en 1.7.6d: teclado numérico real (`inputmode="decimal"`), botones grandes, sin problemas de permisos ni de varias cuentas; empezar por 📥 Entradas o Surtido Rápido para que lo pruebe el gerente.
 - **Biblioteca `MiseCore`**: código compartido por los 3 libros.
 - **Developer Metadata**: etiquetar filas por ID de producto (inmunidad total al orden de filas).
 - **Alertas** por correo o Telegram: stock bajo, tienda sin latido, cierre nocturno fallido.

@@ -57,7 +57,9 @@ class MockRange {
   }
 
   setFormulas(matrix) {
-    return this.setValues(matrix);
+    // Como Google: en setFormulas, un texto sin "=" se interpreta como fórmula inválida → #NAME?
+    const conv = matrix.map(f => f.map(v => (typeof v === "string" && v !== "" && !v.startsWith("=")) ? "#NAME?" : v));
+    return this.setValues(conv);
   }
 
   clearContent() {
@@ -245,6 +247,12 @@ class MockSheet {
   hideSheet() { this.hidden = true; return this; }
   showSheet() { this.hidden = false; return this; }
   deleteRows(row, count = 1) {}
+  insertRowBefore(row) {
+    const nuevo = {};
+    Object.keys(this.grid).forEach(k => { const [r, c] = k.split(",").map(Number); nuevo[`${r >= row ? r + 1 : r},${c}`] = this.grid[k]; });
+    this.grid = nuevo;
+    return this;
+  }
   insertRowsAfter(row, count = 1) {}
   deleteColumns(col, count = 1) {}
   insertColumnsAfter(col, count = 1) {
