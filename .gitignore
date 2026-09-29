@@ -17,10 +17,8 @@ scripts/mise-env.config.json
 
 # Tiendas GENERADAS desde la fuente única tienda/ (scripts/build-tienda.js) — no editar ni versionar
 pda/miseAuthPDA.js
-pda/TraspasoTiendaDialog.html
 pda/appsscript.json
 pda/MiseDevTools.js
 pdm/miseAuthPDM.js
-pdm/TraspasoTiendaDialog.html
 pdm/appsscript.json
 pdm/MiseDevTools.js

@@ -47,7 +47,8 @@
 
 ## Fase 2.5 — Blindaje y UX de Bodega (pedido 28/sep)
 - [x] *(1.7.6m)* **Revisar los HTML y modales**: inventario, `esc()` en los diálogos, `MiseReconciler` muerto fuera. Criterio de Ibrahim (29/sep): *keep it simple*, lo de un solo uso se retira.
-- [ ] **Traspaso desde la tienda** (`registrarTraspasoTiendaRPC`): escribe en el Kardex de Bodega con la cuenta de la tienda (choca con el blindaje), sin guarda de semana ni idempotencia, y es un modal (no aparece en la app móvil). Decidir: retirarlo (traspasos solo desde Bodega) o convertirlo en registro local que Bodega aplica en el cierre.
+- [x] *(1.7.6n)* **Traspaso desde la tienda**: retirado; traspasos solo desde Bodega.
+- [ ] **Traspasos desde el celular**: el diálogo de Bodega es un modal (no sale en la app móvil). Propuesta: tipo de movimiento en `📥 ENTRADAS` (Entrada / Traspaso a la otra bodega). Pendiente de OK.
 - [ ] **MAESTRO más amigable**: columnas visibles mínimas, encabezados y validaciones claras, ayudas en celda (el Kardex ya se simplificó en 1.7.6d; MAESTRO no).
 - [x] **Blindaje por capas** *(1.7.6c)*: instalables como dueño, hojas técnicas y Entradas protegidas, Kardex sin F:G ni G4 editables, `🔐 Auditoría de permisos`.
 - [x] **Kardex simplificado** *(1.7.6d)*: visibles solo PRODUCTO, UNIDAD, SALDO ANTERIOR y las columnas de los días.

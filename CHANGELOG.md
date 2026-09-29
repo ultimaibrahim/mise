@@ -33,6 +33,10 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.6n Altair — Traspasos Solo desde Bodega (Septiembre 2026) [EN PRUEBAS · DEV]
+* **Retirado el traspaso desde la tienda** (decisión de Ibrahim, 29/sep): `abrirDialogoTraspasoTiendaHTML`, `obtenerCatalogoParaTraspasoTienda`, `registrarTraspasoTiendaRPC`, `tienda/TraspasoTiendaDialog.html` y su opción de menú. Escribía en el Kardex y en `🔄 TRASPASOS` de Bodega con la cuenta de la tienda (chocaba con el blindaje), sin guarda de semana ni idempotencia, y como modal no aparecía en la app móvil. Los traspasos se registran desde Bodega (`🔄 Registrar Traspaso entre Sucursales`).
+* `build-tienda` ya no copia el diálogo; pruebas de fuente única y limpieza actualizadas.
+
 ### Version 1.7.6m Altair — Revisión de HTML y Modales (Septiembre 2026) [EN PRUEBAS · DEV]
 * **Inventario**: 4 HTML (`PickingDialog` 1,220 líneas · Powerhouse; `TraspasoDialog` Bodega; `TraspasoTiendaDialog` tienda; `EstadoSistema` página de estado) + el Reconciliador de huérfanos (HTML embebido en `abrirReconciliadorInteligenteHTML`). Todas sus llamadas `google.script.run` apuntan a funciones existentes. Única dependencia externa: SortableJS (jsDelivr) en el Powerhouse.
 * **Escape de datos**: los diálogos insertaban nombres, categorías y unidades de productos como HTML sin escapar (un nombre con comillas o `<` rompía la lista o el campo de edición). `esc()` en los 3 diálogos; prueba en `limpieza.test.js` que impide insertar datos crudos.

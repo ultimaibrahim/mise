@@ -5,7 +5,7 @@
  * Este es el ÚNICO archivo que se edita para las tiendas. scripts/build-tienda.js genera
  * pda/miseAuthPDA.js y pdm/miseAuthPDM.js (gitignored) con su cabecera y MISE_SUCURSAL_DEFAULT.
  * La sucursal real la deciden las Propiedades del Script (BODEGA_KEY / BODEGA_NOMBRE).
- * SUBTITULO: Configuración en un Clic · Picking y Colores por Producto · Migración Automática de Estructura · Surtido Rápido con CANT. FINAL · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico
+ * SUBTITULO: Configuración en un Clic · Picking y Colores por Producto · Migración Automática de Estructura · Surtido Rápido con CANT. FINAL
  */
 
 // ── BODEGA & CONFIGURACIÓN DINÁMICA DE ENTORNO ──────────────────────────────
@@ -96,7 +96,6 @@ function onOpen() {
       .addItem("🚀 Configurar este libro (activadores, estructura, picking)", "configurarEsteLibroTienda")
       .addSeparator()
       .addItem("🚚 Generar Surtido Rápido (móvil)",       "generarSurtidoRapido")
-      .addItem("🔄 Registrar Traspaso entre Tiendas",     "abrirDialogoTraspasoTiendaHTML")
       .addItem("🖐️ Reordenar lista por picking",          "ordenarPedido")
       .addSeparator()
       .addItem("🔧 Sincronizar catálogo y reparar formato", "repararSistemaTienda")
@@ -1332,7 +1331,7 @@ function _aplicarFormatosCondicionales(sheet) {
   sheet.setConditionalFormatRules(rules);
 }
 
-const MISE_VERSION = "1.7.6m";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6n";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "Pedido Diario más limpio: se retiró una columna vacía que quedaba de una función antigua",
@@ -2106,204 +2105,6 @@ function _asegurarSyncVivo() {
   if (!sync || /IMPORTRANGE/i.test(sync.getRange(4, 1).getFormula())) return;
   const url = PropertiesService.getScriptProperties().getProperty(`BODEGA_URL_${BODEGA_KEY}`);
   if (url) _setupSync(url);
-}
-
-// ── MÓDULO DE TRASPASOS INTER-TIENDAS (MOBILE-FIRST) ─────────────────────────
-function abrirDialogoTraspasoTiendaHTML() {
-  const html = HtmlService.createHtmlOutputFromFile('TraspasoTiendaDialog')
-    .setWidth(450)
-    .setHeight(560);
-  SpreadsheetApp.getUi().showModalDialog(html, `🔄 Registrar Traspaso — ${BODEGA_NOMBRE}`);
-}
-
-function obtenerCatalogoParaTraspasoTienda() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sync = ss.getSheetByName(SHEET_SYNC);
-  const items = [];
-
-  if (sync && sync.getLastRow() >= 4) {
-    const sData = sync.getRange(4, 1, sync.getLastRow() - 3, 12).getValues();
-    sData.forEach(r => {
-      const act = String(r[8] || "").trim().toUpperCase();
-      if (act === "NO") return;
-      const name = String(r[2] || "").trim();
-      if (!name) return;
-      const cat = String(r[1] || "").trim();
-      const unit = String(r[3] || "").trim();
-      items.push({
-        name: name,
-        cat: cat,
-        unit: unit
-      });
-    });
-  }
-
-  // Si no hay datos en _SYNC, leer directamente de PEDIDO DIARIO
-  if (items.length === 0) {
-    const pedido = ss.getSheetByName(SHEET_PEDIDO);
-    if (pedido && pedido.getLastRow() >= 4) {
-      const pData = pedido.getRange(4, 1, pedido.getLastRow() - 3, 5).getValues();
-      pData.forEach(r => {
-        const name = String(r[2] || "").trim();
-        if (!name) return;
-        items.push({
-          name: name,
-          cat: String(r[1] || "").trim(),
-          unit: String(r[3] || "").trim()
-        });
-      });
-    }
-  }
-
-  return {
-    miBodegaKey: BODEGA_KEY,
-    miBodegaNombre: BODEGA_NOMBRE,
-    contraparteKey: (BODEGA_KEY === "BA") ? "BM" : "BA",
-    contraparteNombre: (BODEGA_KEY === "BA") ? "Mercado" : "Andares",
-    productos: items
-  };
-}
-
-function registrarTraspasoTiendaRPC(payload) {
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(20000)) {
-    throw new Error("El sistema de traspasos está ocupado. Intenta de nuevo.");
-  }
-
-  try {
-    const props = PropertiesService.getScriptProperties();
-    const bdgUrl = props.getProperty(`BODEGA_URL_${BODEGA_KEY}`) || props.getProperty("BODEGA_URL_BA") || props.getProperty("BODEGA_URL_BM");
-    const bdgId = props.getProperty("BODEGA_SPREADSHEET_ID") || props.getProperty("BDG_SPREADSHEET_ID");
-
-    let bdgSs = null;
-    if (bdgId) {
-      try { bdgSs = SpreadsheetApp.openById(bdgId); } catch(e) {}
-    }
-    if (!bdgSs && bdgUrl) {
-      try { bdgSs = _abrirLibro(bdgUrl); } catch(e) {}
-    }
-
-    if (!bdgSs) {
-      throw new Error(`No se pudo conectar con el archivo de Bodega Central para registrar el traspaso.`);
-    }
-
-    // Asegurar usuario
-    const userEmail = Session.getActiveUser().getEmail() || `Encargado ${BODEGA_NOMBRE}`;
-    const payloadEnriquecido = {
-      origen: payload.origen,
-      destino: payload.destino,
-      producto: payload.producto,
-      cantidad: parseFloat(payload.cantidad),
-      unidad: payload.unidad,
-      motivo: payload.motivo || "Traspaso inter-tiendas",
-      usuario: userEmail
-    };
-
-    // 1. Ejecutar registro autoritativo en BDG mediante importación directa en libro
-    // Llamada atómica hacia la función global en BDG
-    const res = bdgSs.getName() ? (function() {
-      // Registrar fila en 🔄 TRASPASOS de BDG
-      let traspasosSheet = bdgSs.getSheetByName("🔄 TRASPASOS");
-      if (!traspasosSheet) {
-        traspasosSheet = bdgSs.insertSheet("🔄 TRASPASOS");
-        traspasosSheet.getRange(1, 1, 1, 11).setValues([[
-          "FOLIO", "FECHA_HORA", "ORIGEN", "DESTINO", "PRODUCTO", "CANTIDAD", "UNIDAD", "FACTOR_KARDEX", "CANT_KARDEX", "MOTIVO", "USUARIO"
-        ]]).setBackground("#3D5A47").setFontColor("#FFFFFF").setFontWeight("bold");
-        traspasosSheet.setRowHeight(1, 28);
-        traspasosSheet.setFrozenRows(1);
-      }
-
-      // Buscar factores y actualizar Kardex
-      const hoy = new Date();
-      const dow = hoy.getDay();
-      const dIdx = dow === 0 ? 6 : dow - 1;
-      const entColIdx = 10 + dIdx * 3;
-      const salColIdx = 10 + dIdx * 3 + 1;
-
-      const normKey = String(payload.producto).toLowerCase().replace(/\s+/g, "").replace(/cdk/g, "").replace(/[()]/g, "").trim();
-
-      // Factor de conversión desde MAESTRO
-      let factorConversion = 1;
-      const mSheet = bdgSs.getSheetByName("MAESTRO");
-      if (mSheet && mSheet.getLastRow() >= 4) {
-        const mHeaders = mSheet.getRange(3, 1, 1, mSheet.getLastColumn()).getValues()[0].map(h => String(h).trim().toUpperCase());
-        const cFact = mHeaders.findIndex(h => h.includes("FACTOR"));
-        const cProd = mHeaders.indexOf("PRODUCTO");
-        if (cFact !== -1 && cProd !== -1) {
-          const mData = mSheet.getRange(4, 1, mSheet.getLastRow() - 3, mSheet.getLastColumn()).getValues();
-          for (let i = 0; i < mData.length; i++) {
-            const pNorm = String(mData[i][cProd]).toLowerCase().replace(/\s+/g, "").replace(/cdk/g, "").replace(/[()]/g, "").trim();
-            if (pNorm === normKey) {
-              let fVal = mData[i][cFact];
-              if (typeof fVal === "string") fVal = fVal.replace(',', '.').trim();
-              const numF = parseFloat(fVal);
-              if (!isNaN(numF) && numF > 0) factorConversion = numF;
-              break;
-            }
-          }
-        }
-      }
-
-      const cantKardex = Math.round(payload.cantidad * factorConversion * 1000) / 1000;
-
-      // Actualizar Kardex Origen y Destino en BDG
-      const kOri = bdgSs.getSheetByName(payload.origen === "BA" ? "KARDEX_BA" : "KARDEX_BM");
-      const kDes = bdgSs.getSheetByName(payload.destino === "BA" ? "KARDEX_BA" : "KARDEX_BM");
-
-      if (kOri && kDes) {
-        const dataOri = kOri.getRange(7, 3, kOri.getLastRow() - 6, 1).getValues();
-        const dataDes = kDes.getRange(7, 3, kDes.getLastRow() - 6, 1).getValues();
-
-        for (let i = 0; i < dataOri.length; i++) {
-          if (String(dataOri[i][0]).toLowerCase().replace(/\s+/g, "").replace(/cdk/g, "").replace(/[()]/g, "").trim() === normKey) {
-            const rowO = 7 + i;
-            const curSal = parseFloat(kOri.getRange(rowO, salColIdx).getValue()) || 0;
-            kOri.getRange(rowO, salColIdx).setValue(curSal + cantKardex);
-            break;
-          }
-        }
-
-        for (let i = 0; i < dataDes.length; i++) {
-          if (String(dataDes[i][0]).toLowerCase().replace(/\s+/g, "").replace(/cdk/g, "").replace(/[()]/g, "").trim() === normKey) {
-            const rowD = 7 + i;
-            const curEnt = parseFloat(kDes.getRange(rowD, entColIdx).getValue()) || 0;
-            kDes.getRange(rowD, entColIdx).setValue(curEnt + cantKardex);
-            break;
-          }
-        }
-      }
-
-      const folio = "TRP-" + Utilities.formatDate(hoy, "GMT-6", "yyyyMMdd-HHmmss");
-      const fechaStr = Utilities.formatDate(hoy, "GMT-6", "yyyy-MM-dd HH:mm:ss");
-      const nextRow = traspasosSheet.getLastRow() + 1;
-      const logRow = [
-        folio,
-        fechaStr,
-        payload.origen === "BA" ? "Andares" : "Mercado",
-        payload.destino === "BA" ? "Andares" : "Mercado",
-        payload.producto,
-        payload.cantidad,
-        payload.unidad,
-        factorConversion,
-        cantKardex,
-        payload.motivo,
-        userEmail
-      ];
-      traspasosSheet.getRange(nextRow, 1, 1, 11).setValues([logRow]);
-
-      return {
-        success: true,
-        folio: folio,
-        mensaje: `Traspaso registrado: ${payload.cantidad} ${payload.unidad} de ${payload.origen} a ${payload.destino}`
-      };
-    })() : null;
-
-    MiseLogger.info("registrarTraspasoTienda", `Folio ${res ? res.folio : 'OK'}: ${payload.cantidad} ${payload.unidad} [${payload.producto}]`);
-
-    return res || { success: true, mensaje: "Traspaso aplicado." };
-  } finally {
-    lock.releaseLock();
-  }
 }
 
 // Garantiza el encabezado de 🗒 LOG_SURTIDO en la fila 1 (7 columnas; "EsAdición" retirada en 1.7.6e).

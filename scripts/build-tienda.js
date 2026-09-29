@@ -13,7 +13,7 @@ const SUCURSALES = [
   { dir: "pda", archivo: "miseAuthPDA.js", key: "BA", nombre: "Andares" },
   { dir: "pdm", archivo: "miseAuthPDM.js", key: "BM", nombre: "Mercado" }
 ];
-const COPIAS_TAL_CUAL = ["TraspasoTiendaDialog.html", "appsscript.json", "MiseDevTools.js"];
+const COPIAS_TAL_CUAL = ["appsscript.json", "MiseDevTools.js"];
 
 function build() {
   const src = fs.readFileSync(path.join(FUENTE, "miseTienda.js"), "utf8");

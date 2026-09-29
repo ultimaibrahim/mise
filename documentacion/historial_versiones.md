@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6n Altair (Traspasos solo desde Bodega) — 2026-09-29 [EN PRUEBAS · DEV]
+
+### 📱 Tiendas (PDA / PDM)
+* Retirado el diálogo de traspaso de la tienda y sus funciones (escritura cruzada en el Kardex de Bodega).
+
+---
+
 ## ⚡ v1.7.6m Altair (Revisión de HTML y modales) — 2026-09-29 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)

@@ -17,7 +17,7 @@ function runTiendaUnicaTests() {
   const difieren = pda.map((l, i) => l !== pdm[i] ? i + 1 : 0).filter(Boolean);
   assert.deepStrictEqual(difieren, [2, 6, 8], "Solo difieren cabecera (2), guía de trazas (6) y sucursal por defecto (8)");
   assert.ok(pda[7].includes('key: "BA"') && pdm[7].includes('key: "BM"'), "Sucursal por defecto correcta");
-  ["TraspasoTiendaDialog.html", "appsscript.json"].forEach(f => {
+  ["appsscript.json"].forEach(f => {
     assert.strictEqual(fs.readFileSync(path.join(root, "pda", f), "utf8"), fs.readFileSync(path.join(root, "tienda", f), "utf8"), `pda/${f} = fuente`);
     assert.strictEqual(fs.readFileSync(path.join(root, "pdm", f), "utf8"), fs.readFileSync(path.join(root, "tienda", f), "utf8"), `pdm/${f} = fuente`);
   });

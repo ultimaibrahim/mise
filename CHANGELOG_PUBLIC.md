@@ -23,6 +23,12 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6n Altair — Traspasos en un Solo Lugar (Septiembre 2026) [EN PRUEBAS]
+
+* 🔄 **Los traspasos entre Andares y Mercado se registran solo desde Bodega**: la opción de las tiendas se retiró porque no funcionaba bien con las cuentas de tienda ni en el celular.
+
+---
+
 ## Versión 1.7.6m Altair — Ventanas Más Robustas (Septiembre 2026) [EN PRUEBAS]
 
 * 🪟 **Productos con comillas o símbolos ya no descomponen las ventanas** de Powerhouse y Traspasos.
