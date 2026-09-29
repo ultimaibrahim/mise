@@ -54,7 +54,7 @@
 - [ ] **Manual visual/tutorial** por rol, con qué funciona sin internet (lo arma Ibrahim; apoyo con página compartible).
 
 ## Fase 2.6 — Auditorías pendientes
-- [ ] **`MiseSmartSync.reconciliarSemanaCompleta`**: usa un patrón parecido al del doble descuento corregido en 1.7.6f; auditarlo (y cubrirlo con prueba) antes de que alguien lo use.
+- [x] *(1.7.6l)* **`MiseSmartSync.reconciliarSemanaCompleta`**: auditada. No duplicaba (heredó la 1.7.6f), pero era **destructiva** (pedido de hoy como si fuera del lunes, vaciado en plena operación), usaba la semana de Andares para ambas y tardaba ~5 min. Ahora: días pasados, solo registros, por bodega. Además: guarda de semana en el descuento y "descontar ayer" corregido.
 - [x] *(29/sep)* Skill `mise-gas-ops` actualizada con las trampas nuevas (`setFormulas` → `#NAME?`, protecciones vs activadores simples, huella del catálogo, DevTools, webapp versionada).
 
 > Lo que depende de dejar pasar el tiempo (validación en operación real) vive en `documentacion/checklist_observacion.md`, separado de lo que se itera.

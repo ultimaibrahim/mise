@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6l Altair (Auditoría del descuento) — 2026-09-29 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG)
+* Reconciliación semanal no destructiva (días pasados, solo registros, por bodega); guarda de semana en el descuento; "descontar ayer" sin tocar el pedido en curso.
+
+---
+
 ## ⚡ v1.7.6k Altair (Esquema 3 y push remoto condicional) — 2026-09-29 [EN PRUEBAS · DEV]
 
 ### 📱 Tiendas (PDA / PDM) & 🏬 Bodega (BDG)

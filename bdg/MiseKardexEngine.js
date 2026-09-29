@@ -57,7 +57,12 @@ const MiseSmartSync = {
    * e idempotencia transaccional P2P (conecta directamente a las tiendas PDA y PDM, descuenta en Kardex
    * y vacía/resetea las cantidades de los pedidos en las tiendas).
    */
-  ejecutarDescuento(silent = true, fechaTargetPersonalizada = null) {
+  // opciones (1.7.6l): soloRegistros → usa solo 🗒 LOG_SURTIDO y NUNCA lee ni vacía el pedido en curso (para días
+  // pasados: el pedido que está en la tienda es el de HOY); sinVistas → no reconstruye vistas ni hace push
+  // (quien llama lo hace una vez al final); sinHistorial → no se anota como cierre en la página de estado.
+  ejecutarDescuento(silent = true, fechaTargetPersonalizada = null, opciones = {}) {
+    const soloRegistros = !!opciones.soloRegistros;
+    const fueraDeSemana = [];
     const tId = "MiseSmartSync.ejecutarDescuento_" + Date.now();
     MiseLogger.time(tId);
 
@@ -191,6 +196,18 @@ const MiseSmartSync = {
           if (normKey) kRowMap[normKey] = KARDEX_START + idx;
         });
 
+        // Guarda de semana por bodega: si la fecha no está en la semana ACTIVA de ESTE Kardex, no se descuenta ni se
+        // vacía nada (antes caía en la columna del mismo día de otra semana). La evidencia queda en 🗒 LOG_SURTIDO
+        // (la tienda la registra en su reset) y se aplica cuando el Kardex esté en la semana correcta.
+        const lunesK = _lunesSemanaActivaKardex(ss, key);
+        const objetivo0 = new Date(fechaObjetivoDate.getFullYear(), fechaObjetivoDate.getMonth(), fechaObjetivoDate.getDate());
+        const finK = new Date(lunesK.getFullYear(), lunesK.getMonth(), lunesK.getDate() + 7);
+        if (objetivo0 < lunesK || objetivo0 >= finK) {
+          fueraDeSemana.push(bConfig.nombre);
+          MiseLogger.warn("MiseSmartSync", `${bConfig.nombre}: ${fechaObjetivoStr} no está en la semana activa de ${bConfig.kardex} (lunes ${_fmtDateKey(lunesK)}); no se descuenta ni se vacía el pedido.`);
+          return;
+        }
+
         const acumuladoPorProducto = {};
         const listaDesgloseSucursal = [];
         let remoteSs = null;
@@ -211,8 +228,9 @@ const MiseSmartSync = {
           try { remoteSs = _abrirLibro(storeUrl); } catch(e) {}
         }
 
-        // A. Leer pedidos directamente de 📋 PEDIDO DIARIO de la tienda remota
-        if (remoteSs) {
+        // A. Leer pedidos directamente de 📋 PEDIDO DIARIO de la tienda remota (y vaciarlo). Nunca en modo
+        //    soloRegistros: el pedido en la tienda es el de HOY, no el del día que se reconcilia.
+        if (remoteSs && !soloRegistros) {
           try {
             // Respaldo de Ground Truth: Leer directamente 🚚 SURTIDO RÁPIDO si está disponible
             const surtidoMap = {};
@@ -456,7 +474,7 @@ const MiseSmartSync = {
       SpreadsheetApp.flush();
 
       // 5. Reconstruir vistas móviles para actualizar Stock Act
-      try {
+      if (!opciones.sinVistas) try {
         _cerrarFase("kardex");
         if (typeof _buildVista === "function") {
           _buildVista("BA");
@@ -474,13 +492,15 @@ const MiseSmartSync = {
       const dur = MiseLogger.timeEnd(tId);
       const seg = (ms) => (ms / 1000).toFixed(1) + " s";
       MiseLogger.info("MiseSmartSync", `Descuento completado: ${totalDescontados} insumos aplicados, ${totalOmitidosDuplicados} omitidos por idempotencia, ${totalVaciadosTiendas} tiendas vaciadas. Fases: tiendas ${seg(fases.tiendas)} · log ${seg(fases.log)} · kardex ${seg(fases.kardex)} · vistas ${seg(fases.vistas)} · push ${seg(fases.push)}.`, dur);
-      try {
+      if (!opciones.sinHistorial) try {
         _registrarCierre({ fecha: new Date().toISOString(), objetivo: fechaObjetivoStr, ok: true, manual: !silent, ms: dur, fases,
           descontados: totalDescontados, omitidos: totalOmitidosDuplicados, tiendas: totalVaciadosTiendas });
       } catch (eHist) {}
 
       if (!silent) {
-        let msg = `Fecha procesada: ${fechaObjetivoStr} (${targetDayName})\nInsumos descontados en Kardex: ${totalDescontados}\nTransacciones previas omitidas: ${totalOmitidosDuplicados}\nTiendas vaciadas y reseteadas: ${totalVaciadosTiendas}\n\n`;
+        let msg = `Fecha procesada: ${fechaObjetivoStr} (${targetDayName})${soloRegistros ? " · solo desde registros (el pedido en curso no se toca)" : ""}\nInsumos descontados en Kardex: ${totalDescontados}\nTransacciones previas omitidas: ${totalOmitidosDuplicados}\nTiendas vaciadas y reseteadas: ${totalVaciadosTiendas}\n`;
+        if (fueraDeSemana.length) msg += `⚠️ Sin descontar (la fecha no está en la semana activa de su Kardex): ${fueraDeSemana.join(", ")}\n`;
+        msg += "\n";
         if (resumenDesglose.length > 0) {
           msg += resumenDesglose.join("\n\n");
         } else {
@@ -493,7 +513,8 @@ const MiseSmartSync = {
         totalDescontados,
         totalOmitidosDuplicados,
         totalVaciadosTiendas,
-        resumenDesglose
+        resumenDesglose,
+        fueraDeSemana
       };
 
     } catch(err) {
@@ -519,66 +540,65 @@ const MiseSmartSync = {
    * Reconcilia y descuenta de forma retroactiva todos los pedidos y surtidos
    * de los 7 días de la semana activa (Lunes a Domingo) en KARDEX_BA y KARDEX_BM.
    */
-  reconciliarSemanaCompleta(silent = false) {
+  /**
+   * Reconciliación NO destructiva (1.7.6l): recorre los días PASADOS de la semana activa de CADA Kardex y descuenta,
+   * solo desde 🗒 LOG_SURTIDO, lo que falte (idempotente: lo ya aplicado se omite). Nunca lee ni vacía el pedido en
+   * curso de las tiendas ni procesa hoy o días futuros (hoy lo cierra el descuento de las 23:00). Vistas y push, una vez.
+   * Antes: corría el descuento completo 7 veces desde el lunes, tomaba el pedido de HOY como si fuera del lunes, lo
+   * vaciaba en plena operación y usaba la semana de Andares para ambas bodegas.
+   */
+  reconciliarSemanaCompleta(silent = false, hoyRef = null) {
     const tId = "MiseSmartSync.reconciliarSemanaCompleta_" + Date.now();
     MiseLogger.time(tId);
-
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const kSheet = ss.getSheetByName(BODEGAS.BA.kardex);
-    if (!kSheet) return;
+    const hoy = hoyRef instanceof Date ? hoyRef : new Date();
+    const hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    const dayNames = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
-    let monday = kSheet.getRange("G4").getValue();
-    if (!monday || !(monday instanceof Date) || isNaN(monday.getTime())) {
-      monday = _obtenerLunesSemanaActual();
-    }
-    const mondayClean = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate(), 0, 0, 0);
+    // Días pasados de la semana activa de cada Kardex (las dos bodegas pueden ir en semanas distintas)
+    const fechas = {};
+    Object.keys(BODEGAS).forEach(key => {
+      const lunes = _lunesSemanaActivaKardex(ss, key);
+      for (let d = 0; d < 7; d++) {
+        const f = new Date(lunes.getFullYear(), lunes.getMonth(), lunes.getDate() + d);
+        if (f < hoy0) fechas[f.getTime()] = f;
+      }
+    });
+    const dias = Object.keys(fechas).sort().map(k => fechas[k]);
 
-    const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
     let granTotalDescontados = 0;
     let granTotalOmitidos = 0;
-    let granTotalVaciados = 0;
     const desgloseDias = [];
+    dias.forEach(f => {
+      const res = this.ejecutarDescuento(true, f, { soloRegistros: true, sinVistas: true, sinHistorial: true });
+      if (!res) return;
+      granTotalDescontados += (res.totalDescontados || 0);
+      granTotalOmitidos += (res.totalOmitidosDuplicados || 0);
+      if (res.totalDescontados > 0) {
+        desgloseDias.push(`  • ${dayNames[f.getDay()]} ${f.getDate()}/${f.getMonth() + 1}: ${res.totalDescontados} insumos aplicados`);
+      }
+    });
 
-    for (let d = 0; d < 7; d++) {
-      const targetDate = new Date(mondayClean.getFullYear(), mondayClean.getMonth(), mondayClean.getDate() + d);
-      const res = this.ejecutarDescuento(true, targetDate);
-      if (res) {
-        granTotalDescontados += (res.totalDescontados || 0);
-        granTotalOmitidos += (res.totalOmitidosDuplicados || 0);
-        granTotalVaciados += (res.totalVaciadosTiendas || 0);
-        if (res.totalDescontados > 0) {
-          desgloseDias.push(`  • ${dayNames[d]} (${targetDate.getDate()}/${targetDate.getMonth()+1}): ${res.totalDescontados} insumos aplicados`);
-        }
+    if (granTotalDescontados > 0) {
+      try {
+        if (typeof _buildVista === "function") { _buildVista("BA"); _buildVista("BM"); }
+        if (typeof sincronizarRemotamenteTiendasPush === "function") sincronizarRemotamenteTiendasPush();
+      } catch (e) {
+        MiseLogger.warn("reconciliarSemanaCompleta", `Error refrescando vistas: ${e.message}`);
       }
     }
-
-    // Refrescar vistas móviles y sincronizar tiendas
-    try {
-      if (typeof _buildVista === "function") {
-        _buildVista("BA");
-        _buildVista("BM");
-      }
-      if (typeof sincronizarRemotamenteTiendasPush === "function") {
-        sincronizarRemotamenteTiendasPush();
-      }
-    } catch(e) {}
 
     const dur = MiseLogger.timeEnd(tId);
-    MiseLogger.info("reconciliarSemanaCompleta", `Reconciliación semanal finalizada: ${granTotalDescontados} insumos descontados en total.`, dur);
+    MiseLogger.info("reconciliarSemanaCompleta", `Reconciliación (solo registros, ${dias.length} días pasados): ${granTotalDescontados} insumos descontados, ${granTotalOmitidos} ya aplicados.`, dur);
 
     if (!silent) {
-      let msg = `Semana analizada: ${_fmt(mondayClean)} al ${_fmt(new Date(mondayClean.getFullYear(), mondayClean.getMonth(), mondayClean.getDate() + 6))}\n\n`;
-      msg += `Total de insumos descontados en Kardex: ${granTotalDescontados}\n`;
-      msg += `Transacciones duplicadas omitidas: ${granTotalOmitidos}\n`;
-      msg += `Tiendas vaciadas y reseteadas: ${granTotalVaciados}\n\n`;
-      if (desgloseDias.length > 0) {
-        msg += "Desglose por día:\n" + desgloseDias.join("\n") + "\n\n";
-      } else {
-        msg += "ℹ️ No se encontraron surtidos pendientes de descontar en los registros de la semana.\n\n";
-      }
-      msg += "Las tiendas y los Kardex han quedado 100% sincronizados.";
-      SpreadsheetApp.getUi().alert("🔄 Reconciliación Semanal Completa", msg, SpreadsheetApp.getUi().ButtonSet.OK);
+      let msg = `Días revisados: ${dias.length ? dias.map(f => `${f.getDate()}/${f.getMonth() + 1}`).join(", ") : "ninguno (la semana activa empieza hoy)"}\n` +
+        "Fuente: 🗒 LOG_SURTIDO de cada tienda. El pedido en curso de hoy no se toca.\n\n" +
+        `Insumos descontados ahora: ${granTotalDescontados}\nYa estaban aplicados (se omitieron): ${granTotalOmitidos}\n\n`;
+      msg += desgloseDias.length ? "Desglose por día:\n" + desgloseDias.join("\n") : "ℹ️ No había surtidos pendientes de descontar en los días pasados.";
+      SpreadsheetApp.getUi().alert("🔄 Reconciliación de la semana (días pasados)", msg, SpreadsheetApp.getUi().ButtonSet.OK);
     }
+    return { dias: dias.length, totalDescontados: granTotalDescontados, totalOmitidos: granTotalOmitidos };
   },
 
 };

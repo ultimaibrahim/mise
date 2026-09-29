@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.6k Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.6l Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -170,7 +170,7 @@ function onOpen() {
     const ui = SpreadsheetApp.getUi();
     // Herramientas forenses de DEV (bdg/MiseDevTools.js): solo aparecen si el archivo está en el proyecto
     const forense = ui.createMenu("🧪 Reconciliación Forense y Recuperación")
-      .addItem("🔄 Reconciliar y descontar toda la semana activa", "reconciliarSemanaCompletaDesdeLogs")
+      .addItem("🔄 Reconciliar días pasados de la semana (desde registros)", "reconciliarSemanaCompletaDesdeLogs")
       .addItem("🧠 Reconciliador Inteligente de Huérfanos", "abrirReconciliadorInteligenteHTML");
     if (typeof procesarInyeccionRecuperacionKardex === "function") {
       forense.addSeparator()
@@ -2233,9 +2233,10 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.6k";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6l";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "Reconciliar la semana ya no toca el pedido en curso de las tiendas",
   "🌐 Página de estado: todo el sistema de un vistazo, también desde el celular",
   "🩺 Estado del sistema: Bodega y tiendas en verde, amarillo o rojo (menú Automatizaciones)",
   "El descuento nocturno ya no resta dos veces si se vuelve a correr",
@@ -5370,11 +5371,10 @@ function procesarEntradasKardex() {
 function reconciliarSemanaCompletaDesdeLogs() {
   const ui = SpreadsheetApp.getUi();
   const resp = ui.alert(
-    "🔄 Reconciliar y Descontar Semana Completa",
-    "Esta función escaneará los registros de surtido y pedidos de toda la semana activa (Lunes a Domingo) en Andares y Mercado.\n\n" +
-    "• Descontará automáticamente en las columnas de SAL de cada día (LUN a DOM) en KARDEX_BA y KARDEX_BM.\n" +
-    "• Vaciará y reseteará los pedidos diarios de las tiendas.\n" +
-    "• Recalculará los saldos finales para dejar el inventario cuadrado antes del avance semanal.\n\n" +
+    "🔄 Reconciliar días pasados de la semana",
+    "Revisa los registros de surtido (🗒 LOG_SURTIDO) de Andares y Mercado de los días PASADOS de la semana activa de cada Kardex.\n\n" +
+    "• Descuenta en la columna SAL de cada día solo lo que aún no se había descontado (lo ya aplicado se omite).\n" +
+    "• NO toca el pedido en curso de las tiendas ni el día de hoy (hoy lo cierra el descuento de las 23:00).\n\n" +
     "¿Deseas ejecutar la reconciliación ahora?",
     ui.ButtonSet.YES_NO
   );
@@ -5387,11 +5387,12 @@ function descontarSurtidoAutomaticoManualmente() {
   MiseSmartSync.ejecutarDescuento(false);
 }
 
-// Recuperación: el cierre de anoche no corrió (idempotente: lo ya descontado no se repite)
+// Recuperación: el cierre de anoche no corrió. Solo desde 🗒 LOG_SURTIDO (la tienda registró lo de ayer en su reset
+// de las 00:00); NUNCA toma el pedido en curso, que es el de hoy. Idempotente: lo ya descontado no se repite.
 function descontarSurtidoAyerManualmente() {
   const ayer = new Date();
   ayer.setDate(ayer.getDate() - 1);
-  MiseSmartSync.ejecutarDescuento(false, ayer);
+  MiseSmartSync.ejecutarDescuento(false, ayer, { soloRegistros: true });
 }
 
 function forzarAutoVerificarYAvanzarSemana() {

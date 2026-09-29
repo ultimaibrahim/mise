@@ -29,7 +29,8 @@ function runSmartSyncTests() {
     const productos = [[1, "FRUTAS", "Fresa", "DOMO", "kg"], [2, "LÁCTEOS", "Leche", "LT", "lt"], [3, "ABARROTES", "Harina", "BOL", "kg"]];
     ["KARDEX_BA", "KARDEX_BM"].forEach(k => ss.insertSheet(k).getRange(7, 1, 3, 5).setValues(productos));
     const fechaVm = (y, m, d) => vm.runInContext(`new Date(${y}, ${m}, ${d})`, sandbox);   // Date del mismo realm (instanceof)
-    const fecha = fechaVm(2026, 8, 29);        // martes → SAL en la columna 14
+    const fecha = fechaVm(2026, 8, 29);
+    ["KARDEX_BA", "KARDEX_BM"].forEach(k => ss.getSheetByName(k).getRange(4, 7).setValue(fechaVm(2026, 8, 28))); // semana activa: lunes 28/sep        // martes → SAL en la columna 14
     const SAL = 14;
     ss.getSheetByName("KARDEX_BA").getRange(7, SAL).setValue(1);   // SAL previa de Fresa (p. ej. Entradas/traspaso)
 
@@ -81,6 +82,43 @@ function runSmartSyncTests() {
     sandbox.MiseSmartSync.ejecutarDescuento(true, fecha2);
     assert.strictEqual(ss.getSheetByName("KARDEX_BA").getRange(9, 17).getValue(), 2, "Harina desde el LOG: 2, una sola vez");
     console.log("  ✓ Vía de respaldo (LOG_SURTIDO de la tienda) descuenta una sola vez");
+
+    // ── Auditoría 1.7.6l ──────────────────────────────────────────────────────────────────
+    // a) Guarda de semana por bodega: Mercado va 2 semanas atrás → no descuenta ni vacía su pedido
+    ss.getSheetByName("KARDEX_BM").getRange(4, 7).setValue(fechaVm(2026, 8, 14));
+    const pdm = tiendas.ID_PDM.getSheetByName("📋 PEDIDO DIARIO");
+    pdm.getRange(5, 6).setValue(6); pdm.getRange(5, 8).setValue(6); pdm.getRange(5, 9).setValue("COMPLETO");
+    const fecha3 = fechaVm(2026, 9, 1);        // jueves 1/oct → SAL en la columna 20
+    const r3 = sandbox.MiseSmartSync.ejecutarDescuento(true, fecha3);
+    assert.strictEqual(ss.getSheetByName("KARDEX_BM").getRange(8, 20).getValue(), "", "Mercado fuera de su semana: no descuenta en la columna del jueves de otra semana");
+    assert.strictEqual(pdm.getRange(5, 6).getValue(), 6, "…ni vacía su pedido (la evidencia queda para cuando la semana sea la correcta)");
+    assert.ok(r3.fueraDeSemana.includes("Mercado") && !r3.fueraDeSemana.includes("Andares"), "Reporta qué bodega quedó fuera de semana");
+    ss.getSheetByName("KARDEX_BM").getRange(4, 7).setValue(fechaVm(2026, 8, 28));
+    console.log("  ✓ Guarda de semana por bodega: fuera de su semana activa no descuenta ni vacía el pedido");
+
+    // b) Reconciliación NO destructiva: solo días pasados, solo desde LOG_SURTIDO, nunca el pedido en curso
+    const pda = tiendas.ID_PDA.getSheetByName("📋 PEDIDO DIARIO");
+    pda.getRange(4, 6).setValue(9); pda.getRange(4, 8).setValue(9); pda.getRange(4, 9).setValue("COMPLETO"); // pedido de HOY en curso
+    tiendas.ID_PDA.insertSheet("🚚 SURTIDO RÁPIDO").getRange(4, 3).setValue("Fresa");
+    tiendas.ID_PDA.getSheetByName("🗒 LOG_SURTIDO").appendRow([fechaVm(2026, 8, 28), "Andares", "Leche", "LÁCTEOS", 1, 1, "COMPLETO"]); // lunes, pendiente
+    const salLun = () => ss.getSheetByName("KARDEX_BA").getRange(8, 11).getValue();
+    const antesMar = JSON.stringify(foto());
+    const rr = sandbox.MiseSmartSync.reconciliarSemanaCompleta(true, fechaVm(2026, 9, 1)); // "hoy" = jueves 1/oct
+    assert.strictEqual(rr.dias, 3, "Revisa solo los días pasados de la semana activa (lun, mar, mié)");
+    assert.strictEqual(salLun(), 1, "Descuenta en el LUNES lo registrado el lunes que faltaba");
+    assert.strictEqual(JSON.stringify(foto()), antesMar, "El martes (ya descontado) no cambia");
+    assert.strictEqual(pda.getRange(4, 6).getValue(), 9, "El pedido en curso de hoy NO se toca");
+    assert.ok(tiendas.ID_PDA.getSheetByName("🚚 SURTIDO RÁPIDO"), "El Surtido Rápido en curso NO se borra");
+    const rr2 = sandbox.MiseSmartSync.reconciliarSemanaCompleta(true, fechaVm(2026, 9, 1));
+    assert.ok(rr2.totalDescontados === 0 && salLun() === 1, "Reconciliar otra vez no descuenta nada nuevo");
+    assert.ok(JSON.parse(props.getProperty("HISTORIAL_CIERRES")).every(c => c.objetivo !== "2026-09-28"), "La reconciliación no se anota como cierre nocturno");
+    console.log("  ✓ Reconciliación: solo días pasados y solo desde registros; el pedido y el Surtido en curso quedan intactos");
+
+    // c) "Descontar pedidos de ayer": solo registros, nunca el pedido de hoy
+    const rAyer = sandbox.MiseSmartSync.ejecutarDescuento(true, fechaVm(2026, 8, 30), { soloRegistros: true });
+    assert.strictEqual(pda.getRange(4, 6).getValue(), 9, "Descontar 'ayer' no toma ni vacía el pedido en curso");
+    assert.strictEqual(rAyer.totalVaciadosTiendas, 0, "Ninguna tienda vaciada");
+    console.log("  ✓ Descontar pedidos de ayer: solo desde registros; el pedido de hoy queda intacto");
   } finally {
     claves.forEach(k => props.setProperty(k, previas[k] || ""));
   }

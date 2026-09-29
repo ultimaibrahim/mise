@@ -23,6 +23,14 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6l Altair — Reconciliar Sin Riesgo (Septiembre 2026) [EN PRUEBAS]
+
+* 🛡️ **"Reconciliar la semana" ya no borra el pedido del día**: antes podía tomar lo que la tienda estaba capturando y vaciarlo. Ahora solo revisa los días anteriores con lo que ya quedó registrado.
+* 📅 **Nada se descuenta en la semana equivocada**: si un Kardex no ha cambiado de semana, Bodega espera en vez de anotar en la columna de otro día.
+* 🚚 "Descontar pedidos de ayer" ya no toca el pedido de hoy.
+
+---
+
 ## Versión 1.7.6k Altair — Pedido Diario Más Limpio y Cambios de Catálogo Más Rápidos (Septiembre 2026) [EN PRUEBAS]
 
 * 🧹 **Una columna vacía menos en el Pedido Diario**: se retira sola por la noche, con respaldo automático y sin perder lo capturado.
