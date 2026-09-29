@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6i Altair (Suscripción al catálogo por huella) — 2026-09-29 [EN PRUEBAS · DEV]
+
+### 📱 Tiendas (PDA / PDM) & 🏬 Bodega (BDG)
+* Huella del catálogo calculada desde `_SYNC` (tienda) y `VISTA_MOVIL` (Bodega); la tienda se reordena sola al abrir y a las 00:00 si cambió; componente de catálogo en la página de estado.
+
+---
+
 ## ⚡ v1.7.6h Altair (Página de estado) — 2026-09-29 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG)

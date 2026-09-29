@@ -55,8 +55,8 @@
 
 Objetivo: **nadie escribe en el libro de otro**. Elimina el problema de permisos, el escritor remoto duplicado y la mayor parte de los ~30 s del Powerhouse.
 
-- [ ] **Bodega publica**: `_META!VERSION` (hash de catálogo + picking + activos + hora) al guardar en el Powerhouse, al cambiar ACTIVO y en `_buildVista`.
-- [ ] **Tiendas se suscriben** *(decisión 29/sep: sin activador de 10 min; se revisa en `onOpen` instalable, reset 00:00 y, si hace falta, un activador cada hora)*: `_sincronizarSiCambioCatalogo()`: lee `_META` de Bodega; si cambió, se reordena y oculta inactivos localmente; no corre si alguien editó en los últimos 60 s.
+- [x] *(1.7.6i, rediseñado)* **Bodega publica** → sin hoja `_META`: el catálogo ya viaja por el `IMPORTRANGE` de `_SYNC`; tienda y Bodega calculan la misma **huella** (producto · activo · picking).
+- [x] *(1.7.6i)* **Tiendas se suscriben** *(decisión 29/sep: sin activador de 10 min; se revisa en `onOpen` instalable, reset 00:00 y, si hace falta, un activador cada hora)*: `_sincronizarSiCambioCatalogo()`: lee `_META` de Bodega; si cambió, se reordena y oculta inactivos localmente; no corre si alguien editó en los últimos 60 s.
 - [x] *(1.7.6g)* **Latido** *(por eventos, sin activador propio: reset 00:00, respaldo 04:00, `onOpen` y `onEdit` instalables con máximo 1 escritura cada 10 min)*: cada tienda escribe `_ESTADO` (versión de código, esquema, último reset, última versión de catálogo aplicada, activadores).
 - [x] *(1.7.6g resumen · 1.7.6h página)* **🩺 Página de estado (webapp `doGet` de Bodega, tipo Downdetector; solo Ibrahim al inicio)**: semáforo por componente (libros, cierre 23:00, reset 00:00, respaldo 04:00, `_SYNC`, semana de Kardex), historial de noches con tiempos por fase, incidentes del `🗒 LOG` (7 días), minutos de activadores consumidos, y lo que era 🏠 INICIO (accesos, versiones, próximas ejecuciones, saldos bajo mínimo). Lee un resumen en Bodega (no abre tiendas por visita) y lo expone como JSON para `mise-web`.
 - [ ] **El push remoto se reduce** a refrescar el enlace (carril rápido opcional) y el Powerhouse guarda solo el catálogo (objetivo: **< 5 s**).

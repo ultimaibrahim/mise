@@ -738,6 +738,7 @@ function _resetearPedidoSilencioso(e) {
     const r = _resetearPedidoSilenciosoCore(e);
     props.setProperty("ULTIMO_RESET_TS", String(Date.now()));
     props.setProperty("ULTIMO_RESET_ERROR", "");
+    if (e && e.triggerUid) _sincronizarSiCambioCatalogo("reset 00:00");
     return r;
   } catch (err) {
     props.setProperty("ULTIMO_RESET_ERROR", String(err.message || err).substring(0, 200));
@@ -1376,9 +1377,10 @@ function _aplicarFormatosCondicionales(sheet) {
   sheet.setConditionalFormatRules(rules);
 }
 
-const MISE_VERSION = "1.7.6h";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6i";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "Los cambios de catálogo de Bodega (orden y productos desactivados) se aplican solos al abrir",
   "Bodega ve si esta tienda está al día (latido automático, sin pasos extra)",
   "Surtido Rápido: escribe lo recibido y la fila completa se pinta sola",
   "CANT. FINAL: lo que ves es lo que Bodega descuenta",
@@ -2041,8 +2043,55 @@ function _abrirLibro(ref) {
 // onOpen INSTALABLE: reinicio del día (si no ocurrió) y aviso de conexión, con permisos del dueño
 function onOpenTiendaInstalable(e) {
   try { _checkAutoResetNuevoDia(); } catch (err) { registrarLog("onOpenTiendaInstalable", "ERROR", err.message); }
+  _sincronizarSiCambioCatalogo("apertura");
   try { _actualizarAvisoPedido(); } catch (err) {}
   _latidoTienda("apertura");
+}
+
+// ── 🔔 SUSCRIPCIÓN AL CATÁLOGO (1.7.6i) ───────────────────────────────────────────────────
+// El catálogo ya llega por el IMPORTRANGE de _SYNC: la tienda calcula su huella localmente (sin abrir
+// Bodega) y, si cambió desde la última vez que se aplicó, reordena y oculta inactivos por su cuenta.
+// Corre al abrir y en el reset de las 00:00 (no al editar, para no mover filas mientras alguien captura).
+// Huella del catálogo (producto · activo · picking) sobre filas A4:L de VISTA_MOVIL / _SYNC.
+// La MISMA función vive en bdg/MiseEstado.js: si cambia aquí, cambia allá (lo verifica estado.test.js).
+function _huellaCatalogo(filas) {
+  const lineas = filas.filter(r => String(r[2]).trim())
+    .map(r => [String(r[2]).trim(), String(r[8]).trim().toUpperCase(), parseInt(r[11], 10) || 0].join("|")).sort();
+  const txt = lineas.join("\n");
+  let h = 5381;
+  for (let i = 0; i < txt.length; i++) h = ((h << 5) + h + txt.charCodeAt(i)) >>> 0;
+  return `${lineas.length}-${h.toString(16)}`;
+}
+
+// Filas de _SYNC, o null si el enlace está cargando o con error (nunca reordenar con datos a medias)
+function _leerCatalogoSync() {
+  const sync = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_SYNC);
+  if (!sync || sync.getLastRow() < 4) return null;
+  const filas = sync.getRange(4, 1, sync.getLastRow() - 3, 12).getValues();
+  const nombres = filas.map(r => String(r[2]).trim()).filter(Boolean);
+  if (nombres.length === 0) return null;
+  if (filas.some(r => /^(#|loading|cargando)/i.test(String(r[0]).trim()) || /^(#|loading|cargando)/i.test(String(r[2]).trim()))) return null;
+  return filas;
+}
+
+function _registrarHuellaCatalogo(huella) {
+  PropertiesService.getScriptProperties().setProperties({ CATALOGO_HUELLA: huella, CATALOGO_APLICADO_TS: String(Date.now()) });
+}
+
+function _sincronizarSiCambioCatalogo(origen) {
+  try {
+    const filas = _leerCatalogoSync();
+    if (!filas) return false;
+    const huella = _huellaCatalogo(filas);
+    if (PropertiesService.getScriptProperties().getProperty("CATALOGO_HUELLA") === huella) return false;
+    ordenarPedido();
+    _registrarHuellaCatalogo(huella);
+    registrarLog("_sincronizarSiCambioCatalogo", "SUCCESS", `Catálogo de Bodega cambió (${origen}): pedido reordenado e inactivos aplicados. Huella ${huella}`);
+    return true;
+  } catch (err) {
+    registrarLog("_sincronizarSiCambioCatalogo", "ERROR", err.message);
+    return false;
+  }
 }
 
 // ── 💓 LATIDO (1.7.6g) ─────────────────────────────────────────────────────────────────────
@@ -2084,7 +2133,9 @@ function _latidoTienda(origen, forzar) {
       ["ULTIMO_RESET", tsReset ? new Date(tsReset) : ""],
       ["ULTIMO_RESET_ERROR", props.getProperty("ULTIMO_RESET_ERROR") || ""],
       ["ACTIVADORES", activadores],
-      ["SYNC_VIVO", syncVivo ? "SI" : "NO"]
+      ["SYNC_VIVO", syncVivo ? "SI" : "NO"],
+      ["CATALOGO_HUELLA", props.getProperty("CATALOGO_HUELLA") || ""],
+      ["CATALOGO_APLICADO", props.getProperty("CATALOGO_APLICADO_TS") ? new Date(parseInt(props.getProperty("CATALOGO_APLICADO_TS"), 10)) : ""]
     ];
     const lr = hoja.getLastRow();
     if (lr > filas.length) hoja.getRange(filas.length + 1, 1, lr - filas.length, 2).clearContent();
@@ -2129,7 +2180,12 @@ function configurarEsteLibroTienda() {
     if (!_migrarEsquemaTienda()) throw new Error("no se pudo actualizar; revisa 🗒 LOG");
     return `v${actual} → v${MISE_SCHEMA_TIENDA} (capturas respaldadas y restauradas)`;
   });
-  paso("Orden de picking e inactivos", () => { ordenarPedido(); return "aplicados"; });
+  paso("Orden de picking e inactivos", () => {
+    ordenarPedido();
+    const filas = _leerCatalogoSync();
+    if (filas) _registrarHuellaCatalogo(_huellaCatalogo(filas));
+    return "aplicados";
+  });
   paso("Latido", () => { _latidoTienda("configurar", true); return "Bodega ya ve este libro al día"; });
   paso("Blindaje", () => {
     protegerPedidoSeguro();

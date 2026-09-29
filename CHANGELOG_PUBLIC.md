@@ -23,6 +23,13 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6i Altair — Las Tiendas se Ponen al Día Solas con el Catálogo (Septiembre 2026) [EN PRUEBAS]
+
+* 🔔 **Cambios de catálogo que siempre llegan**: si en Bodega se cambia el orden de picking o se desactiva un producto, cada tienda lo aplica sola al abrirse o a medianoche, aunque en ese momento no hubiera conexión.
+* 🌐 La página de estado muestra si cada tienda ya tiene el catálogo al día.
+
+---
+
 ## Versión 1.7.6h Altair — Página de Estado de Mise (Septiembre 2026) [EN PRUEBAS]
 
 * 🌐 **Todo el sistema de un vistazo**: una página privada, también desde el celular, que muestra en verde, amarillo o rojo cómo están Bodega y las tiendas, cuánto tardó cada cierre nocturno, los avisos de la semana, los productos bajo mínimo y accesos directos a cada hoja.

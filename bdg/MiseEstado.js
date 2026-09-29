@@ -16,6 +16,17 @@ const ACTIVADORES_BDG = ["descontarSurtidoAutomatico", "ejecutarMantenimientoSem
 const ACTIVADORES_TIENDA = ["_resetearPedidoSilencioso", "_checkAutoResetNuevoDia", "onEditTiendaInstalable", "onOpenTiendaInstalable"];
 const HORA_MS = 3600 * 1000;
 
+// Huella del catálogo (producto · activo · picking) sobre filas A4:L de VISTA_MOVIL / _SYNC.
+// La MISMA función vive en bdg/MiseEstado.js: si cambia aquí, cambia allá (lo verifica estado.test.js).
+function _huellaCatalogo(filas) {
+  const lineas = filas.filter(r => String(r[2]).trim())
+    .map(r => [String(r[2]).trim(), String(r[8]).trim().toUpperCase(), parseInt(r[11], 10) || 0].join("|")).sort();
+  const txt = lineas.join("\n");
+  let h = 5381;
+  for (let i = 0; i < txt.length; i++) h = ((h << 5) + h + txt.charCodeAt(i)) >>> 0;
+  return `${lineas.length}-${h.toString(16)}`;
+}
+
 // ── Historial de cierres nocturnos (lo alimenta MiseSmartSync.ejecutarDescuento) ─────────────
 function _registrarCierre(detalle) {
   const props = PropertiesService.getScriptProperties();
@@ -74,6 +85,7 @@ function _estadoBodega(ss) {
   try { activadores = ScriptApp.getProjectTriggers().map(t => t.getHandlerFunction()); } catch (e) { activadores = null; }
   const kardex = {};
   const bajoMinimo = {};
+  const huellas = {};
   Object.keys(BODEGAS).forEach(key => {
     try {
       const lunes = _lunesSemanaActivaKardex(ss, key);
@@ -82,6 +94,8 @@ function _estadoBodega(ss) {
         lunes: lunes.toISOString(), alDia: lunes.getTime() >= new Date(actual.getFullYear(), actual.getMonth(), actual.getDate()).getTime() };
     } catch (e) { kardex[key] = { nombre: BODEGAS[key].nombre, error: e.message }; }
     bajoMinimo[key] = _productosBajoMinimo(ss.getSheetByName(BODEGAS[key].vista));
+    const vista = ss.getSheetByName(BODEGAS[key].vista);
+    huellas[key] = vista && vista.getLastRow() >= 4 ? _huellaCatalogo(vista.getRange(4, 1, vista.getLastRow() - 3, 12).getValues()) : "";
   });
   const log = ss.getSheetByName(SHEET_LOG);
   const filasLog = log && log.getLastRow() >= 2 ? log.getRange(2, 1, Math.min(log.getLastRow() - 1, 300), 7).getValues() : [];
@@ -93,6 +107,7 @@ function _estadoBodega(ss) {
     cierres: _historialCierres(),
     kardex,
     bajoMinimo,
+    huellas,
     incidentes: _incidentes(reg),
     minutosHoy: _minutosHoy(reg)
   };
@@ -203,6 +218,12 @@ function _evaluarComponentes(resumen, ahora) {
     const f = faltantes(String(e.ACTIVADORES || "").split(/,\s*/), ACTIVADORES_TIENDA);
     add(`${key}.activadores`, g, "Activadores", f.length ? "falla" : "ok", f.length ? `Faltan: ${f.join(", ")} (usa 🚀 Configurar)` : `${ACTIVADORES_TIENDA.length} de ${ACTIVADORES_TIENDA.length}`);
     add(`${key}.sync`, g, "Enlace con Bodega", e.SYNC_VIVO === "SI" ? "ok" : "falla", e.SYNC_VIVO === "SI" ? "IMPORTRANGE vivo" : "Sin enlace vivo (valores fijos)");
+    const huellaBdg = (b.huellas || {})[key];
+    if (huellaBdg) {
+      const alDia = e.CATALOGO_HUELLA === huellaBdg;
+      add(`${key}.catalogo`, g, "Catálogo (orden y activos)", alDia ? "ok" : "aviso",
+        alDia ? `Al día${e.CATALOGO_APLICADO ? " · aplicado " + hace(e.CATALOGO_APLICADO) : ""}` : "Hay cambios de Bodega pendientes: se aplican al abrir la tienda o a las 00:00");
+    }
     add(`${key}.version`, g, "Versión", e.VERSION === b.version ? "ok" : "aviso",
       e.VERSION === b.version ? `v${e.VERSION}` : `v${e.VERSION} (Bodega v${b.version})`);
   });

@@ -125,6 +125,33 @@ function runEstadoTests() {
     assert.ok(!/undefined|NaN/.test(pagina), "Sin 'undefined' ni 'NaN' en la página");
     assert.ok(!/<img src=x/.test(pagina) && /&lt;img src=x/.test(pagina), "El HTML de un log se muestra escapado");
     console.log("  ✓ Página de estado: doGet, datos + accesos, script ejecutado con el resumen real y contenido escapado");
+
+    // ── 4. Suscripción al catálogo por huella (1.7.6i) ─────────────────────────────────────
+    const filasVista = [[1, "FRUTAS", "Fresa", "kg", 1, "", 0, 0, "SÍ", 3, 6, 2], [2, "LÁCTEOS", "Leche", "lt", 5, "", 0, 0, "SÍ", 2, 8, 1]];
+    assert.strictEqual(tienda.sandbox._huellaCatalogo(filasVista), sandbox._huellaCatalogo(filasVista), "Tienda y Bodega calculan la misma huella");
+    const saldoDistinto = filasVista.map(r => r.slice()); saldoDistinto[0][4] = 99;
+    assert.strictEqual(sandbox._huellaCatalogo(saldoDistinto), sandbox._huellaCatalogo(filasVista), "El saldo no cambia la huella (solo producto, activo y picking)");
+
+    const t2 = crearContextoTienda("pda", "miseAuthPDA.js");
+    let reordenes = 0;
+    t2.sandbox.ordenarPedido = () => { reordenes++; };
+    const sync2 = t2.ss.insertSheet("_SYNC_BA");
+    sync2.getRange(4, 1, 2, 12).setValues(filasVista);
+    assert.strictEqual(t2.sandbox._sincronizarSiCambioCatalogo("apertura"), true, "Primera vez: aplica el catálogo");
+    assert.strictEqual(t2.sandbox._sincronizarSiCambioCatalogo("apertura"), false, "Sin cambios: no reordena");
+    sync2.getRange(4, 9).setValue("NO");
+    assert.strictEqual(t2.sandbox._sincronizarSiCambioCatalogo("reset 00:00"), true, "Desactivar un producto en Bodega: reordena");
+    sync2.getRange(5, 3).setValue("Loading...");
+    sync2.getRange(5, 12).setValue(7);
+    assert.strictEqual(t2.sandbox._sincronizarSiCambioCatalogo("apertura"), false, "Enlace cargando: nunca reordena con datos a medias");
+    assert.strictEqual(reordenes, 2, "Solo 2 reordenamientos");
+    console.log("  ✓ Catálogo: misma huella en tienda y Bodega; reordena solo si cambió y nunca con el enlace cargando");
+
+    const catalogo = (huellaTienda) => sandbox._evaluarComponentes({ bodega: { activadores: [], cierres: [], kardex: {}, version: "x", huellas: { BA: "2-abc" } },
+      tiendas: { BA: { nombre: "Andares", accesible: true, conLatido: true, estado: { ULTIMO_LATIDO: new Date().toISOString(), VERSION: "x",
+        SYNC_VIVO: "SI", ACTIVADORES: HANDLERS_TIENDA.join(", "), CATALOGO_HUELLA: huellaTienda } } } }, ahora).find(c => c.id === "BA.catalogo").estado;
+    assert.deepStrictEqual([catalogo("2-abc"), catalogo("2-old")], ["ok", "aviso"], "Semáforo del catálogo: al día / pendiente");
+    console.log("  ✓ Página de estado: catálogo al día o pendiente por tienda");
   } finally {
     claves.forEach(k => props.setProperty(k, previas[k] || ""));
   }
