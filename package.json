@@ -1,6 +1,6 @@
 {
   "name": "mise",
-  "version": "1.7.4",
+  "version": "1.7.5",
   "description": "Enterprise Inventory & Supply Chain Engine for Retail and Hospitality",
   "main": "tests/run_all.js",
   "type": "commonjs",

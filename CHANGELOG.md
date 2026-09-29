@@ -29,9 +29,22 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 ---
 
-## Época Altair (v1.0.0 - v1.7.4) [MOTOR GOOGLE APPS SCRIPT V8]
+## Época Altair (v1.0.0 - v1.7.5) [MOTOR GOOGLE APPS SCRIPT V8]
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
+
+### Version 1.7.5 Altair — Operación Autónoma: Entradas Móviles, Semana Indestructible, Descuento Real y Tiendas que se Actualizan Solas (Septiembre 2026) [VERSIÓN OFICIAL · PROD]
+Consolida 19 iteraciones (`1.7.5a`–`1.7.5s`, 24–29/sep) validadas en operación real en BDG, PDA y PDM.
+
+* **📥 Entradas móviles → Kardex** (a, i, j): hoja `📥 ENTRADAS` que **suma** a ENT del día elegido (selector de día, validación de semana activa), filas táctiles; apertura de libros tolerante (`_abrirLibro` por ID); aviso de conexión fuera de la tabla y estados normalizados (`_normalizarEstado`).
+* **📅 Avance de semana confiable** (b, n, o, p, q, r): ambos Kardex avanzan en el cierre dominical y en `onOpenBodegaInstalable`; badge de semana visible; bloques huérfanos de HISTORIAL limpiados hasta el final de la hoja; `_archivarSemanaSeguro` como red; causa raíz de KARDEX_BM: error **diferido** del `breakApart` del badge de BA que cortaba parte de una combinación (`_separarCombinaciones` + `flush()` dentro del `try`).
+* **🎯 Solo se descuenta lo recibido** (c, d, s): Surtido Rápido con CANT. FINAL y color por fila; descuento nocturno 23:00 sin registro → 0 (`SIN_REGISTRO`), idempotente; `setValues` en tablas mixtas (adiós `#NAME?`); estado del `🗒 LOG_SURTIDO` normalizado/deducido y encabezado garantizado.
+* **🔗 Tiendas autónomas** (e, g, h, m): motor de migración versionado (`MISE_SCHEMA_TIENDA`, respaldo `copyTo`, capturas en RAM por nombre, reintento y verificación); `🚀 Configurar este libro` en un clic; `onEdit`/`onOpen` instalables (corren como dueño); enlace `_SYNC` vivo; celdas combinadas respetan la frontera congelada; push remoto reordena antes de refrescar el enlace.
+* **⚡ Powerhouse y picking** (f, k, l): enlaces **por nombre de producto** (fin de "se pinta/desactiva otro producto" con picking personalizado); guardado por fases en paralelo (~30 s, antes 1–2 min) sin reconstruir Kardex salvo altas; *Acerca de* con versión única (`MISE_VERSION`) y estado del sistema (activadores, último cierre, conexión).
+* **🧪 Ingeniería**: pruebas del código real en VM con emulador fiel (combinaciones vs congeladas, errores diferidos, `#NAME?`); `scripts/mise-env.js` DEV/PROD con candado de pruebas y verificación de contenedor; `version.test.js`, `metodos.test.js` (métodos inexistentes de Apps Script).
+
+<details>
+<summary>Detalle por iteración (1.7.5a – 1.7.5s)</summary>
 
 ### Version 1.7.5s Altair — Hotfix: ESTADO "#NAME?" en PEDIDO DIARIO y Log de Surtido (Septiembre 2026) [PROD]
 * **Causa del semáforo de PEDIDO DIARIO sin colores tras la migración**: las reconstrucciones de la tabla (`ordenarPedido`, `_reconstruirPedidoDiarioCore`, inserción de filas nuevas en tiendas y `_reordenarPedidoRemotoDirecto` en Bodega) escribían la matriz completa con `setFormulas()`. Google interpreta los textos sin `=` ("COMPLETO", "PARCIAL", "🚨 ADICIÓN") como fórmulas inválidas → `#NAME?`; las reglas `$I4="COMPLETO"` dejaban de cumplirse y el `🗒 LOG_SURTIDO` registraba `#NAME?`. Ahora se usa `setValues()`, que conserva como fórmula lo que empieza con `=` y como texto lo demás.
@@ -160,6 +173,10 @@ Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Go
   - Si HOY no pertenece a la semana activa del Kardex, bloquea el envío y pide avanzar semana (evita escribir en la columna de otra semana).
 * **Menú**: `⚙️ Mise ➔ 📥 Preparar hoja de Entradas (móvil)` crea o re-sincroniza la hoja con el catálogo vigente.
 * **Testing**: nueva suite `tests/suites/entradas.test.js` que ejecuta el código real de `miseAuthBDG.js` en VM (5 casos: generación, suma a HOY, día manual, todo-o-nada, semana vencida).
+
+</details>
+
+---
 
 ### Version 1.7.4 Altair — Conversión de Unidades Automática, Sistema de Traspasos Inter-Tiendas & Surtido Numérico Desacoplado (Septiembre 2026) [VERSIÓN FINAL EN PRODUCCIÓN GAS]
 * **Desacoplamiento Total de Fórmulas en `CANT. RECIBIDA` (`pda/miseAuthPDA.js`, `pdm/miseAuthPDM.js`)**:
