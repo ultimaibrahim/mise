@@ -4,6 +4,8 @@
  */
 const assert = require("assert");
 const vm = require("vm");
+const fs = require("fs");
+const path = require("path");
 const { crearContextoTienda } = require("../mocks/tiendaVm");
 const { crearContextoBDG } = require("../mocks/bdgVm");
 const { MockPropertiesService } = require("../mocks/gasMocks");
@@ -95,6 +97,34 @@ function runEstadoTests() {
       cierres: [{ fecha: new Date().toISOString(), ok: false, error: "Timeout" }] }, tiendas: {} }, ahora).find(c => c.id === "bdg.cierre");
     assert.strictEqual(cierreFallido.estado, "falla", "Cierre con error → rojo");
     console.log("  ✓ Reglas: latido 24/48 h y cierre fallido");
+
+    // ── 3. Página de estado (1.7.6h) ──────────────────────────────────────────────────────
+    const salida = sandbox.doGet({});
+    assert.strictEqual(salida.archivo, "EstadoSistema", "doGet sirve EstadoSistema.html");
+    const web = JSON.parse(sandbox.obtenerEstadoWeb(false));
+    assert.ok(web.componentes.length > 0 && Array.isArray(web.accesos), "obtenerEstadoWeb: resumen + accesos como JSON");
+    assert.ok(web.accesos.some(a => a.nombre.includes("Andares") && a.url.includes("ID_PDA")), "Acceso directo a la tienda por su ID");
+
+    const html = fs.readFileSync(path.join(__dirname, "..", "..", "bdg", "EstadoSistema.html"), "utf8");
+    const codigoBDG = ["miseAuthBDG.js", "MiseKardexEngine.js", "MiseEstado.js"].map(f => fs.readFileSync(path.join(__dirname, "..", "..", "bdg", f), "utf8")).join("\n");
+    const llamadas = [...html.matchAll(/\.withFailureHandler\([\s\S]*?\)\s*\.(\w+)\(/g)].map(m => m[1]);
+    assert.ok(llamadas.length > 0 && llamadas.every(fn => new RegExp(`function ${fn}\\(`).test(codigoBDG)), `Funciones del servidor existen: ${llamadas}`);
+    assert.ok(!/\$\{(?!esc\()[^}]*\.(detalle|nombre|producto|error|funcion)\b/.test(html.replace(/esc\([^)]*\)/g, "")), "Todo texto de datos pasa por esc()");
+
+    // Ejecuta el script de la página con un DOM mínimo y el resumen real (incluye un incidente con HTML)
+    web.bodega.incidentes.push({ fecha: new Date().toISOString(), nivel: "ERROR", funcion: "x", detalle: "<img src=x onerror=alert(1)>" });
+    const nodos = {};
+    const nodo = () => ({ innerHTML: "", textContent: "", disabled: false, classList: { add() {}, remove() {} } });
+    const doc = { getElementById: (id) => (nodos[id] = nodos[id] || nodo()) };
+    const run = { withSuccessHandler(ok) { this.ok = ok; return this; }, withFailureHandler() { return this; },
+      obtenerEstadoWeb() { this.ok(JSON.stringify(web)); } };
+    const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+    vm.runInNewContext(script, { document: doc, google: { script: { run } }, Date, Math, JSON, Object, String, isNaN });
+    const pagina = nodos.contenido.innerHTML;
+    assert.ok(/Hay fallas que atender/.test(pagina) && /Cierres nocturnos/.test(pagina) && /Bajo mínimo/.test(pagina) && /Accesos directos/.test(pagina), "La página pinta todas las secciones");
+    assert.ok(!/undefined|NaN/.test(pagina), "Sin 'undefined' ni 'NaN' en la página");
+    assert.ok(!/<img src=x/.test(pagina) && /&lt;img src=x/.test(pagina), "El HTML de un log se muestra escapado");
+    console.log("  ✓ Página de estado: doGet, datos + accesos, script ejecutado con el resumen real y contenido escapado");
   } finally {
     claves.forEach(k => props.setProperty(k, previas[k] || ""));
   }

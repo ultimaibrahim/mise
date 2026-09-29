@@ -23,6 +23,12 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6h Altair — Página de Estado de Mise (Septiembre 2026) [EN PRUEBAS]
+
+* 🌐 **Todo el sistema de un vistazo**: una página privada, también desde el celular, que muestra en verde, amarillo o rojo cómo están Bodega y las tiendas, cuánto tardó cada cierre nocturno, los avisos de la semana, los productos bajo mínimo y accesos directos a cada hoja.
+
+---
+
 ## Versión 1.7.6g Altair — Bodega Sabe si las Tiendas Están al Día (Septiembre 2026) [EN PRUEBAS]
 
 * 🩺 **Estado del sistema**: desde el menú de Bodega se ve en verde, amarillo o rojo si cada tienda está conectada, si corrió su reinicio de medianoche, si el cierre nocturno salió bien y si los Kardex están en la semana correcta.

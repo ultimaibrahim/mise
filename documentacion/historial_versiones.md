@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6h Altair (Página de estado) — 2026-09-29 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG)
+* Webapp `doGet` (solo el dueño) con semáforo, cierres por fase, incidentes, bajo mínimo, próximas ejecuciones, minutos del día y accesos directos (lo que era 🏠 INICIO).
+
+---
+
 ## ⚡ v1.7.6g Altair (Latido y resumen de salud) — 2026-09-29 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)

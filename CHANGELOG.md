@@ -33,6 +33,13 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.6h Altair — Fase 3: Página de Estado (Webapp de Bodega) (Septiembre 2026) [EN PRUEBAS · DEV]
+* **🌐 Página de estado** (`bdg/EstadoSistema.html`, `doGet` en `MiseEstado.js`): webapp de Bodega tipo Downdetector, publicada como *Ejecutar como: yo · Acceso: solo yo* (`appsscript.json → webapp`). Muestra estado general, semáforo por componente (Bodega, Andares, Mercado), cierres nocturnos con barras apiladas por fase, incidentes de 7 días (Bodega + tiendas), productos bajo mínimo, próximas ejecuciones, minutos de ejecución del día contra el límite de 90 y accesos directos (Bodega, Entradas, ambos Kardex, Maestro, Log y las dos tiendas): lo que era 🏠 INICIO. Paleta LCP, Crystal & Squircle, modo oscuro automático y diseño móvil primero.
+* **Datos**: `obtenerEstadoWeb(forzar)` devuelve el resumen de `obtenerEstadoSistema()` + accesos como **texto JSON** (google.script.run no transporta objetos `Date` anidados). Todo texto de datos se escapa (`esc()`) antes de insertarse en la página.
+* **Menú**: `🌐 Abrir página de estado` (usa `ScriptApp.getService().getUrl()`; si aún no se publica, explica cómo).
+* **Tiendas**: 🚀 Configurar ahora late al terminar (el estado se ve al día al momento).
+* **Testing**: la suite de estado ejecuta el script real de la página con un DOM mínimo y el resumen real (todas las secciones, sin `undefined`/`NaN`, HTML de un log escapado) y verifica que las funciones llamadas por `google.script.run` existan; emulador con `getUrl`, `getId`, `getSheetId` y `addMetaTag`.
+
 ### Version 1.7.6g Altair — Fase 3: Latido de Tiendas y Resumen de Salud en Bodega (Septiembre 2026) [EN PRUEBAS · DEV]
 * **💓 Latido por eventos, sin activador nuevo** (`_latidoTienda`): cada tienda escribe su hoja técnica `_ESTADO` (clave/valor: versión, esquema, entorno, último latido y su origen, último reset y su error, activadores, `_SYNC` vivo). Late en el reset de las 00:00 y el respaldo de las 04:00 (forzado), y al abrir y editar con los instalables (como máximo 1 escritura cada 10 min; el resto solo compara `LATIDO_TS`). Se descartó el activador cada 10 min (~10–15 min/día de cuota compartida entre los 3 libros).
 * **Reset con constancia**: `_resetearPedidoSilencioso` envuelve al núcleo (`…Core`) y registra `ULTIMO_RESET_TS` / `ULTIMO_RESET_ERROR`, para distinguir "no corrió" de "corrió con error".

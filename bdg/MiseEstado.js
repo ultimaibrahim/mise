@@ -225,3 +225,49 @@ function mostrarEstadoSistema() {
   });
   SpreadsheetApp.getUi().alert(`${ic[r.estadoGeneral]} Estado del sistema (${r.entorno})`, lineas.join("\n").trim(), SpreadsheetApp.getUi().ButtonSet.OK);
 }
+
+// ── 🌐 Página de estado (webapp de Bodega, 1.7.6h) ────────────────────────────────────────────
+// Se publica como webapp "Ejecutar como: yo · Acceso: solo yo" (appsscript.json). Lee el mismo resumen.
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile("EstadoSistema")
+    .setTitle("MISE · Estado")
+    .addMetaTag("viewport", "width=device-width, initial-scale=1");
+}
+
+// JSON como texto: google.script.run no transporta objetos Date anidados
+function obtenerEstadoWeb(forzar) {
+  const r = obtenerEstadoSistema(!!forzar);
+  try { r.accesos = _accesosEstado(); } catch (e) { r.accesos = []; }
+  return JSON.stringify(r);
+}
+
+function _accesosEstado() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const props = PropertiesService.getScriptProperties();
+  const base = ss.getUrl().replace(/\/edit.*$/, "/edit");
+  const accesos = [{ nombre: "🏬 Bodega", url: base }];
+  [[SHEET_ENTRADAS, "📥 Entradas"], ["KARDEX_BA", "📊 Kardex Andares"], ["KARDEX_BM", "📊 Kardex Mercado"], [SHEET_MAESTRO, "🗂 Maestro"], [SHEET_LOG, "🗒 Log"]]
+    .forEach(([hoja, nombre]) => {
+      const h = ss.getSheetByName(hoja);
+      if (h) accesos.push({ nombre, url: `${base}#gid=${h.getSheetId()}` });
+    });
+  Object.keys(BODEGAS).forEach(key => {
+    const id = key === "BA" ? (props.getProperty("PDA_SPREADSHEET_ID") || props.getProperty("BODEGA_ID_BA"))
+                            : (props.getProperty("PDM_SPREADSHEET_ID") || props.getProperty("BODEGA_ID_BM"));
+    if (id) accesos.push({ nombre: `🥞 ${BODEGAS[key].nombre}`, url: `https://docs.google.com/spreadsheets/d/${id}/edit` });
+  });
+  return accesos;
+}
+
+// Menú: abre la página publicada (su URL existe solo después de "Implementar → Nueva implementación")
+function abrirPaginaEstado() {
+  const url = ScriptApp.getService().getUrl();
+  const ui = SpreadsheetApp.getUi();
+  if (!url) {
+    ui.alert("🌐 Página de estado", "Aún no está publicada. En Extensiones → Apps Script: Implementar → Nueva implementación → Aplicación web (Ejecutar como: yo · Acceso: solo yo).", ui.ButtonSet.OK);
+    return;
+  }
+  const html = HtmlService.createHtmlOutput(`<p style="font-family:sans-serif">Abriendo… <a href="${url}" target="_blank">abrir manualmente</a></p><script>window.open(${JSON.stringify(url)}, "_blank"); google.script.host.close();</script>`)
+    .setWidth(320).setHeight(90);
+  ui.showModalDialog(html, "🌐 Página de estado");
+}

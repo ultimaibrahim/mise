@@ -1376,7 +1376,7 @@ function _aplicarFormatosCondicionales(sheet) {
   sheet.setConditionalFormatRules(rules);
 }
 
-const MISE_VERSION = "1.7.6g";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6h";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "Bodega ve si esta tienda está al día (latido automático, sin pasos extra)",
@@ -2130,6 +2130,7 @@ function configurarEsteLibroTienda() {
     return `v${actual} → v${MISE_SCHEMA_TIENDA} (capturas respaldadas y restauradas)`;
   });
   paso("Orden de picking e inactivos", () => { ordenarPedido(); return "aplicados"; });
+  paso("Latido", () => { _latidoTienda("configurar", true); return "Bodega ya ve este libro al día"; });
   paso("Blindaje", () => {
     protegerPedidoSeguro();
     _blindarHojasTecnicasTienda();

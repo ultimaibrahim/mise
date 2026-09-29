@@ -277,12 +277,24 @@ class MockSheet {
   }
 
   getProtections() { return []; }
+
+  // ID numérico estable por nombre (como el gid de Google)
+  getSheetId() {
+    let h = 0;
+    for (const ch of String(this.name)) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+    return h;
+  }
 }
 
+let _siguienteLibro = 1;
 class MockSpreadsheet {
   constructor() {
     this.sheets = new Map();
+    this._id = `MOCK_LIBRO_${_siguienteLibro++}`;
   }
+
+  getId() { return this._id; }
+  getUrl() { return `https://docs.google.com/spreadsheets/d/${this._id}/edit`; }
 
   getSheetByName(name) {
     return this.sheets.get(name) || null;
@@ -368,10 +380,12 @@ const MockScriptApp = {
 };
 
 const MockHtmlService = {
-  createHtmlOutputFromFile: () => ({
+  createHtmlOutputFromFile: (archivo) => ({
+    archivo,
     setWidth: function() { return this; },
     setHeight: function() { return this; },
-    setTitle: function() { return this; }
+    setTitle: function(t) { this.titulo = t; return this; },
+    addMetaTag: function() { return this; }
   })
 };
 

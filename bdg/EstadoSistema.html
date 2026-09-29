@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MISE · Estado</title>
+<style>
+  :root {
+    --bg: #F5EFE6; --card: rgba(255,255,255,.78); --borde: rgba(45,72,54,.12); --texto: #1A281F; --suave: #5E7266;
+    --pino: #2D4836; --salvia: #7A9E8A; --ok: #2E7D4F; --aviso: #C48A12; --falla: #B3261E;
+    --f1: #2D4836; --f2: #7A9E8A; --f3: #B9CDBF; --f4: #D9B77A; --f5: #A7683F;
+    --sombra: 0 1px 2px rgba(26,40,31,.06), 0 8px 24px rgba(26,40,31,.07);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0C130F; --card: rgba(26,40,31,.78); --borde: rgba(185,205,191,.12); --texto: #EDE7DC; --suave: #9DB3A5;
+      --pino: #B9CDBF; --ok: #5CC98A; --aviso: #E9B949; --falla: #F2766B; --sombra: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25); }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--texto); font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+  main { max-width: 880px; margin: 0 auto; padding: 20px 16px 48px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  h1 { font-size: 20px; margin: 0; letter-spacing: -.01em; }
+  h1 small { display: block; font-size: 12px; font-weight: 500; color: var(--suave); letter-spacing: .02em; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--suave); margin: 0 0 10px; }
+  button { font: inherit; font-weight: 600; font-size: 14px; color: #fff; background: var(--pino); border: 0; border-radius: 14px; padding: 10px 16px; cursor: pointer; }
+  @media (prefers-color-scheme: dark) { button { color: #0C130F; } }
+  button:disabled { opacity: .55; cursor: default; }
+  .tarjeta { background: var(--card); border: 1px solid var(--borde); border-radius: 22px; padding: 16px; box-shadow: var(--sombra);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); margin-bottom: 14px; }
+  .general { display: flex; align-items: center; gap: 14px; }
+  .general .punto { width: 18px; height: 18px; }
+  .general strong { font-size: 18px; display: block; }
+  .general span { color: var(--suave); font-size: 13px; }
+  .punto { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--suave); }
+  .ok .punto, .punto.ok { background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 18%, transparent); }
+  .aviso .punto, .punto.aviso { background: var(--aviso); box-shadow: 0 0 0 4px color-mix(in srgb, var(--aviso) 18%, transparent); }
+  .falla .punto, .punto.falla { background: var(--falla); box-shadow: 0 0 0 4px color-mix(in srgb, var(--falla) 18%, transparent); }
+  .rejilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+  .rejilla .tarjeta { margin-bottom: 0; }
+  .comp { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--borde); }
+  .comp:first-of-type { border-top: 0; }
+  .comp .punto { margin-top: 6px; }
+  .comp b { display: block; font-weight: 600; font-size: 14px; }
+  .comp small { color: var(--suave); font-size: 13px; word-break: break-word; }
+  .noche { display: grid; grid-template-columns: 78px 1fr; gap: 4px 10px; align-items: center; padding: 6px 0; }
+  .noche .fecha { font-size: 12px; color: var(--suave); font-variant-numeric: tabular-nums; }
+  .barra { display: flex; height: 12px; border-radius: 7px; overflow: hidden; background: color-mix(in srgb, var(--suave) 14%, transparent); }
+  .barra i { display: block; height: 100%; }
+  .noche .det { grid-column: 2; font-size: 12px; color: var(--suave); }
+  .noche.falla .barra { background: var(--falla); }
+  .leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--suave); margin-top: 8px; }
+  .leyenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .lista { list-style: none; margin: 0; padding: 0; }
+  .lista li { padding: 8px 0; border-top: 1px solid var(--borde); font-size: 14px; }
+  .lista li:first-child { border-top: 0; }
+  .lista small { display: block; color: var(--suave); font-size: 12px; }
+  .etq { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-right: 6px;
+    background: color-mix(in srgb, var(--suave) 18%, transparent); }
+  .etq.ERROR, .etq.FATAL { background: color-mix(in srgb, var(--falla) 20%, transparent); color: var(--falla); }
+  .etq.WARN { background: color-mix(in srgb, var(--aviso) 22%, transparent); color: var(--aviso); }
+  .accesos { display: flex; flex-wrap: wrap; gap: 8px; }
+  .accesos a { text-decoration: none; color: var(--texto); font-weight: 600; font-size: 14px; padding: 9px 13px; border-radius: 14px;
+    border: 1px solid var(--borde); background: color-mix(in srgb, var(--salvia) 12%, transparent); }
+  .medidor { height: 10px; border-radius: 6px; background: color-mix(in srgb, var(--suave) 14%, transparent); overflow: hidden; margin: 8px 0 4px; }
+  .medidor i { display: block; height: 100%; background: var(--salvia); border-radius: 6px; }
+  .vacio { color: var(--suave); font-size: 14px; }
+  .error { border-color: var(--falla); color: var(--falla); }
+  .entorno { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-left: 6px; vertical-align: 2px;
+    background: color-mix(in srgb, var(--aviso) 22%, transparent); color: var(--aviso); }
+  .cargando { opacity: .5; transition: opacity .2s; }
+</style>
+</head>
+<body>
+<main id="app">
+  <header>
+    <h1><small>La Crêpe Parisienne · MISE</small>Estado del sistema<span id="entorno"></span></h1>
+    <button id="refrescar" onclick="cargar(true)">Actualizar</button>
+  </header>
+  <div id="contenido"><div class="tarjeta vacio">Consultando Bodega y tiendas…</div></div>
+</main>
+<script>
+  const TEXTO_GENERAL = { ok: "Todo en orden", aviso: "Hay avisos que revisar", falla: "Hay fallas que atender" };
+  const FASES = [["tiendas", "Tiendas", "--f1"], ["log", "Log", "--f2"], ["kardex", "Kardex", "--f3"], ["vistas", "Vistas", "--f4"], ["push", "Push", "--f5"]];
+  const LIMITE_MIN = 90;
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  function hace(iso) {
+    const m = (Date.now() - new Date(iso).getTime()) / 60000;
+    if (isNaN(m)) return "—";
+    if (m < 1) return "hace un momento";
+    if (m < 60) return `hace ${Math.round(m)} min`;
+    if (m < 48 * 60) return `hace ${Math.round(m / 60)} h`;
+    return `hace ${Math.round(m / 1440)} días`;
+  }
+  function fechaCorta(iso) {
+    const d = new Date(iso);
+    return isNaN(d) ? "—" : d.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit" }) + " " +
+      d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false });
+  }
+  function seg(ms) { return `${Math.round((ms || 0) / 1000)} s`; }
+
+  function cargar(forzar) {
+    const btn = document.getElementById("refrescar");
+    btn.disabled = true; btn.textContent = "Consultando…";
+    document.getElementById("contenido").classList.add("cargando");
+    google.script.run
+      .withSuccessHandler(txt => { terminar(); pintar(JSON.parse(txt)); })
+      .withFailureHandler(err => { terminar(); document.getElementById("contenido").innerHTML =
+        `<div class="tarjeta error">No se pudo consultar el estado: ${esc(err && err.message)}</div>`; })
+      .obtenerEstadoWeb(!!forzar);
+  }
+  function terminar() {
+    const btn = document.getElementById("refrescar");
+    btn.disabled = false; btn.textContent = "Actualizar";
+    document.getElementById("contenido").classList.remove("cargando");
+  }
+
+  function pintar(r) {
+    document.getElementById("entorno").innerHTML = r.entorno === "DEV" ? '<span class="entorno">DEV</span>' : "";
+    const html = [];
+    html.push(`<div class="tarjeta general ${esc(r.estadoGeneral)}"><div class="punto"></div><div>
+      <strong>${TEXTO_GENERAL[r.estadoGeneral] || "Estado desconocido"}</strong>
+      <span>Resumen generado ${hace(r.generado)} · Bodega v${esc(r.bodega.version)}</span></div></div>`);
+
+    // Componentes agrupados (Bodega, Andares, Mercado)
+    const grupos = {};
+    (r.componentes || []).forEach(c => { (grupos[c.grupo] = grupos[c.grupo] || []).push(c); });
+    html.push('<div class="rejilla">');
+    Object.keys(grupos).forEach(g => {
+      html.push(`<section class="tarjeta"><h2>${esc(g)}</h2>` + grupos[g].map(c =>
+        `<div class="comp ${esc(c.estado)}"><div class="punto"></div><div><b>${esc(c.nombre)}</b><small>${esc(c.detalle)}</small></div></div>`).join("") + "</section>");
+    });
+    html.push("</div><div style='height:14px'></div>");
+
+    html.push(pintarNoches(r.bodega.cierres || []));
+    html.push('<div class="rejilla">' + pintarIncidentes(r) + pintarBajoMinimo(r) + "</div><div style='height:14px'></div>");
+    html.push('<div class="rejilla">' + pintarProximas() + pintarMinutos(r) + "</div><div style='height:14px'></div>");
+    html.push(pintarAccesos(r.accesos || []));
+    document.getElementById("contenido").innerHTML = html.join("");
+  }
+
+  function pintarNoches(cierres) {
+    if (!cierres.length) return '<section class="tarjeta"><h2>Cierres nocturnos</h2><div class="vacio">Aún no hay cierres registrados.</div></section>';
+    const max = Math.max(...cierres.map(c => c.ms || 0), 1);
+    const filas = cierres.map(c => {
+      if (!c.ok) return `<div class="noche falla"><span class="fecha">${fechaCorta(c.fecha)}</span><div class="barra"></div>
+        <span class="det">Falló: ${esc(c.error || "error")} · ${seg(c.ms)}</span></div>`;
+      const f = c.fases || {};
+      const partes = FASES.map(([k, , color]) => `<i style="width:${((f[k] || 0) / (c.ms || 1) * 100).toFixed(1)}%;background:var(${color})"></i>`).join("");
+      const detalle = FASES.filter(([k]) => f[k] >= 500).map(([k, n]) => `${n} ${seg(f[k])}`).join(" · ");
+      return `<div class="noche"><span class="fecha">${fechaCorta(c.fecha)}</span><div class="barra" style="width:${((c.ms || 0) / max * 100).toFixed(1)}%">${partes}</div>
+        <span class="det">${seg(c.ms)} · ${esc(c.descontados)} insumos${c.manual ? " · manual" : ""}${detalle ? " · " + detalle : ""}</span></div>`;
+    }).join("");
+    const leyenda = FASES.map(([, n, color]) => `<span><i style="background:var(${color})"></i>${n}</span>`).join("");
+    return `<section class="tarjeta"><h2>Cierres nocturnos (últimos ${cierres.length})</h2>${filas}<div class="leyenda">${leyenda}</div></section>`;
+  }
+
+  function pintarIncidentes(r) {
+    const todos = (r.bodega.incidentes || []).map(i => Object.assign({ origen: "Bodega" }, i));
+    Object.keys(r.tiendas || {}).forEach(k => (r.tiendas[k].incidentes || []).forEach(i => todos.push(Object.assign({ origen: r.tiendas[k].nombre }, i))));
+    todos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    const cuerpo = todos.length ? '<ul class="lista">' + todos.slice(0, 20).map(i =>
+      `<li><span class="etq ${esc(i.nivel)}">${esc(i.nivel)}</span>${esc(i.detalle)}<small>${esc(i.origen)} · ${esc(i.funcion)} · ${hace(i.fecha)}</small></li>`).join("") + "</ul>"
+      : '<div class="vacio">Sin avisos ni errores en los últimos 7 días.</div>';
+    return `<section class="tarjeta"><h2>Incidentes (7 días)</h2>${cuerpo}</section>`;
+  }
+
+  function pintarBajoMinimo(r) {
+    const bm = r.bodega.bajoMinimo || {};
+    const kardex = r.bodega.kardex || {};
+    const bloques = Object.keys(bm).map(k => {
+      const nombre = (kardex[k] && kardex[k].nombre) || k;
+      if (!bm[k].total) return `<li>${esc(nombre)}<small>Ningún producto bajo mínimo</small></li>`;
+      return `<li><b>${esc(nombre)} · ${bm[k].total}</b>` + bm[k].productos.map(p =>
+        `<small>${esc(p.producto)}: ${esc(p.saldo)} de ${esc(p.minimo)} ${esc(p.unidad)}</small>`).join("") +
+        (bm[k].total > bm[k].productos.length ? `<small>… y ${bm[k].total - bm[k].productos.length} más</small>` : "") + "</li>";
+    }).join("");
+    return `<section class="tarjeta"><h2>Bajo mínimo</h2><ul class="lista">${bloques}</ul></section>`;
+  }
+
+  function pintarProximas() {
+    const ahora = new Date();
+    const siguiente = (hora, diaSemana) => {
+      const d = new Date(ahora); d.setHours(hora, 0, 0, 0);
+      if (diaSemana !== undefined) { d.setDate(d.getDate() + ((diaSemana - d.getDay() + 7) % 7)); if (d <= ahora) d.setDate(d.getDate() + 7); }
+      else if (d <= ahora) d.setDate(d.getDate() + 1);
+      return d;
+    };
+    const eventos = [["Cierre y descuento (Bodega)", siguiente(23)], ["Reinicio del pedido (tiendas)", siguiente(0)],
+      ["Respaldo del reinicio (tiendas)", siguiente(4)], ["Mantenimiento semanal (Bodega)", siguiente(23, 0)]]
+      .sort((a, b) => a[1] - b[1]);
+    const en = (d) => { const h = (d - ahora) / 3600000; return h < 1 ? `en ${Math.max(1, Math.round(h * 60))} min` : `en ${Math.round(h)} h`; };
+    return `<section class="tarjeta"><h2>Próximas ejecuciones</h2><ul class="lista">` + eventos.map(([n, d]) =>
+      `<li>${esc(n)}<small>${fechaCorta(d.toISOString())} · ${en(d)} (Google puede correrlo dentro de esa hora)</small></li>`).join("") + "</ul></section>";
+  }
+
+  function pintarMinutos(r) {
+    const partes = [["Bodega", r.bodega.minutosHoy || 0]];
+    Object.keys(r.tiendas || {}).forEach(k => partes.push([r.tiendas[k].nombre, r.tiendas[k].minutosHoy || 0]));
+    const total = partes.reduce((s, p) => s + p[1], 0);
+    return `<section class="tarjeta"><h2>Tiempo de ejecución hoy</h2>
+      <div style="font-size:22px;font-weight:700">${total.toFixed(1)} min <span style="font-size:13px;font-weight:500;color:var(--suave)">de ${LIMITE_MIN} diarios</span></div>
+      <div class="medidor"><i style="width:${Math.min(100, total / LIMITE_MIN * 100).toFixed(1)}%"></i></div>
+      <small style="color:var(--suave);font-size:12px">${partes.map(p => `${esc(p[0])} ${p[1].toFixed(1)}`).join(" · ")} · aproximado, según las duraciones registradas en los logs</small></section>`;
+  }
+
+  function pintarAccesos(accesos) {
+    if (!accesos.length) return "";
+    return `<section class="tarjeta"><h2>Accesos directos</h2><div class="accesos">` +
+      accesos.map(a => `<a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.nombre)}</a>`).join("") + "</div></section>";
+  }
+
+  cargar(false);
+</script>
+</body>
+</html>
