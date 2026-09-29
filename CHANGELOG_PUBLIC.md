@@ -23,6 +23,17 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6c Altair — Archivos Blindados y Recepción que Siempre se Registra (Septiembre 2026) [EN PRUEBAS]
+
+* ✅ **Lo que se marca en Surtido Rápido siempre llega al Pedido Diario**:  
+  Se encontró por qué, a veces, la recepción se pintaba en Surtido Rápido pero no quedaba registrada en el Pedido Diario: las cuentas de tienda no tenían permiso para escribir en esas columnas protegidas. Ahora el sistema hace esas anotaciones por su cuenta, sin importar quién marque.
+* 🔐 **Hojas internas protegidas y ocultas**:  
+  Las hojas técnicas (enlaces, bitácoras, respaldos) ya no se pueden modificar ni borrar por accidente, y las que no se usan en el día a día se ocultan para no confundir. En Entradas solo se pueden escribir las cantidades.
+* 🔎 **Revisión de permisos en un clic**:  
+  Nuevo `🔐 Auditoría de permisos` que muestra qué está protegido en cada hoja y qué se puede editar.
+
+---
+
 ## Versión 1.7.6b Altair — Andares y Mercado, Siempre Iguales por Dentro (Septiembre 2026) [EN PRUEBAS]
 
 * 🧬 **Un solo sistema para las dos tiendas**:  

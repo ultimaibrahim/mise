@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6c Altair (Blindaje por capas) — 2026-09-28 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* onEdit/onOpen instalables como el dueño (los simples se abstienen); hojas técnicas y Entradas blindadas; KARDEX sin desbloqueo de F:G y con G4 protegida; `🔐 Auditoría de permisos`.
+
+---
+
 ## ⚡ v1.7.6b Altair (Fase 2: fuente única de tiendas) — 2026-09-28 [EN PRUEBAS · DEV]
 
 ### 📱 Tiendas (PDA / PDM)

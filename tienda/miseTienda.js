@@ -45,15 +45,19 @@ const ESTADO = {
 
 // ── MENÚ ────────────────────────────────────────────────────────────────────
 function onOpen() {
-  try {
-    _checkAutoResetNuevoDia();
-  } catch(e) {}
-  try {
-    _ensureDailyResetTrigger();
-  } catch(e) {}
-  try {
-    _actualizarAvisoPedido();
-  } catch(e) {}
+  // Con onOpen instalable (🚀 Configurar), el reset y el aviso corren allí como el dueño; el simple solo
+  // arma el menú (corre como quien abre, con 30 s y sin permiso sobre celdas protegidas).
+  if (PropertiesService.getScriptProperties().getProperty("ONOPEN_INSTALABLE") !== "1") {
+    try {
+      _checkAutoResetNuevoDia();
+    } catch(e) {}
+    try {
+      _ensureDailyResetTrigger();
+    } catch(e) {}
+    try {
+      _actualizarAvisoPedido();
+    } catch(e) {}
+  }
   try {
     const ui = SpreadsheetApp.getUi();
     const menu = ui.createMenu("⚙️ Mise")
@@ -66,6 +70,7 @@ function onOpen() {
       .addSeparator()
       .addItem("🔧 Sincronizar catálogo y reparar formato", "repararSistemaTienda")
       .addItem("🔄 Aplicar actualización de estructura pendiente", "aplicarActualizacionPendienteManualmente")
+      .addItem("🔐 Auditoría de permisos", "auditarPermisos")
       .addSeparator()
       // Submenú Cuarentena / Zona Avanzada
       .addSubMenu(ui.createMenu("⚠️ Mantenimiento Avanzado y Zona de Riesgo")
@@ -220,7 +225,20 @@ function invalidarCache() {
   SpreadsheetApp.getActive().toast("Caché invalidado. Listo para recalcular.", "⚙️ Mise", 4);
 }
 
+// onEdit SIMPLE: corre con los permisos de QUIEN EDITA. Con cuentas propias en tienda, sus escrituras a
+// columnas protegidas (PEDIDO H/I, Surtido D, hojas técnicas) fallaban EN SILENCIO — causa del histórico
+// "Surtido se pinta pero PEDIDO no recibe cantidad/estado". Con el instalable (corre como el dueño), el
+// simple no hace nada para no duplicar.
 function onEdit(e) {
+  if (PropertiesService.getScriptProperties().getProperty("ONEDIT_INSTALABLE") === "1") return;
+  _onEditTienda(e);
+}
+
+function onEditTiendaInstalable(e) {
+  _onEditTienda(e);
+}
+
+function _onEditTienda(e) {
   if (!e) return;
   const sheet = e.range.getSheet();
   const name  = sheet.getName();
@@ -1347,7 +1365,7 @@ function _aplicarFormatosCondicionales(sheet) {
   sheet.setConditionalFormatRules(rules);
 }
 
-const MISE_VERSION = "1.7.6b";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6c";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "Surtido Rápido: escribe lo recibido y la fila completa se pinta sola",
@@ -1838,8 +1856,49 @@ function protegerPedidoSeguro() {
   MiseLogger.info("protegerPedidoSeguro", `${SHEET_PEDIDO} blindado: Únicamente F2 (Surtido Rápido) y Col F (CANT. A PEDIR) quedan editables.`);
 }
 
+// Protege una hoja completa: solo el dueño edita; `libres` = rangos de captura para los usuarios
+function _blindarHoja(sheet, desc, libres) {
+  if (!sheet) return;
+  sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(p => { try { p.remove(); } catch (e) {} });
+  const prot = sheet.protect().setDescription(desc);
+  prot.setWarningOnly(false);
+  prot.removeEditors(prot.getEditors());
+  prot.addEditor(Session.getEffectiveUser());
+  if (prot.canDomainEdit()) prot.setDomainEdit(false);
+  if (libres && libres.length) prot.setUnprotectedRanges(libres);
+}
+
+// Hojas técnicas de la tienda: nadie las edita a mano (enlace, bitácoras, respaldos de migración)
+function _blindarHojasTecnicasTienda() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  ss.getSheets().filter(sh => /^(_|🗒|🔄)/.test(sh.getName())).forEach(sh => {
+    _blindarHoja(sh, `Blindaje técnico — ${sh.getName()}`);
+    if (/^_/.test(sh.getName())) { try { sh.hideSheet(); } catch (e) {} }
+  });
+}
+
+// 🔐 Auditoría: qué protege cada hoja, quién edita y qué queda libre
+function _auditarPermisos() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheets().map(sh => {
+    const p = sh.getProtections(SpreadsheetApp.ProtectionType.SHEET)[0];
+    const oculta = sh.isSheetHidden() ? " · oculta" : "";
+    if (!p) return `🔓 ${sh.getName()}: SIN PROTECCIÓN${oculta}`;
+    const editores = p.getEditors().map(u => u.getEmail()).join(", ") || "nadie";
+    const libres = p.getUnprotectedRanges().map(r => r.getA1Notation()).join(", ");
+    return `🔒 ${sh.getName()}: edita ${editores}${libres ? " · libre: " + libres : ""}${oculta}`;
+  });
+}
+
+function auditarPermisos() {
+  const lineas = _auditarPermisos();
+  registrarLog("auditarPermisos", "SUCCESS", lineas.join(" | "));
+  SpreadsheetApp.getUi().alert("🔐 Auditoría de permisos", lineas.join("\n"), SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
 function protegerTodasLasHojasTiendaSeguras() {
   protegerPedidoSeguro();
+  try { _blindarHojasTecnicasTienda(); } catch (e) {}
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const surtido = ss.getSheetByName("🚚 SURTIDO RÁPIDO");
@@ -1942,7 +2001,14 @@ function _reiniciarActivadoresTienda() {
   ScriptApp.newTrigger("_resetearPedidoSilencioso").timeBased().everyDays(1).atHour(0).create();
   // 2. Respaldo del reset y reintento de migración (04:00 - 05:00)
   ScriptApp.newTrigger("_checkAutoResetNuevoDia").timeBased().everyDays(1).atHour(4).create();
-  const creados = ["_resetearPedidoSilencioso (00:00)", "_checkAutoResetNuevoDia (04:00)"];
+  // 3–4. Edición y apertura INSTALABLES: corren como el dueño (las cuentas de tienda no pueden escribir
+  //      en celdas protegidas; antes esas escrituras fallaban en silencio)
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  ScriptApp.newTrigger("onEditTiendaInstalable").forSpreadsheet(ss).onEdit().create();
+  ScriptApp.newTrigger("onOpenTiendaInstalable").forSpreadsheet(ss).onOpen().create();
+  PropertiesService.getScriptProperties().setProperties({ ONEDIT_INSTALABLE: "1", ONOPEN_INSTALABLE: "1" });
+  const creados = ["_resetearPedidoSilencioso (00:00)", "_checkAutoResetNuevoDia (04:00)",
+                   "onEditTiendaInstalable (al editar)", "onOpenTiendaInstalable (al abrir)"];
   registrarLog("instalarActivadores", "SUCCESS", `Borrados (${borrados.length}): [${borrados.join(", ")}]. Creados: ${creados.join(", ")}.`);
   return { borrados, creados };
 }
@@ -1960,6 +2026,12 @@ function _abrirLibro(ref) {
   const txt = String(ref || "").trim();
   const m = txt.match(/\/d\/([a-zA-Z0-9_-]{20,})/);
   return SpreadsheetApp.openById(m ? m[1] : txt);
+}
+
+// onOpen INSTALABLE: reinicio del día (si no ocurrió) y aviso de conexión, con permisos del dueño
+function onOpenTiendaInstalable(e) {
+  try { _checkAutoResetNuevoDia(); } catch (err) { registrarLog("onOpenTiendaInstalable", "ERROR", err.message); }
+  try { _actualizarAvisoPedido(); } catch (err) {}
 }
 
 // ── 🔗 CONEXIÓN CON BODEGA (a qué libro apunta, por NOMBRE, y si _SYNC está vivo) ──────────
@@ -1996,6 +2068,12 @@ function configurarEsteLibroTienda() {
     return `v${actual} → v${MISE_SCHEMA_TIENDA} (capturas respaldadas y restauradas)`;
   });
   paso("Orden de picking e inactivos", () => { ordenarPedido(); return "aplicados"; });
+  paso("Blindaje", () => {
+    protegerPedidoSeguro();
+    _blindarHojasTecnicasTienda();
+    const abiertas = _auditarPermisos().filter(l => l.startsWith("🔓")).length;
+    return abiertas ? `${abiertas} hoja(s) sin protección (ver 🔐 Auditoría)` : "todas las hojas protegidas";
+  });
   let con = { ok: false, linea: "" };
   paso("Conexión", () => { con = _diagnosticarConexionTienda(); return con.ok ? "correcta" : "por revisar"; });
 

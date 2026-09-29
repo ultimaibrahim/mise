@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.6b Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.6c Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -215,7 +215,8 @@ function onOpen() {
           .addItem("🔗 Configurar conexión con Logs (IMPORTRANGE)", "configurarConexionLogTiendas")
           .addItem("🛡️ Ejecutar mantenimiento semanal (Manual)", "ejecutarMantenimientoSemanalBDG"))
         .addSubMenu(ui.createMenu("🔒 Protección y Seguridad Crítica")
-          .addItem("🔒 Blindar catálogo y Kardex (Total)",   "protegerTodasLasHojasSeguras")
+          .addItem("🔒 Blindar todas las hojas",   "protegerTodasLasHojasSeguras")
+          .addItem("🔐 Auditoría de permisos",   "auditarPermisos")
           .addSeparator()
           .addItem("⚠️ Restablecer sistema desde cero (Destructivo)", "setupCompleto")))
       .addSeparator()
@@ -286,7 +287,14 @@ function repararYSincronizarSistema(silent = false) {
 }
 
 // ── onEdit: REGISTRO TRANSACCIONAL Y ACCIONES ──────────────────────────────────
+// onEdit SIMPLE: corre con los permisos de QUIEN EDITA; una cuenta que no es el dueño no puede escribir en
+// celdas protegidas (y fallaba en silencio). Con el instalable (corre como el dueño), el simple no hace nada.
 function onEdit(e) {
+  if (PropertiesService.getScriptProperties().getProperty("ONEDIT_INSTALABLE") === "1") return;
+  _onEditBodega(e);
+}
+
+function _onEditBodega(e) {
   if (!e) return;
   const sheet = e.range.getSheet();
   const name  = sheet.getName();
@@ -2282,7 +2290,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.6b";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6c";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "📥 Entradas valida la semana de cada tienda por separado",
@@ -3579,15 +3587,14 @@ function protegerKardexSeguro(keyOrSheet) {
   const count = lr - KARDEX_START + 1;
   const unprotectedRanges = [];
 
-  // Botones y selectores interactivos en fila 4
-  unprotectedRanges.push(kSheet.getRange("G4")); // Fecha
+  // Botones interactivos en fila 4. G4 (fecha de la semana) queda PROTEGIDA: la semana avanza sola y
+  // moverla a mano desalinea ENT/SAL con los días reales.
   unprotectedRanges.push(kSheet.getRange("N4")); // Avanzar Sem.
   unprotectedRanges.push(kSheet.getRange("Q4")); // Recrear Vista
   unprotectedRanges.push(kSheet.getRange("T4")); // Nuevo Prod.
   unprotectedRanges.push(kSheet.getRange("W4")); // Anular Prod.
 
-  // Caducidad (F) y Lote (G)
-  unprotectedRanges.push(kSheet.getRange(KARDEX_START, 6, count, 2));
+  // (Antes se desprotegían F:G cuando eran CADUCIDAD/LOTE; esas columnas ya no existen como tales.)
 
   // ENT y SAL de cada día (Cols J-K, M-N, P-Q, S-T, V-W, Y-Z, AB-AC)
   for (let d = 0; d < KARDEX_DAYS; d++) {
@@ -3601,7 +3608,57 @@ function protegerKardexSeguro(keyOrSheet) {
   MiseLogger.info("protegerKardexSeguro", `${kardexName} blindado: ENT, SAL y Checkboxes fila 4 desprotegidos y 100% operativos.`);
 }
 
+// Protege una hoja completa: solo el dueño edita; `libres` = rangos de captura para los usuarios
+function _blindarHoja(sheet, desc, libres) {
+  if (!sheet) return;
+  sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(p => { try { p.remove(); } catch (e) {} });
+  const prot = sheet.protect().setDescription(desc);
+  prot.setWarningOnly(false);
+  prot.removeEditors(prot.getEditors());
+  prot.addEditor(Session.getEffectiveUser());
+  if (prot.canDomainEdit()) prot.setDomainEdit(false);
+  if (libres && libres.length) prot.setUnprotectedRanges(libres);
+}
+
+// Hojas técnicas de Bodega (solo lectura) y cuáles se ocultan para simplificar la vista
+const HOJAS_TECNICAS_BDG = ["VISTA_MOVIL_BA", "VISTA_MOVIL_BM", "HISTORIAL_BA", "HISTORIAL_BM", "_HISTORIAL_RESPALDO",
+  "🗒 LOG", "_DICCIONARIO_ALIAS", "⚠️ REVISIÓN_HUÉRFANOS", "_SYNC_LOG_BA", "_SYNC_LOG_BM", "🔄 TRASPASOS"];
+const HOJAS_OCULTAS_BDG = ["VISTA_MOVIL_BA", "VISTA_MOVIL_BM", "_HISTORIAL_RESPALDO", "_DICCIONARIO_ALIAS",
+  "⚠️ REVISIÓN_HUÉRFANOS", "_SYNC_LOG_BA", "_SYNC_LOG_BM"];
+
+function _blindarHojasTecnicasBDG() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  HOJAS_TECNICAS_BDG.forEach(n => _blindarHoja(ss.getSheetByName(n), `Blindaje técnico — ${n}`));
+  HOJAS_OCULTAS_BDG.forEach(n => { const sh = ss.getSheetByName(n); if (sh) try { sh.hideSheet(); } catch (e) {} });
+  // 📥 ENTRADAS: solo las cantidades, el día y la casilla Enviar
+  const ent = ss.getSheetByName(SHEET_ENTRADAS);
+  if (ent) {
+    const filas = Math.max(ent.getMaxRows() - ENTRADAS_START + 1, 1);
+    _blindarHoja(ent, "Blindaje — 📥 ENTRADAS", [ent.getRange(ENTRADAS_START, 3, filas, 2), ent.getRange("B2"), ent.getRange("D2")]);
+  }
+}
+
+// 🔐 Auditoría: qué protege cada hoja, quién edita y qué queda libre
+function _auditarPermisos() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheets().map(sh => {
+    const p = sh.getProtections(SpreadsheetApp.ProtectionType.SHEET)[0];
+    const oculta = sh.isSheetHidden() ? " · oculta" : "";
+    if (!p) return `🔓 ${sh.getName()}: SIN PROTECCIÓN${oculta}`;
+    const editores = p.getEditors().map(u => u.getEmail()).join(", ") || "nadie";
+    const libres = p.getUnprotectedRanges().map(r => r.getA1Notation()).join(", ");
+    return `🔒 ${sh.getName()}: edita ${editores}${libres ? " · libre: " + libres : ""}${oculta}`;
+  });
+}
+
+function auditarPermisos() {
+  const lineas = _auditarPermisos();
+  MiseLogger.info("auditarPermisos", lineas.join(" | "));
+  SpreadsheetApp.getUi().alert("🔐 Auditoría de permisos", lineas.join("\n"), SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
 function protegerTodasLasHojasSeguras() {
+  try { _blindarHojasTecnicasBDG(); } catch (e) { MiseLogger.warn("protegerTodasLasHojasSeguras", e.message); }
   protegerMaestroSeguro();
   protegerKardexSeguro("BA");
   protegerKardexSeguro("BM");
@@ -6195,7 +6252,7 @@ function _reiniciarActivadoresBDG() {
   ScriptApp.newTrigger("onEditBodegaInstalable").forSpreadsheet(ss).onEdit().create();
   // onOpen INSTALABLE: avance de semana de ambos Kardex al abrir, con 6 min y permisos completos
   ScriptApp.newTrigger("onOpenBodegaInstalable").forSpreadsheet(ss).onOpen().create();
-  PropertiesService.getScriptProperties().setProperty("ONOPEN_INSTALABLE", "1");
+  PropertiesService.getScriptProperties().setProperties({ ONOPEN_INSTALABLE: "1", ONEDIT_INSTALABLE: "1" });
   const creados = ["descontarSurtidoAutomatico (diario 23:00)", "ejecutarMantenimientoSemanalBDG (domingo 23:00)",
                    "onEditBodegaInstalable (al editar)", "onOpenBodegaInstalable (al abrir)"];
   MiseLogger.info("_reiniciarActivadoresBDG", `Borrados (${borrados.length}): [${borrados.join(", ")}]. Creados: ${creados.join(", ")}.`);
@@ -6222,24 +6279,16 @@ function onOpenBodegaInstalable(e) {
 
 // Carril rápido con permisos completos: al cambiar ACTIVO en MAESTRO, empuja a las tiendas al instante.
 // (El onEdit simple hace la parte local; un onEdit simple no puede abrir otros libros.)
+// onEdit INSTALABLE: toda la lógica de edición con permisos del dueño (incluye el push a tiendas al cambiar
+// ACTIVO, las casillas de MAESTRO y KARDEX, y el Enviar de 📥 ENTRADAS aunque lo marque otra cuenta)
 function onEditBodegaInstalable(e) {
-  if (!e || !e.range) return;
-  const sheet = e.range.getSheet();
-  if (sheet.getName() !== SHEET_MAESTRO || e.range.getRow() < MAESTRO_START) return;
-  const map = _getMaestroHeaderMap(sheet);
-  const cAct = map["ACTIVO"] ? map["ACTIVO"].col : 6;
-  if (e.range.getColumn() > cAct || e.range.getLastColumn() < cAct) return;
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(30000)) return;
   try {
-    sincronizarRemotamenteTiendasPush();
-    MiseLogger.info("onEditBodegaInstalable", `ACTIVO modificado en MAESTRO fila ${e.range.getRow()}: tiendas actualizadas.`);
+    _onEditBodega(e);
   } catch (err) {
     MiseLogger.error("onEditBodegaInstalable", err.message, err);
-  } finally {
-    lock.releaseLock();
   }
 }
+
 
 // ── 🔗 DIAGNÓSTICO DE CONEXIONES (a qué libro apunta cada propiedad, por NOMBRE) ──────────
 function _diagnosticarConexionesBDG() {
@@ -6272,6 +6321,11 @@ function configurarEsteLibroBDG() {
   paso("Hoja 📥 ENTRADAS", () => { _prepararHojaEntradas(true); return "lista"; });
   paso("Vistas móviles", () => { _buildVista("BA"); _buildVista("BM"); return "BA y BM reconstruidas"; });
   paso("Tiendas actualizadas", () => { sincronizarRemotamenteTiendasPush(); return "catálogo, picking y activos enviados"; });
+  paso("Blindaje", () => {
+    protegerTodasLasHojasSeguras();
+    const abiertas = _auditarPermisos().filter(l => l.startsWith("🔓")).length;
+    return abiertas ? `${abiertas} hoja(s) sin protección (ver 🔐 Auditoría)` : "todas las hojas protegidas";
+  });
   let conexiones = { lineas: [], alertas: [] };
   paso("Conexiones", () => { conexiones = _diagnosticarConexionesBDG(); return conexiones.alertas.length ? `${conexiones.alertas.length} por revisar` : "correctas"; });
 

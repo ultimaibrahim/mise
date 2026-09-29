@@ -67,6 +67,7 @@ function crearContextoTienda(dir, archivo, propsIniciales = {}) {
     LockService: MockLockService,
     PropertiesService: { getScriptProperties: () => ({
       getProperty: (k) => (k in props ? props[k] : null), setProperty: (k, v) => { props[k] = String(v); },
+      setProperties: (o) => { Object.keys(o).forEach(k => { props[k] = String(o[k]); }); },
       getProperties: () => Object.assign({}, props), deleteProperty: (k) => { delete props[k]; } }) },
     ScriptApp: MockScriptApp, HtmlService: MockHtmlService,
     Session: { getActiveUser: () => ({ getEmail: () => "t@lcp.mx" }), getEffectiveUser: () => ({ getEmail: () => "t@lcp.mx" }),

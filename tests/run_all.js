@@ -15,6 +15,7 @@ const { runVersionTests } = require('./suites/version.test');
 const { runPowerhouseTests } = require('./suites/powerhouse.test');
 const { runMetodosTests } = require('./suites/metodos.test');
 const { runTiendaUnicaTests } = require('./suites/tienda_unica.test');
+const { runBlindajeTests } = require('./suites/blindaje.test');
 const { execSync } = require('child_process');
 require('../scripts/build-tienda').build(); // pda/ y pdm/ se generan desde tienda/
 
@@ -41,6 +42,7 @@ try {
   runPowerhouseTests();
   runMetodosTests();
   runTiendaUnicaTests();
+  runBlindajeTests();
   runVersionTests();
   runDevEnvTests();
 

@@ -76,9 +76,10 @@ function runNivel1Tests() {
     sandbox.ScriptApp = sa.api;
     const r = sandbox._reiniciarActivadoresTienda();
     assert.strictEqual(r.borrados.length, 2, "Borra sincronizarEstados cada 10 min y el viejo reset");
-    assert.deepStrictEqual(sa.estado.creados.map(t => [t.h, t.tipo.find(x => x.startsWith("atHour"))]),
-      [["_resetearPedidoSilencioso", "atHour(0)"], ["_checkAutoResetNuevoDia", "atHour(4)"]], "Reset 00:00 y respaldo 04:00");
-    console.log("  ✓ Tienda: reinicio total deja reset 00:00 y respaldo 04:00");
+    assert.deepStrictEqual(sa.estado.creados.map(t => [t.h, t.tipo.find(x => x.startsWith("atHour")) || t.tipo.find(x => /^on(Edit|Open)/.test(x))]),
+      [["_resetearPedidoSilencioso", "atHour(0)"], ["_checkAutoResetNuevoDia", "atHour(4)"],
+       ["onEditTiendaInstalable", "onEdit()"], ["onOpenTiendaInstalable", "onOpen()"]], "Reset 00:00, respaldo 04:00 y edición/apertura instalables");
+    console.log("  ✓ Tienda: reinicio total deja reset 00:00, respaldo 04:00 y onEdit/onOpen instalables");
   }
 
   // 3. Push de Bodega: refresca el IMPORTRANGE en vez de pisarlo con valores
