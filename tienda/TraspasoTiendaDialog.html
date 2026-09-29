@@ -99,6 +99,11 @@
   </div>
 
   <script>
+    // Escapa texto de datos antes de insertarlo como HTML (nombres con comillas o "<" no rompen la lista)
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
     let config = { miBodegaKey: "BA", miBodegaNombre: "Andares", contraparteKey: "BM", contraparteNombre: "Mercado" };
     let tipoOperacion = "ENVIAR"; // 'ENVIAR' o 'RECIBIR'
     let catalogo = [];
@@ -168,10 +173,10 @@
         item.onclick = function() { seleccionar(p); };
         item.innerHTML = `
           <div>
-            <div class="item-title">${p.name}</div>
-            <div class="item-cat">${p.cat}</div>
+            <div class="item-title">${esc(p.name)}</div>
+            <div class="item-cat">${esc(p.cat)}</div>
           </div>
-          <span style="font-size:10px; font-weight:700; color:var(--dark);">${p.unit}</span>
+          <span style="font-size:10px; font-weight:700; color:var(--dark);">${esc(p.unit)}</span>
         `;
         list.appendChild(item);
       });

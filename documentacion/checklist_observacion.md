@@ -5,6 +5,10 @@ Lo que se desarrolla vive en `plan_v1.7.6.md`. Marca `[x]` y anota fecha + resul
 > Herramienta principal: la **🌐 página de estado** (Bodega → Automatizaciones → 🌐 Abrir página de estado).
 > DEV la tiene desde 1.7.6h; PROD la tendrá cuando se suba la 1.7.6.
 
+## ⚠️ Mientras PROD siga en 1.7.5 (hasta subir la 1.7.6)
+- **No usar** en Bodega PROD: "🔄 Reconciliar y descontar toda la semana activa" ni "🚚 Descontar pedidos de ayer (Manual)". En 1.7.5 toman el pedido **en curso** de las tiendas, lo descuentan en otro día y lo vacían (corregido en 1.7.6l).
+- "Descontar Pedidos de Hoy" sí es seguro, pero solo después de que las tiendas terminaron de recibir (vacía el pedido del día).
+
 ## Esta noche · martes 29/sep
 - [ ] **DEV · cierre 23:00**: en la página de estado, "Cierres nocturnos" muestra la barra por fases (tiendas · log · kardex · vistas · push). Anotar qué fase pesa más: decide la optimización del push.
 - [ ] **PROD (1.7.5)**: el `🗒 LOG` de Bodega registra "Descuento completado" sin `ERROR`.

@@ -368,6 +368,11 @@
 
   <!-- ══════════════ MOTOR JAVASCRIPT ══════════════ -->
   <script>
+    // Escapa texto de datos antes de insertarlo como HTML (nombres con comillas o "<" no rompen la lista)
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
     let currentKey = "BA";
     let activeTab = "picking";
     let modoVista = "list";
@@ -470,7 +475,7 @@
       const catSelect = document.getElementById("filtroCatEdicion");
       catSelect.innerHTML = '<option value="">Todas las Categorías</option>';
       categoriasLista.forEach(c => {
-        catSelect.innerHTML += `<option value="${c}">${c}</option>`;
+        catSelect.innerHTML += `<option value="${esc(c)}">${esc(c)}</option>`;
       });
 
       cambiarBodegaEnMemoria();
@@ -565,8 +570,8 @@
                           <span style="color:#FFF; font-size:10px; font-weight:700; padding:0 4px;">--</span>
                         </div>
                         <div class="prod-info">
-                          <div class="prod-name">${itemObj.name}</div>
-                          <span class="prod-cat">${itemObj.cat}</span>
+                          <div class="prod-name">${esc(itemObj.name)}</div>
+                          <span class="prod-cat">${esc(itemObj.cat)}</span>
                         </div>
                       </div>
                       <div class="item-btns">
@@ -588,8 +593,8 @@
                         <span style="color:#FFF; font-size:10px; font-weight:700; padding:0 4px;">--</span>
                       </div>
                       <div class="prod-info">
-                        <div class="prod-name">${itemObj.name}</div>
-                        <span class="prod-cat">${itemObj.cat}</span>
+                        <div class="prod-name">${esc(itemObj.name)}</div>
+                        <span class="prod-cat">${esc(itemObj.cat)}</span>
                       </div>
                     </div>
                     <div class="item-btns">
@@ -641,7 +646,7 @@
           groupDiv.className = "cat-group";
           groupDiv.innerHTML = `
             <div class="cat-header">
-              <span>📁 ${cat} (${grupos[cat].length})</span>
+              <span>📁 ${esc(cat)} (${grupos[cat].length})</span>
             </div>
             <div class="cat-body" id="cat-body-${cat.replace(/\s+/g,'_')}"></div>
           `;
@@ -674,8 +679,8 @@
             <input type="number" class="rank-input" value="${idx + 1}" min="1" max="${rawItems.length}" onchange="cambiarPosicionDirecta(${idx}, this.value, event)" onclick="event.stopPropagation()">
           </div>
           <div class="prod-info">
-            <div class="prod-name">${item.name} ${isTouched ? `<span style="color:#E65100; font-size:9px; font-weight:800;" title="Este producto cambió de posición">● Editado</span>` : ""}</div>
-            <span class="prod-cat">${item.cat}</span>
+            <div class="prod-name">${esc(item.name)} ${isTouched ? `<span style="color:#E65100; font-size:9px; font-weight:800;" title="Este producto cambió de posición">● Editado</span>` : ""}</div>
+            <span class="prod-cat">${esc(item.cat)}</span>
           </div>
         </div>
         <div class="item-btns">
@@ -881,10 +886,10 @@
           <td style="text-align:center; font-weight:700; color:var(--dark);">${idx + 1}</td>
           <td>
             <select onchange="nuevosItemsAlta[${idx}].cat = this.value; evaluarModificaciones();">
-              ${categoriasLista.map(c => `<option value="${c}" ${c === row.cat ? "selected" : ""}>${c}</option>`).join("")}
+              ${categoriasLista.map(c => `<option value="${esc(c)}" ${c === row.cat ? "selected" : ""}>${esc(c)}</option>`).join("")}
             </select>
           </td>
-          <td><input type="text" placeholder="Nombre de insumo..." value="${row.name}" oninput="nuevosItemsAlta[${idx}].name = this.value.trim(); evaluarModificaciones();"></td>
+          <td><input type="text" placeholder="Nombre de insumo..." value="${esc(row.name)}" oninput="nuevosItemsAlta[${idx}].name = this.value.trim(); evaluarModificaciones();"></td>
           <td><input type="text" placeholder="Ej: BOT 1 LT, BOL 500G" value="${row.pres}" oninput="nuevosItemsAlta[${idx}].pres = this.value.trim(); evaluarModificaciones();"></td>
           <td>
             <select onchange="nuevosItemsAlta[${idx}].unit = this.value; evaluarModificaciones();">
@@ -954,10 +959,10 @@
                   </td>
                   <td>
                     <select onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'cat', this.value)">
-                      ${categoriasLista.map(c => `<option value="${c}" ${c === ed.cat ? "selected" : ""}>${c}</option>`).join("")}
+                      ${categoriasLista.map(c => `<option value="${esc(c)}" ${c === ed.cat ? "selected" : ""}>${esc(c)}</option>`).join("")}
                     </select>
                   </td>
-                  <td><input type="text" value="${ed.name}" onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'name', this.value)"></td>
+                  <td><input type="text" value="${esc(ed.name)}" onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'name', this.value)"></td>
                   <td><input type="text" value="${ed.pres}" onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'pres', this.value)"></td>
                   <td>
                     <select onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'unit', this.value)">
@@ -1065,7 +1070,7 @@
         container.innerHTML += `
           <div class="dup-card">
             <div>
-              <strong>⚠️ Insumo Duplicado: ${dup.repetido.name}</strong> (${dup.repetido.cat} - ${dup.repetido.pres})
+              <strong>⚠️ Insumo Duplicado: ${esc(dup.repetido.name)}</strong> (${esc(dup.repetido.cat)} - ${esc(dup.repetido.pres)})
               <p style="font-size:10px; color:#555; margin-top:4px;">Se recomienda conservar el registro principal y desactivar las repeticiones.</p>
             </div>
             <button class="btn-del-row" onclick="solicitarEliminacionProducto('${dup.repetido.name.replace(/'/g,"\\'")}')">Desactivar Repetición</button>

@@ -23,6 +23,13 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6m Altair — Ventanas Más Robustas (Septiembre 2026) [EN PRUEBAS]
+
+* 🪟 **Productos con comillas o símbolos ya no descomponen las ventanas** de Powerhouse y Traspasos.
+* 🧹 Se retiraron piezas internas que ya no se usaban.
+
+---
+
 ## Versión 1.7.6l Altair — Reconciliar Sin Riesgo (Septiembre 2026) [EN PRUEBAS]
 
 * 🛡️ **"Reconciliar la semana" ya no borra el pedido del día**: antes podía tomar lo que la tienda estaba capturando y vaciarlo. Ahora solo revisa los días anteriores con lo que ya quedó registrado.

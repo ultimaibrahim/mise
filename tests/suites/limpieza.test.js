@@ -53,6 +53,16 @@ function runLimpiezaTests() {
   assert.ok(!/IGNORE_COMUN\s*=\s*\[[^\]]*MiseDevTools/.test(envSrc), "…pero sí lo sube a DEV");
   assert.ok(/COPIAS_TAL_CUAL[^;]*MiseDevTools\.js/.test(leer("scripts/build-tienda.js")), "build-tienda copia DevTools a pda/ y pdm/");
   console.log("  ✓ MiseDevTools.js: se sube a DEV y queda excluido de PROD");
+
+  // Diálogos HTML: todo nombre/categoría/unidad insertado como HTML pasa por esc() (en innerText no hace falta)
+  ["bdg/PickingDialog.html", "bdg/TraspasoDialog.html", "tienda/TraspasoTiendaDialog.html", "bdg/EstadoSistema.html"].forEach(f => {
+    const html = leer(f);
+    assert.ok(/function esc\(/.test(html), `${f}: define esc()`);
+    const crudos = html.split("\n").filter(l => !/innerText|textContent|title=|onchange=|oninput=/.test(l))
+      .filter(l => /\$\{(?!esc\()[\w.]*\.(name|cat|pres|unit|unitTienda|producto|detalle)\}/.test(l));
+    assert.deepStrictEqual(crudos, [], `${f}: datos insertados sin esc()`);
+  });
+  console.log("  ✓ Diálogos HTML: nombres, categorías y unidades escapados (un nombre con comillas o < no rompe la lista)");
 }
 
 module.exports = { runLimpiezaTests };

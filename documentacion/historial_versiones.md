@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6m Altair (Revisión de HTML y modales) — 2026-09-29 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* `esc()` en los diálogos; fuera `MiseReconciler` y `MiseIdempotencyLedger.has`; hallazgo del traspaso desde tienda (escritura cruzada) pendiente de decisión.
+
+---
+
 ## ⚡ v1.7.6l Altair (Auditoría del descuento) — 2026-09-29 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG)

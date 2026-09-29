@@ -137,6 +137,11 @@
   </div>
 
   <script>
+    // Escapa texto de datos antes de insertarlo como HTML (nombres con comillas o "<" no rompen la lista)
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
     let catalogo = [];
     let productoSeleccionado = null;
 
@@ -193,10 +198,10 @@
         item.onclick = function() { seleccionarProducto(p); };
         item.innerHTML = `
           <div>
-            <div class="item-title">${p.name}</div>
-            <div class="item-cat">${p.cat}</div>
+            <div class="item-title">${esc(p.name)}</div>
+            <div class="item-cat">${esc(p.cat)}</div>
           </div>
-          <span style="font-size:10px; font-weight:700; color:var(--dark); background:#FFF; border:1px solid var(--border); padding:2px 6px; border-radius:4px;">${p.unitTienda}</span>
+          <span style="font-size:10px; font-weight:700; color:var(--dark); background:#FFF; border:1px solid var(--border); padding:2px 6px; border-radius:4px;">${esc(p.unitTienda)}</span>
         `;
         list.appendChild(item);
       });

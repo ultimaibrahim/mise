@@ -3,9 +3,9 @@
  * 🚀 MISE KARDEX ENGINE — MOTOR INDEPENDIENTE DE AUDITORÍA, SYNC Y MANTENIMIENTO
  * ════════════════════════════════════════════════════════════════════════════
  * Módulo especializado de background para Bodega General:
- * 1. MiseSmartSync: Descuento idempotente de surtido (anti-doble deducción).
- * 2. MiseReconciler: Reconciliador determinista de filas huérfanas con Cuarentena.
- * 3. MiseMaintenance: Motor autónomo de Domingos 11:00 PM (Purga, SLD, Avance de Semana).
+ * 1. MiseIdempotencyLedger + MiseSmartSync: descuento nocturno idempotente y reconciliación de días pasados.
+ * 2. MiseMatchingEngine: coincidencia de nombres (alias) para no perder filas al reordenar el Kardex.
+ * 3. MiseTraspasos: registro de traspasos entre bodegas.
  */
 
 // ── 1. GESTOR DE IDEMPOTENCIA Y TRANSACCIONES PROCESADAS ─────────────────────
@@ -34,11 +34,6 @@ const MiseIdempotencyLedger = {
   /** Carga la lista una sola vez por corrida (antes se releía y decodificaba por cada renglón). */
   cargar() {
     return new Set(this._getHashes());
-  },
-
-  has(txId) {
-    const list = this._getHashes();
-    return list.includes(txId);
   },
 
   registerBatch(txIds) {
@@ -601,78 +596,6 @@ const MiseSmartSync = {
     return { dias: dias.length, totalDescontados: granTotalDescontados, totalOmitidos: granTotalOmitidos };
   },
 
-};
-
-// ── 3. RECONCILIADOR DETERMINISTA CON CUARENTENA (MISERECONCILER) ─────────────
-const MiseReconciler = {
-  SHEET_CUARENTENA: "⚠️ REVISIÓN_HUÉRFANOS",
-
-  _asegurarHojaCuarentena(ss) {
-    let qSheet = ss.getSheetByName(this.SHEET_CUARENTENA);
-    if (!qSheet) {
-      qSheet = ss.insertSheet(this.SHEET_CUARENTENA);
-      qSheet.appendRow(["FECHA_DETECCIÓN", "ORIGEN", "FILA_ORIGINAL", "TEXTO_INGRESADO", "VALORES_DETECTADOS", "ESTADO_RESOLUCIÓN", "NOTAS"]);
-      qSheet.getRange(1, 1, 1, 7).setBackground("#78281F").setFontColor("#FFFFFF").setFontWeight("bold");
-      qSheet.setFrozenRows(1);
-    }
-    return qSheet;
-  },
-
-  /**
-   * Escanea y reconcilia filas huérfanas o metidas a la fuerza en MAESTRO y KARDEX.
-   * Regla de Negocio: CERO auto-creación.
-   * Si hay ambigüedad o es desconocido -> Desvía a Cuarentena y limpia la fila.
-   */
-  auditarYReconciliar(ss) {
-    const tId = "MiseReconciler.auditarYReconciliar_" + Date.now();
-    MiseLogger.time(tId);
-
-    const maestro = ss.getSheetByName(SHEET_MAESTRO);
-    if (!maestro) return;
-
-    let huérfanosDetectados = 0;
-    let enviadosACuarentena = 0;
-    const lr = maestro.getLastRow();
-    if (lr < MAESTRO_START) return;
-
-    const count = lr - MAESTRO_START + 1;
-    const map = _getMaestroHeaderMap(maestro);
-    const cNo = map["NO"] ? map["NO"].index : 0;
-    const cCat = map["CATEGORÍA"] ? map["CATEGORÍA"].index : 1;
-    const cProd = map["PRODUCTO"] ? map["PRODUCTO"].index : 2;
-
-    const mData = maestro.getRange(MAESTRO_START, 1, count, maestro.getLastColumn()).getValues();
-    const qSheet = this._asegurarHojaCuarentena(ss);
-
-    for (let i = 0; i < count; i++) {
-      const row = mData[i];
-      const numVal = row[cNo];
-      const catVal = String(row[cCat] || "").trim();
-      const prodVal = String(row[cProd] || "").trim();
-
-      const esValido = prodVal !== "" && catVal !== "" && !isNaN(parseInt(numVal, 10));
-
-      if (!esValido && (prodVal !== "" || catVal !== "")) {
-        huérfanosDetectados++;
-        // Capturar evidencia en Cuarentena
-        qSheet.appendRow([
-          new Date(),
-          "MAESTRO",
-          MAESTRO_START + i,
-          prodVal || "[Sin Nombre]",
-          JSON.stringify(row.filter(c => c !== "")),
-          "PENDIENTE_REVISION",
-          "Fila huérfana ingresada sin Powerhouse ni Categoría válida."
-        ]);
-        enviadosACuarentena++;
-      }
-    }
-
-    const dur = MiseLogger.timeEnd(tId);
-    if (huérfanosDetectados > 0) {
-      MiseLogger.warn("MiseReconciler", `Auditoría: ${huérfanosDetectados} filas huérfanas detectadas y derivadas a ${this.SHEET_CUARENTENA}.`, dur);
-    }
-  }
 };
 
 // ── 4. MOTOR MATEMÁTICO UNIVERSAL DE MATCHING (MISE MATCHING ENGINE) ──────────
