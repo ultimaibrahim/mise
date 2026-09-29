@@ -23,6 +23,13 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.5p Altair — Mercado Vuelve a Cambiar de Semana Solo (Septiembre 2026) [PROD]
+
+* 📅 **Se destrabó el cambio de semana de Mercado**:  
+  Un guardado de historial que se interrumpió en el pasado había dejado una marca que impedía archivar las semanas de Mercado, por eso siempre había que avanzarla a mano. El sistema ahora detecta y limpia esas marcas por sí solo y la semana avanza normalmente.
+
+---
+
 ## Versión 1.7.5o Altair — El Aviso de Semana del Kardex Ahora Sí Aparece (Septiembre 2026) [PROD]
 
 * 🏷️ **Indicador de semana visible**:  

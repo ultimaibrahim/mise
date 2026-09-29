@@ -70,14 +70,40 @@ class MockRange {
     if ((fc > 0 && m.c1 <= fc && fc < m.c2) || (fr > 0 && m.r1 <= fr && fr < m.r2)) {
       throw new Error("No se pueden combinar celdas congeladas y no congeladas.");
     }
+    this._validarCombinacionesParciales();
+    // Las combinaciones completamente contenidas se absorben (igual que Google)
+    this.sheet.merges = this.sheet.merges.filter(x => !(x.r1 >= m.r1 && x.r2 <= m.r2 && x.c1 >= m.c1 && x.c2 <= m.c2));
     this.sheet.merges.push(m);
     return this;
   }
+  _validarCombinacionesParciales() {
+    const r2 = this.row + this.numRows - 1, c2 = this.col + this.numCols - 1;
+    const parcial = this.sheet.merges.some(x => {
+      const cruza = !(x.r2 < this.row || x.r1 > r2 || x.c2 < this.col || x.c1 > c2);
+      const contenida = x.r1 >= this.row && x.r2 <= r2 && x.c1 >= this.col && x.c2 <= c2;
+      return cruza && !contenida;
+    });
+    if (parcial) throw new Error("Debes seleccionar todas las celdas de un intervalo combinado para combinarlas o separarlas.");
+  }
   breakApart() {
+    this._validarCombinacionesParciales();
     const r2 = this.row + this.numRows - 1, c2 = this.col + this.numCols - 1;
     this.sheet.merges = this.sheet.merges.filter(m => m.r2 < this.row || m.r1 > r2 || m.c2 < this.col || m.c1 > c2);
     return this;
   }
+  getMergedRanges() {
+    const r2 = this.row + this.numRows - 1, c2 = this.col + this.numCols - 1;
+    return this.sheet.merges
+      .filter(m => !(m.r2 < this.row || m.r1 > r2 || m.c2 < this.col || m.c1 > c2))
+      .map(m => new MockRange(this.sheet, m.r1, m.c1, m.r2 - m.r1 + 1, m.c2 - m.c1 + 1));
+  }
+  getRow() { return this.row; }
+  getColumn() { return this.col; }
+  getNumRows() { return this.numRows; }
+  getNumColumns() { return this.numCols; }
+  getLastRow() { return this.row + this.numRows - 1; }
+  getLastColumn() { return this.col + this.numCols - 1; }
+  getSheet() { return this.sheet; }
   setBackground() { return this; }
   setBackgrounds() { return this; }
   setFontColor() { return this; }
@@ -190,6 +216,9 @@ class MockSheet {
     return this;
   }
 
+  // Como una hoja real: nunca menos columnas/filas que su contenido o sus combinaciones
+  getMaxColumns() { return Math.max(this.getLastColumn(), ...this.merges.map(m => m.c2), 26); }
+  getMaxRows() { return Math.max(this.getLastRow(), ...this.merges.map(m => m.r2), 200); }
   setFrozenRows(n) {
     if (this.merges.some(m => m.r1 <= n && n < m.r2)) {
       throw new Error("No se pueden inmovilizar filas que solo contengan parte de una celda combinada.");
@@ -210,7 +239,10 @@ class MockSheet {
   deleteRows(row, count = 1) {}
   insertRowsAfter(row, count = 1) {}
   deleteColumns(col, count = 1) {}
-  insertColumnsAfter(col, count = 1) {}
+  insertColumnsAfter(col, count = 1) {
+    // Como Google: insertar dentro de una combinación la ensancha; las que están a la derecha se desplazan
+    this.merges.forEach(m => { if (m.c1 > col) { m.c1 += count; m.c2 += count; } else if (m.c2 > col) { m.c2 += count; } });
+  }
   clear() { this.grid = {}; return this; }
 
   protect() {

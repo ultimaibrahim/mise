@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.5p Altair (HISTORIAL sin bloques huérfanos) — 2026-09-28 [PROD]
+
+### 🏬 Bodega (BDG)
+* `_siguienteColumnaHistorial()` limpia encabezados huérfanos de archivados interrumpidos y ubica el bloque nuevo por celdas combinadas; desbloquea el avance de KARDEX_BM.
+
+---
+
 ## ⚡ v1.7.5o Altair (Badge visible) — 2026-09-28 [PROD]
 
 ### 🏬 Bodega (BDG)

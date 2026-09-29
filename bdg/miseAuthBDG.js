@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.5o Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.5p Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -1498,6 +1498,32 @@ function _avanzarSemana(key) {
   }
 }
 
+// Columna donde empieza el siguiente bloque semanal del HISTORIAL.
+// 1) Limpia bloques HUÉRFANOS: encabezado combinado (fila 2) sin datos debajo, que deja un archivado
+//    interrumpido (p. ej., onOpen simple cortado a los 30 s). Si no se limpian, el siguiente bloque cae
+//    DENTRO de esa combinación y Google rechaza combinar ("Debes seleccionar todas las celdas…"),
+//    bloqueando el avance de semana para siempre.
+// 2) Considera el fin de las celdas combinadas además de la última columna con contenido.
+function _siguienteColumnaHistorial(hSheet, numRows) {
+  const maxCols = hSheet.getMaxColumns();
+  const encabezados = hSheet.getRange(1, 4, 4, Math.max(1, maxCols - 3)).getMergedRanges()
+    .filter(m => m.getRow() <= 2 && m.getLastRow() >= 2 && m.getColumn() > 3)
+    .sort((a, b) => a.getColumn() - b.getColumn());
+  for (let i = encabezados.length - 1; i >= 0; i--) {
+    const c = encabezados[i].getColumn();
+    const ancho = Math.max(15, encabezados[i].getNumColumns());
+    const datos = numRows > 0 ? hSheet.getRange(5, c, numRows, ancho).getValues() : [];
+    const vacio = datos.every(r => r.every(v => v === "" || v === null));
+    if (!vacio) break;
+    // Huérfano: deshacer combinaciones y limpiar su zona de encabezado (filas 1–4)
+    hSheet.getRange(1, c, 4, Math.min(16, maxCols - c + 1)).breakApart().clearContent().setBackground(null);
+    MiseLogger.warn("_siguienteColumnaHistorial", `${hSheet.getName()}: bloque huérfano en columna ${c} limpiado (archivado previo interrumpido).`);
+  }
+  let finCombinado = 0;
+  hSheet.getRange(1, 1, 4, maxCols).getMergedRanges().forEach(m => { finCombinado = Math.max(finCombinado, m.getLastColumn()); });
+  return Math.max(hSheet.getLastColumn(), finCombinado, 3) + 1;
+}
+
 function _guardarHistHorizontal(key, sheet, numRows, monday, sem) {
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
   const histName = `HISTORIAL_${key}`;
@@ -1552,7 +1578,7 @@ function _guardarHistHorizontal(key, sheet, numRows, monday, sem) {
     hSheet.getRange(lastRowH + 1, 3, diff, 1).setHorizontalAlignment("center");
   }
 
-  const startCol = hSheet.getLastColumn() + 1;
+  const startCol = _siguienteColumnaHistorial(hSheet, numRows);
   hSheet.insertColumnsAfter(startCol - 1, 16);
 
   const semStr = `SEMANA ${sem} (${monday.getFullYear()})`;
@@ -2218,7 +2244,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.5o";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.5p";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "Powerhouse más rápido: Andares y Mercado se actualizan en paralelo",

@@ -86,6 +86,25 @@ function runSemanaTests() {
     console.log("  ✓ Presupuesto de onOpen: BM no queda a medias, su badge avisa y se pone al día en la siguiente corrida");
   }
 
+  // 5. HISTORIAL con bloque HUÉRFANO (archivado interrumpido): antes, "Debes seleccionar todas las celdas…"
+  //    en cada intento y la bodega nunca volvía a avanzar sola
+  {
+    const lock = { held: false, libre: true };
+    const { ctx, lunesPasado, g4, semana } = _escenario(lock);
+    const h = ctx.ss.insertSheet("HISTORIAL_BM");
+    h.getRange(5, 1, 2, 3).setValues([[1, "Fresa", "kg"], [2, "Leche", "lt"]]);
+    h.getRange(2, 4, 1, 15).merge().setValue("SEMANA 38 (2026)");        // bloque completo
+    h.getRange(5, 4, 2, 15).setValues([[1,0,0,0,0,0,0,0,0,0,0,0,0,0,5],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,3]]);
+    h.getRange(2, 19, 1, 15).merge().setValue("SEMANA 39 (2026)");       // huérfano: sin datos debajo
+    const n = ctx.sandbox._autoVerificarYAvanzarSemanaSilencioso(false);
+    assert.strictEqual(g4("KARDEX_BM"), lunesPasado.getTime() + semana, "BM avanza pese al bloque huérfano");
+    assert.strictEqual(n, 2, "Ambas bodegas avanzan");
+    const encabezadosFila2 = h.getRange(2, 1, 1, 60).getMergedRanges().map(m => m.getColumn());
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(encabezadosFila2)), [4, 19], "Bloque nuevo ocupa el lugar del huérfano, sin enciman");
+    assert.deepStrictEqual([h.getRange(5, 33).getValue(), h.getRange(6, 33).getValue()], [5, 3], "Datos del bloque nuevo escritos (SLD FIN de Fresa y Leche)");
+    console.log("  ✓ HISTORIAL con bloque huérfano: se limpia y la semana avanza (antes fallaba en cada intento)");
+  }
+
   // 4. onOpen INSTALABLE (sin tope de 30 s): pone al día AMBOS Kardex de una vez
   {
     const lock = { held: false, libre: true };
