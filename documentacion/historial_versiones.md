@@ -40,6 +40,12 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.5 Altair (Versión oficial: operación autónoma) — 2026-09-29 [VERSIÓN OFICIAL · PROD]
+Consolida `1.7.5a`–`1.7.5s`: Entradas móviles → Kardex, avance de semana indestructible en ambos Kardex, descuento solo de lo recibido (idempotente, `SIN_REGISTRO`), motor de migración de tiendas + Configurar en un clic + instalables como dueño, enlaces por nombre de producto y Powerhouse en paralelo, pruebas en VM y despliegue DEV/PROD con candado.
+
+<details>
+<summary>Detalle por iteración (1.7.5a – 1.7.5s)</summary>
+
 ## ⚡ v1.7.5s Altair (Hotfix #NAME? y log de surtido) — 2026-09-29 [PROD]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
@@ -175,6 +181,8 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 * **Hoja persistente `📥 ENTRADAS`**: captura móvil de ENT para Andares y Mercado en unidad de Kardex, selector de día (HOY por default + LUN..DOM de la semana activa) y checkbox `D2` para enviar; estado en `A3` sin `toast`/`alert`.
 * **`procesarEntradasKardex()`**: validación todo-o-nada, suma sobre la ENT del día, escritura en bloque por Kardex con `LockService`, bloqueo si HOY no cae en la semana activa, registro en `🗒 LOG`.
 * **Menú**: `⚙️ Mise ➔ 📥 Preparar hoja de Entradas (móvil)`.
+
+</details>
 
 ---
 

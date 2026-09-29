@@ -68,6 +68,20 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.5 Altair — Mise Trabaja Sola: Entradas desde el Celular, Semanas que Cambian Solas y Descuento Real (Septiembre 2026) [VERSIÓN OFICIAL]
+
+Reúne 19 mejoras probadas en la operación diaria de Bodega, Andares y Mercado.
+
+* 📥 **Entradas desde el celular**: lo que llega a Bodega se registra en una hoja pensada para el teléfono y se suma solo al Kardex del día elegido.
+* 📅 **Las semanas cambian solas**: Andares y Mercado avanzan de semana sin intervención y el aviso de semana siempre está visible.
+* 🎯 **Solo se descuenta lo que realmente se recibió**: Surtido Rápido muestra la cantidad final y colores por producto; si no se registró la recepción, no se descuenta nada.
+* 🔗 **Las tiendas se actualizan solas por la noche**: los cambios de estructura se aplican con respaldo automático, y configurar un libro nuevo es un solo botón.
+* ⚡ **Mise Powerhouse más rápido y preciso**: guardar el catálogo tarda la mitad, y mover o desactivar un producto ya nunca afecta a otro.
+* ℹ️ **"Acerca de" dice la verdad**: versión real, estado de la conexión y del último cierre nocturno.
+
+<details>
+<summary>Detalle por iteración (1.7.5a – 1.7.5s)</summary>
+
 ## Versión 1.7.5s Altair — Colores del Pedido Diario y Registro de Surtido Corregidos (Septiembre 2026) [PROD]
 
 * 🎨 **El Pedido Diario vuelve a pintarse según lo recibido**:  
@@ -235,6 +249,8 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
   Por default se registra en el día de hoy. Si una entrega se quedó sin capturar, se puede elegir otro día de la semana antes de enviar.
 * 🛡️ **Sin errores a medias**:  
   Si alguna cantidad está mal escrita, se marca en rojo y no se envía nada hasta corregirla. Las entregas múltiples del mismo día se suman, nunca se sobrescriben.
+
+</details>
 
 ---
 

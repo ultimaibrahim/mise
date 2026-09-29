@@ -17,10 +17,10 @@
 - [ ] *Acerca de* de Bodega: **4 activadores** (si no, `🚀 Configurar este libro`).
 
 ### Consolidación
-- [ ] Fusionar las entradas `1.7.5a … 1.7.5r` en una sola **v1.7.5 oficial** en `CHANGELOG.md`, `CHANGELOG_PUBLIC.md` e `historial_versiones.md`.
-- [ ] Badge del README y `package.json` → `1.7.5`; `MISE_VERSION` y cabeceras → `1.7.5` (la prueba `version.test.js` lo exige).
+- [x] *(29/sep)* Fusionar las entradas `1.7.5a … 1.7.5s` en una sola **v1.7.5 oficial** en `CHANGELOG.md`, `CHANGELOG_PUBLIC.md` e `historial_versiones.md`.
+- [x] Badge del README y `package.json` → `1.7.5`; `MISE_VERSION` y cabeceras → `1.7.5` (la prueba `version.test.js` lo exige).
 - [ ] **🔐 Contraseña `LCP-ADMIN-2026`**: está en el código y en la documentación de un repo **público**. Moverla a la propiedad `ADMIN_PASSWORD` (sin respaldo en código), cambiarla y eliminarla del texto.
-- [ ] **Git**: fusionar `feat/v1.10.0-altair` → `master` (nombre heredado de la numeración vieja) y abrir `feat/v1.7.6-altair`.
+- [x] **Git**: fusionar `feat/v1.10.0-altair` → `master` *(29/sep, tag `v1.7.5`)* (nombre heredado de la numeración vieja) y abrir `feat/v1.7.6-altair`.
 - [ ] **Trabajo de Atlas sin commit** (`mise-web/`, `database/`, archivos de agentes en la raíz y `tests/`): decidir entre commit aparte en su propia rama o archivarlo. No mezclar con Altair.
 
 ---
