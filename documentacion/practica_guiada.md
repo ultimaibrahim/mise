@@ -1,4 +1,5 @@
 # 🎓 Práctica guiada de Mise (DEV)
+> Versión para el celular: https://claude.ai/artifact/SBECK3ZWBntMypAa9WpKra (privada).
 **Para qué**: comprobar dos cosas a la vez — que entiendes cómo fluye la información y que el sistema hace lo que debe.
 Cada ejercicio dice **qué hacer**, **dónde mirar** y **qué debe pasar**. Si lo que ves coincide, ✅. Si no, anota el número del ejercicio y lo que viste.
 
@@ -10,11 +11,11 @@ Cada ejercicio dice **qué hacer**, **dónde mirar** y **qué debe pasar**. Si l
 ## 1 · Del pedido al inventario (el flujo principal)
 1. **Andares DEV → 📋 Pedido Diario**: en la fresa, CANT. A PEDIR = **24**.
 2. Marca la casilla grande **🚚 Surtido Rápido** (fila 2).
-3. **🚚 Surtido** (pestaña amarilla): en la columna congelada ves `Fresa…` y debajo **"pidió 24"**. Marca **✅**.
+3. **🚚 Surtido** (pestaña amarilla): en la columna congelada ves la fresa y debajo **[PEDIDO - 24]**. Marca **✅**.
 4. **Bodega DEV → ⚙️ Mise → ▸ Más opciones → 🚚 Descuentos → Descontar pedidos de hoy**.
 
 **Debe pasar**
-- En el Surtido, FINAL de la fresa = **24** (aunque RECIBIDA quedó vacía: ✅ = llegó lo pedido).
+- En el Surtido, FINAL de la fresa = **24** (aunque RECIBIDA quedó vacía: ✅ = llegó lo pedido), y arriba dice **📋 1 de 1 registrados**.
 - En **📦 Inventario Andares**, columna **SAL de hoy** (la resaltada) de la fresa: **+10.896** (24 × 0.454 kg).
 - El Pedido Diario de Andares queda vacío y el Surtido se borra (el cierre "vacía" la tienda).
 - En **🗒 LOG_SURTIDO** de Andares: una fila de hoy con la fresa, 24 pedidos, 24 recibidos, `COMPLETO`.

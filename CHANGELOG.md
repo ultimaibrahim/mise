@@ -33,6 +33,10 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.6z Altair — Factores: Solo a Propósito (Octubre 2026) [EN PRUEBAS · DEV]
+* **Riesgo de lanzamiento corregido**: 🚀 Configurar llenaba en masa la unidad de pedido y el factor de todo producto con presentación con contenido. En PROD (presentaciones tipo `MAN 453 G`, `BOL 1 kg`) eso habría cambiado de golpe ~120 productos: las tiendas pedirían y verían su saldo en bolsa/domo, el personal seguiría escribiendo en kg ("2" = 2 bolsas) y los MÍN/MÁX de tienda (en la unidad vieja) harían comparar mal al semáforo. Ahora Configurar **no** llena factores (10 pasos); se llenan al escribir una presentación (un producto) o desde el menú, que **pide confirmación** y explica el efecto.
+* **Testing**: Configurar sin paso de factores; monitor con 10 pasos.
+
 ### Version 1.7.6y Altair — Surtido: Avance en Vivo e Indicaciones Completas (Octubre 2026) [EN PRUEBAS · DEV]
 * **Fila 2 del Surtido** (sugerencia de Ibrahim): las indicaciones pasan a **C2:H2** (C:D ocultas → se leen completas en E:H) y la celda congelada **B2 muestra el avance en vivo**: `📋 5 de 7 registrados` (productos con FINAL de los pedidos). Combinaciones siguen partidas en la frontera congelada A:B | C:H.
 * **Testing**: B2 = fórmula de avance; indicaciones en C2.

@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.6y Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.6z Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -1999,7 +1999,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.6y";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6z";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "🔄 Traspasos en la unidad de pedido (domo, caja…): Mise convierte a la unidad de bodega",
@@ -3398,6 +3398,11 @@ function sugerirFactoresDesdePresentacion() {
   const maestro = _hoja(SpreadsheetApp.getActiveSpreadsheet(), SHEET_MAESTRO);
   const ui = SpreadsheetApp.getUi();
   if (!maestro) return;
+  const ok = ui.alert("⚖️ Llenar factores desde la presentación",
+    "Se llenará la unidad de pedido y el factor de TODOS los productos que los tengan vacíos y cuya presentación traiga contenido (ej. \"BOL 1 kg\").\n\n" +
+    "Desde ese momento las tiendas pedirán y verán su saldo en esa unidad (bolsa, domo, caja…) y Bodega descontará pedido × factor. " +
+    "Avisa al personal y revisa los MÍN/MÁX de tienda (van en la unidad de pedido).\n\n¿Continuar?", ui.ButtonSet.YES_NO);
+  if (ok !== ui.Button.YES) return;
   const r = _aplicarFactoresSugeridos(maestro);
   ui.alert("⚖️ Factores desde la presentación",
     (r.aplicados.length ? `Se llenaron ${r.aplicados.length}:\n• ${r.aplicados.slice(0, 15).join("\n• ")}${r.aplicados.length > 15 ? "\n…" : ""}` : "No había factores por llenar.") +
@@ -5672,11 +5677,8 @@ function _configurarBDGCore(rep) {
   paso("Nombres de pestañas", () => { const r = _renombrarHojasBDG(); return r.length ? `${r.length} renombradas` : "al día"; });
   paso("Activadores", () => { const r = _reiniciarActivadoresBDG(); return `${r.borrados.length} viejos borrados, ${r.creados.length} creados`; });
   paso("📋 Catálogo amigable", () => { restaurarValidacionesMaestro(); protegerMaestroSeguro(); return "etiquetas, validaciones y solo ACTIVO + MÍN/MÁX editables"; });
-  paso("⚖️ Factores desde la presentación", () => {
-    const m = _hoja(SpreadsheetApp.getActiveSpreadsheet(), SHEET_MAESTRO);
-    const r = m ? _aplicarFactoresSugeridos(m) : { aplicados: [], revisar: [] };
-    return `${r.aplicados.length} llenados${r.revisar.length ? `, ${r.revisar.length} por revisar (ver 🗒 Registro)` : ""}`;
-  });
+  // (1.7.6z) Configurar YA NO llena factores en masa: cambiar la unidad de pedido de muchos productos a la vez cambia lo
+  // que ven las tiendas y cómo se descuenta. Se hace a propósito: al escribir una presentación o desde el menú.
   paso("Hoja 📥 Registrar entradas", () => { _prepararHojaEntradas(true); return "lista"; });
   paso("Vistas móviles", () => { _buildVista("BA"); _buildVista("BM"); return "BA y BM reconstruidas"; });
   paso("Tiendas actualizadas", () => { sincronizarRemotamenteTiendasPush(); return "catálogo, picking y activos enviados"; });

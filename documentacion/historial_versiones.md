@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6z Altair (Factores solo a propósito) — 2026-10-01 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG)
+* Configurar ya no llena factores en masa; el menú pide confirmación.
+
+---
+
 ## ⚡ v1.7.6y Altair (Avance del Surtido) — 2026-10-01 [EN PRUEBAS · DEV]
 
 ### 📱 Tiendas (PDA / PDM)

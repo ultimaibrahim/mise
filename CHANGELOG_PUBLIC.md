@@ -23,6 +23,12 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6z Altair — Cambios de Unidad Solo Cuando Tú Decidas (Octubre 2026) [EN PRUEBAS]
+
+* ⚖️ Las equivalencias de unidad (bolsa, domo, caja…) ya no se activan solas al configurar: se activan producto por producto o desde el menú, con un aviso previo, para preparar al personal.
+
+---
+
 ## Versión 1.7.6y Altair — Cuánto Falta por Recibir (Octubre 2026) [EN PRUEBAS]
 
 * 🚚 Arriba del Surtido se ve en todo momento cuántos productos ya se registraron (por ejemplo "5 de 7 registrados"), y las instrucciones se leen completas.

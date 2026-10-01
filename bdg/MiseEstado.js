@@ -297,7 +297,7 @@ function abrirPaginaEstado() {
 // Un diálogo SIN bloqueo (ProgresoDialog.html) lanza el proceso con google.script.run y, en paralelo, consulta su avance
 // cada ~0.7 s. El proceso reporta cada paso en CacheService (10 min). Solo se ejecutan procesos de esta lista.
 const PROCESOS_MONITOREADOS = {
-  configurar: { titulo: "🚀 Configurar este libro", pasos: 11, fn: (rep) => _configurarBDGCore(rep) }
+  configurar: { titulo: "🚀 Configurar este libro", pasos: 10, fn: (rep) => _configurarBDGCore(rep) }
 };
 
 function _reporteProgreso(runId) {
