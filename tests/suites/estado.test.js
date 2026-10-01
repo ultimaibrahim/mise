@@ -26,7 +26,7 @@ function runEstadoTests() {
   };
 
   assert.strictEqual(tienda.sandbox._latidoTienda("apertura"), true, "Primer latido escribe");
-  assert.ok(/^\d+\.\d+\.\d+[a-z]?$/.test(valor("VERSION")), "Versión en el latido");
+  assert.ok(/^\d+\.\d+\.\d+[a-z]{0,2}$/.test(valor("VERSION")), "Versión en el latido");
   assert.strictEqual(valor("SYNC_VIVO"), "SI", "Detecta el IMPORTRANGE vivo");
   assert.strictEqual(valor("ACTIVADORES"), HANDLERS_TIENDA.join(", "), "Lista de activadores");
   assert.strictEqual(tienda.sandbox._latidoTienda("edición"), false, "Dentro de 10 min: no vuelve a escribir");

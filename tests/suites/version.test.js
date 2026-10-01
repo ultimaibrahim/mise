@@ -11,7 +11,7 @@ function runVersionTests() {
   const versiones = {};
   [["bdg", "miseAuthBDG.js"], ["pda", "miseAuthPDA.js"], ["pdm", "miseAuthPDM.js"]].forEach(([dir, f]) => {
     const src = fs.readFileSync(path.join(root, dir, f), "utf8");
-    const cab = (src.split("\n")[1].match(/v(\d+\.\d+\.\d+[a-z]?)/) || [])[1];
+    const cab = (src.split("\n")[1].match(/v(\d+\.\d+\.\d+[a-z]{0,2})/) || [])[1];
     const cons = (src.match(/const MISE_VERSION\s*=\s*"([^"]+)"/) || [])[1];
     assert.ok(cab && cons, `${dir}: debe tener cabecera con versión y MISE_VERSION`);
     assert.strictEqual(cons, cab, `${dir}: MISE_VERSION (${cons}) ≠ cabecera (v${cab})`);

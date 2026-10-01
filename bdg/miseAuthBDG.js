@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.6z Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.6za Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -1999,7 +1999,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.6z";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6za";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "🔄 Traspasos en la unidad de pedido (domo, caja…): Mise convierte a la unidad de bodega",
@@ -3380,7 +3380,10 @@ function _aplicarFactoresSugeridos(maestro, soloFila) {
   datos.forEach((r, i) => {
     const prod = String(r[map["PRODUCTO"].index] || "").trim();
     if (!prod) return;
-    if (String(r[map["UNIDAD_TIENDA"].index]).trim() !== "" || String(r[map["FACTOR_CONVERSION"].index]).trim() !== "") return;
+    // Sin unidad de pedido, un factor vacío o de 1 no convierte nada (la columna se creaba con 1 en todos los productos y
+    // eso bloqueaba el llenado en PROD): se llena. Un factor distinto de 1 o una unidad ya escrita nunca se pisan.
+    const fActual = String(r[map["FACTOR_CONVERSION"].index]).trim();
+    if (String(r[map["UNIDAD_TIENDA"].index]).trim() !== "" || (fActual !== "" && parseFloat(fActual.replace(",", ".")) !== 1)) return;
     const s = _sugerirFactorDesdePresentacion(r[map["PRESENTACION"].index], r[map["UNIDAD"].index]);
     if (!s) return;
     if (s.revisar) { revisar.push(`${prod}: ${s.revisar}`); return; }
@@ -4534,7 +4537,7 @@ function _asegurarColumnasQuioscoEnMaestro(maestroSheet) {
     { key: "PICKING_BA", width: 90, isStock: false },
     { key: "PICKING_BM", width: 90, isStock: false },
     { key: "UNIDAD_TIENDA", width: 100, isStock: false, defaultVal: "" },
-    { key: "FACTOR_CONVERSION", width: 110, isStock: false, defaultVal: 1, numberFormat: "0.####" }
+    { key: "FACTOR_CONVERSION", width: 110, isStock: false, defaultVal: "", numberFormat: "0.####" } // vacío = sin conversión
   ];
 
   const lr = sheet.getLastRow();

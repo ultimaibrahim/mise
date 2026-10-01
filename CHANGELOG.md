@@ -33,6 +33,11 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.6za Altair — Hotfix: Factores Bloqueados por el "1" por Default (Octubre 2026) [PROD]
+* **Bug (reportado por Ibrahim en PROD tras migrar)**: "⚖️ Llenar factores desde la presentación" respondía "No había factores por llenar". Causa: `_asegurarColumnasQuioscoEnMaestro` creaba `FACTOR_CONVERSION` con **1** en todos los productos y `_aplicarFactoresSugeridos` no pisa un factor escrito. Ahora, sin unidad de pedido, un factor vacío **o de 1** se considera sin factor (no convierte nada) y se llena; una unidad escrita o un factor distinto de 1 nunca se pisan. Las columnas nuevas se crean vacías.
+* Versionado: tras la "z" se usan dos letras (`1.7.6za`); `version.test.js` lo acepta.
+* **Testing**: caso PROD (factor 1 sin unidad → se llena) y con unidad escrita (no se toca); falla con 1.7.6z.
+
 ### Version 1.7.6z Altair — Factores: Solo a Propósito (Octubre 2026) [PROD]
 * **Riesgo de lanzamiento corregido**: 🚀 Configurar llenaba en masa la unidad de pedido y el factor de todo producto con presentación con contenido. En PROD (presentaciones tipo `MAN 453 G`, `BOL 1 kg`) eso habría cambiado de golpe ~120 productos: las tiendas pedirían y verían su saldo en bolsa/domo, el personal seguiría escribiendo en kg ("2" = 2 bolsas) y los MÍN/MÁX de tienda (en la unidad vieja) harían comparar mal al semáforo. Ahora Configurar **no** llena factores (10 pasos); se llenan al escribir una presentación (un producto) o desde el menú, que **pide confirmación** y explica el efecto.
 * **Testing**: Configurar sin paso de factores; monitor con 10 pasos.

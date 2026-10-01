@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6za Altair (Hotfix factores) — 2026-10-01 [PROD]
+
+### 🏬 Bodega (BDG)
+* Factor 1 sin unidad de pedido se trata como vacío; columnas de factor nuevas se crean vacías.
+
+---
+
 ## ⚡ v1.7.6z Altair (Factores solo a propósito) — 2026-10-01 [PROD]
 
 ### 🏬 Bodega (BDG)

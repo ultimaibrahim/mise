@@ -23,6 +23,12 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6za Altair — Corrección en las Equivalencias (Octubre 2026) [PROD]
+
+* ⚖️ "Llenar factores desde la presentación" ya funciona en todos los productos (antes un "1" puesto de fábrica lo impedía).
+
+---
+
 ## Versión 1.7.6z Altair — Cambios de Unidad Solo Cuando Tú Decidas (Octubre 2026) [PROD]
 
 * ⚖️ Las equivalencias de unidad (bolsa, domo, caja…) ya no se activan solas al configurar: se activan producto por producto o desde el menú, con un aviso previo, para preparar al personal.

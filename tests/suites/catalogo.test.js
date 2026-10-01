@@ -70,16 +70,20 @@ function runCatalogoTests() {
   const h2 = ["No", "PRODUCTO", "PRESENTACION", "UNIDAD", "UNIDAD_TIENDA", "FACTOR_CONVERSION"];
   const c2 = ss.insertSheet("Cat2");
   c2.getRange(3, 1, 1, h2.length).setValues([h2]);
-  c2.getRange(4, 1, 4, h2.length).setValues([
+  c2.getRange(4, 1, 6, h2.length).setValues([
     [1, "Fresa", "Domo 454 g", "kg", "", ""],
     [2, "Guantes", "Caja 100 pz", "pz", "caja", 90],     // ya tenía factor: no se toca
     [3, "Conos", "Caja 2 kg", "pz", "", ""],               // incompatible → revisar
-    [4, "Leche", "LT", "lt", "", ""]]);                     // sin contenido → nada
+    [4, "Leche", "LT", "lt", "", ""],                      // sin contenido → nada
+    [5, "Mango", "BOL 500 g", "kg", "", 1],                // factor 1 por default (caso PROD): se llena
+    [6, "Vasos", "PAQ 50 PZA", "pza", "paq", 1]]);         // ya tiene unidad de pedido: no se toca
   const r = sandbox._aplicarFactoresSugeridos(c2);
   assert.deepStrictEqual([c2.getRange(4, 5).getValue(), c2.getRange(4, 6).getValue()], ["domo", 0.454], "Fresa llenada");
   assert.strictEqual(c2.getRange(5, 6).getValue(), 90, "Un factor ya puesto nunca se pisa");
   assert.strictEqual(c2.getRange(6, 6).getValue(), "", "Incompatible: no se llena");
-  assert.ok(r.aplicados.length === 1 && r.revisar.length === 1 && /Conos/.test(r.revisar[0]), "Resumen: 1 llenado, 1 a revisar");
+  assert.deepStrictEqual([c2.getRange(8, 5).getValue(), c2.getRange(8, 6).getValue()], ["bol", 0.5], "Factor 1 por default sin unidad de pedido: se llena (caso PROD)");
+  assert.deepStrictEqual([c2.getRange(9, 5).getValue(), c2.getRange(9, 6).getValue()], ["paq", 1], "Con unidad de pedido escrita: no se toca");
+  assert.ok(r.aplicados.length === 2 && r.revisar.length === 1 && /Conos/.test(r.revisar[0]), "Resumen: 2 llenados, 1 a revisar");
   console.log("  ✓ Factor desde la presentación: g→kg, pz, lt→ml, coma decimal; nunca pisa uno puesto; incompatibles a revisión");
 }
 
