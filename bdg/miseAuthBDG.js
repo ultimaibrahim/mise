@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.6p Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.6q Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -252,6 +252,7 @@ function onOpen() {
         .addSubMenu(forense)
         .addSubMenu(ui.createMenu("⚙️ Automatizaciones y Triggers")
           .addItem("🚚 Descontar pedidos de ayer (Manual)", "descontarSurtidoAyerManualmente")
+          .addItem("⚖️ Llenar factores desde la presentación", "sugerirFactoresDesdePresentacion")
           .addItem("🩺 Estado del sistema (Bodega y tiendas)", "mostrarEstadoSistema")
           .addItem("🌐 Abrir página de estado", "abrirPaginaEstado")
           .addItem("🩺 Diagnosticar activadores", "diagnosticarActivadores")
@@ -352,6 +353,13 @@ function _onEditBodega(e) {
     // 1.2 Manejo del Dropdown ACTIVO (SÍ / NO) en Columna F (col 6)
     const map = _getMaestroHeaderMap(sheet);
     const cAct = map["ACTIVO"] ? map["ACTIVO"].col : 6;
+    // 1.1 PRESENTACIÓN escrita (administrador): sugerir unidad de pedido + factor si están vacíos
+    if (map["PRESENTACION"] && col === map["PRESENTACION"].col && row >= MAESTRO_START) {
+      const r = _aplicarFactoresSugeridos(sheet, row);
+      if (r.aplicados.length) SpreadsheetApp.getActive().toast(r.aplicados[0], "⚖️ Factor sugerido", 6);
+      else if (r.revisar.length) SpreadsheetApp.getActive().toast(r.revisar[0], "⚖️ Revisar factor", 8);
+      return;
+    }
     if (col === cAct && row >= MAESTRO_START) {
       const val = String(e.range.getValue()).trim().toUpperCase();
       const lock = LockService.getScriptLock();
@@ -2266,9 +2274,10 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.6p";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6q";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "⚖️ Escribe la presentación como \"Domo 454 g\" y Mise llena sola la unidad de pedido y el factor",
   "🔄 Traspasos desde el celular: en 📥 Registrar entradas elige el modo (Andares → Mercado o al revés)",
   "⚖️ Las tiendas piden en su unidad (domo, caja, paquete) y Bodega descuenta en la suya (kg, pz)",
   "Pestañas con nombres claros: 📋 Catálogo, 📦 Inventario Andares/Mercado, 📥 Registrar entradas…",
@@ -3485,10 +3494,12 @@ function protegerTodasLasHojasSeguras() {
 // Híbrido: en la hoja (tableta) solo se editan ACTIVO y los MÍN/MÁX; altas, bajas, nombres y picking en ⚡ Powerhouse.
 // Fila 2 = etiquetas claras por columna (con nota de ayuda); fila 3 = nombres técnicos que usa el código (no cambian).
 const CATALOGO_EDITABLES = ["ACTIVO", "MÍN_BA", "MÁX_BA", "MÍN_Q_BA", "MÁX_Q_BA", "MÍN_BM", "MÁX_BM", "MÍN_Q_BM", "MÁX_Q_BM"];
-const CATALOGO_VISIBLES = ["CATEGORÍA", "PRODUCTO", "UNIDAD", ...CATALOGO_EDITABLES, "UNIDAD_TIENDA", "FACTOR_CONVERSION"];
+// Visibles (1.7.6q): sin CATEGORÍA (la agrupa el Powerhouse) y con PRESENTACIÓN, de donde se sugiere el factor
+const CATALOGO_VISIBLES = ["PRODUCTO", "PRESENTACION", "UNIDAD", ...CATALOGO_EDITABLES, "UNIDAD_TIENDA", "FACTOR_CONVERSION"];
 const CATALOGO_PARES = [["MÍN_BA", "MÁX_BA"], ["MÍN_Q_BA", "MÁX_Q_BA"], ["MÍN_BM", "MÁX_BM"], ["MÍN_Q_BM", "MÁX_Q_BM"]];
 const CATALOGO_ETIQUETAS = {
-  "CATEGORÍA": ["Categoría"], "PRODUCTO": ["Producto"], "UNIDAD": ["Unidad"],
+  "CATEGORÍA": ["Categoría"], "PRODUCTO": ["Producto"], "UNIDAD": ["Unidad\nde bodega"],
+  "PRESENTACION": ["Presentación 🔒\n(ej. Domo 454 g)", "Cómo viene el producto, con su contenido: Domo 454 g · Caja 100 pz · Paquete 50 pz · Galón 3.78 lt. Con este formato, Mise llena sola la unidad de pedido y el factor (si están vacíos)."],
   "ACTIVO": ["¿Activo?", "SÍ = se usa (aparece en inventario y en el pedido de las tiendas). NO = se oculta en todo."],
   "MÍN_BA": ["Andares\nbodega · mín.", "Mínimo en la bodega de Andares. Por debajo, el inventario se pinta en naranja o rojo."],
   "MÁX_BA": ["Andares\nbodega · máx.", "Máximo en la bodega de Andares. Por encima, el inventario se pinta en azul."],
@@ -3502,6 +3513,72 @@ const CATALOGO_ETIQUETAS = {
   "FACTOR_CONVERSION": ["1 de pedido =\n¿cuánto en bodega? 🔒", "Ejemplos: 1 domo de fresa = 0.454 kg → 0.454 · 1 caja de guantes = 100 pz → 100 · 1 paquete de conos = 50 pz → 50. Vacío = 1. Bodega descuenta pedido × este número. Solo lo cambia el administrador."]
 };
 const CATALOGO_COLOR = { BA: "#DCEFE3", BM: "#E3E8F5", base: "#F5EFE6" };
+
+// ── ⚖️ FACTOR SUGERIDO DESDE LA PRESENTACIÓN (1.7.6q) ──────────────────────────────────────────
+// "Domo 454 g" + unidad de bodega kg → unidad de pedido "domo", factor 0.454. Solo sugiere si la unidad de pedido y el
+// factor están VACÍOS (nunca pisa uno puesto); si las unidades no son compatibles (g contra pz), lo marca para revisión.
+const UNIDADES_BASE = {
+  g: ["masa", 1], gr: ["masa", 1], grs: ["masa", 1], gramos: ["masa", 1], kg: ["masa", 1000], kgs: ["masa", 1000], kilo: ["masa", 1000], kilos: ["masa", 1000],
+  ml: ["volumen", 1], l: ["volumen", 1000], lt: ["volumen", 1000], lts: ["volumen", 1000], litro: ["volumen", 1000], litros: ["volumen", 1000],
+  pz: ["pieza", 1], pza: ["pieza", 1], pzas: ["pieza", 1], pzs: ["pieza", 1], pieza: ["pieza", 1], piezas: ["pieza", 1], u: ["pieza", 1], unidades: ["pieza", 1]
+};
+
+function _unidadBase(u) {
+  return UNIDADES_BASE[String(u || "").trim().toLowerCase().replace(/\.$/, "")] || null;
+}
+
+// Devuelve { unidad, factor } | { revisar: "motivo" } | null (presentación sin contenido: no hay nada que sugerir)
+function _sugerirFactorDesdePresentacion(presentacion, unidadBodega) {
+  const m = String(presentacion || "").trim().match(/^([\p{L}.]+(?:\s+[\p{L}.]+)*?)\s+(\d+(?:[.,]\d+)?)\s*([\p{L}.]+)$/u);
+  if (!m) return null;
+  const cantidad = parseFloat(m[2].replace(",", "."));
+  const uPres = _unidadBase(m[3]);
+  const uBod = _unidadBase(unidadBodega);
+  if (!uPres || !uBod) return { revisar: `unidad no reconocida (${m[3]} / ${unidadBodega || "sin unidad de bodega"})` };
+  if (uPres[0] !== uBod[0]) return { revisar: `${m[3]} no se puede convertir a ${unidadBodega}` };
+  if (!(cantidad > 0)) return { revisar: "cantidad no válida" };
+  const factor = Math.round(cantidad * uPres[1] / uBod[1] * 1e6) / 1e6;
+  return { unidad: m[1].trim().toLowerCase(), factor };
+}
+
+// Recorre el Catálogo (o una fila) y llena unidad de pedido + factor donde ambos estén vacíos
+function _aplicarFactoresSugeridos(maestro, soloFila) {
+  const map = _getMaestroHeaderMap(maestro);
+  const need = ["PRODUCTO", "PRESENTACION", "UNIDAD", "UNIDAD_TIENDA", "FACTOR_CONVERSION"];
+  if (need.some(k => !map[k])) return { aplicados: [], revisar: [] };
+  const lr = maestro.getLastRow();
+  if (lr < MAESTRO_START) return { aplicados: [], revisar: [] };
+  const desde = soloFila || MAESTRO_START;
+  const n = soloFila ? 1 : lr - MAESTRO_START + 1;
+  const datos = maestro.getRange(desde, 1, n, maestro.getLastColumn()).getValues();
+  const aplicados = [], revisar = [];
+  datos.forEach((r, i) => {
+    const prod = String(r[map["PRODUCTO"].index] || "").trim();
+    if (!prod) return;
+    if (String(r[map["UNIDAD_TIENDA"].index]).trim() !== "" || String(r[map["FACTOR_CONVERSION"].index]).trim() !== "") return;
+    const s = _sugerirFactorDesdePresentacion(r[map["PRESENTACION"].index], r[map["UNIDAD"].index]);
+    if (!s) return;
+    if (s.revisar) { revisar.push(`${prod}: ${s.revisar}`); return; }
+    maestro.getRange(desde + i, map["UNIDAD_TIENDA"].col).setValue(s.unidad);
+    maestro.getRange(desde + i, map["FACTOR_CONVERSION"].col).setValue(s.factor);
+    aplicados.push(`${prod}: 1 ${s.unidad} = ${s.factor} ${r[map["UNIDAD"].index]}`);
+  });
+  if (aplicados.length || revisar.length) {
+    MiseLogger.info("_aplicarFactoresSugeridos", `Sugeridos ${aplicados.length}: ${aplicados.join(" · ")}${revisar.length ? ` | Revisar: ${revisar.join(" · ")}` : ""}`);
+  }
+  return { aplicados, revisar };
+}
+
+function sugerirFactoresDesdePresentacion() {
+  const maestro = _hoja(SpreadsheetApp.getActiveSpreadsheet(), SHEET_MAESTRO);
+  const ui = SpreadsheetApp.getUi();
+  if (!maestro) return;
+  const r = _aplicarFactoresSugeridos(maestro);
+  ui.alert("⚖️ Factores desde la presentación",
+    (r.aplicados.length ? `Se llenaron ${r.aplicados.length}:\n• ${r.aplicados.slice(0, 15).join("\n• ")}${r.aplicados.length > 15 ? "\n…" : ""}` : "No había factores por llenar.") +
+    (r.revisar.length ? `\n\nRevisar a mano (${r.revisar.length}):\n• ${r.revisar.slice(0, 10).join("\n• ")}` : "") +
+    "\n\nSolo se llenan productos con la unidad de pedido y el factor vacíos; los ya puestos no se tocan.", ui.ButtonSet.OK);
+}
 
 function _prepararCatalogoAmigable(maestro) {
   const map = _getMaestroHeaderMap(maestro);
@@ -3553,7 +3630,11 @@ function _prepararCatalogoAmigable(maestro) {
   }
   if (map["UNIDAD_TIENDA"]) maestro.setColumnWidth(map["UNIDAD_TIENDA"].col, 110);
 
-  // 3. Solo lo útil a la vista: lo técnico (No, presentación, stock, selección, picking, unidad de tienda, factor) se oculta
+  if (map["PRESENTACION"]) maestro.setColumnWidth(map["PRESENTACION"].col, 130);
+
+  // 3. Solo lo útil a la vista: lo técnico (No, categoría, stock, selección, picking) se oculta, y la fila 3
+  //    (nombres técnicos: el código los sigue leyendo) también; la fila 2 hace de encabezado
+  try { maestro.hideRows(3); } catch (e) {}
   maestro.showColumns(1, lastCol);
   const visibles = new Set(CATALOGO_VISIBLES.filter(k => map[k]).map(k => map[k].col));
   for (let c = 1; c <= lastCol; c++) if (!visibles.has(c)) maestro.hideColumns(c);
@@ -5671,6 +5752,11 @@ function configurarEsteLibroBDG() {
   paso("Nombres de pestañas", () => { const r = _renombrarHojasBDG(); return r.length ? `${r.length} renombradas` : "al día"; });
   paso("Activadores", () => { const r = _reiniciarActivadoresBDG(); return `${r.borrados.length} viejos borrados, ${r.creados.length} creados`; });
   paso("📋 Catálogo amigable", () => { restaurarValidacionesMaestro(); protegerMaestroSeguro(); return "etiquetas, validaciones y solo ACTIVO + MÍN/MÁX editables"; });
+  paso("⚖️ Factores desde la presentación", () => {
+    const m = _hoja(SpreadsheetApp.getActiveSpreadsheet(), SHEET_MAESTRO);
+    const r = m ? _aplicarFactoresSugeridos(m) : { aplicados: [], revisar: [] };
+    return `${r.aplicados.length} llenados${r.revisar.length ? `, ${r.revisar.length} por revisar (ver 🗒 Registro)` : ""}`;
+  });
   paso("Hoja 📥 Registrar entradas", () => { _prepararHojaEntradas(true); return "lista"; });
   paso("Vistas móviles", () => { _buildVista("BA"); _buildVista("BM"); return "BA y BM reconstruidas"; });
   paso("Tiendas actualizadas", () => { sincronizarRemotamenteTiendasPush(); return "catálogo, picking y activos enviados"; });

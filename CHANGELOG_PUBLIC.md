@@ -23,6 +23,13 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6q Altair — El Catálogo Calcula las Equivalencias (Octubre 2026) [EN PRUEBAS]
+
+* ⚖️ **Escribe cómo viene el producto y Mise hace la cuenta**: con la presentación "Domo 454 g", "Caja 100 pz" o "Paquete 50 pz", se llena sola la unidad en que pide la tienda y su equivalencia en bodega. Lo que ya estaba capturado no se toca.
+* 📋 El Catálogo muestra la presentación y oculta lo que no hace falta ver.
+
+---
+
 ## Versión 1.7.6p Altair — Traspasos desde el Celular y Cada Quien en Su Unidad (Octubre 2026) [EN PRUEBAS]
 
 * 🔄 **Traspasos desde el celular**: en 📥 Registrar entradas, arriba a la izquierda, se elige "Andares → Mercado" o "Mercado → Andares", se escribe cuánto y se envía. Queda registrado con folio en 🔄 Traspasos.

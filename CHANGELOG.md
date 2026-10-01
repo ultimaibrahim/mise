@@ -33,6 +33,11 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.6q Altair — Catálogo: Presentación Visible y Factor Sugerido (Octubre 2026) [EN PRUEBAS · DEV]
+* **Catálogo más limpio**: fila 3 (nombres técnicos) y CATEGORÍA ocultas (el código sigue leyendo la fila 3; la categoría la agrupa el Powerhouse); **PRESENTACIÓN visible** con etiqueta y ejemplo.
+* **Factor sugerido desde la presentación** (`_sugerirFactorDesdePresentacion`, `_aplicarFactoresSugeridos`): "Domo 454 g" con unidad de bodega kg → unidad de pedido `domo`, factor `0.454`; convierte g/kg, ml/lt y piezas (con sinónimos y coma decimal), nombres de varias palabras ("Bolsa de polvo 800 g"). **Nunca pisa** una unidad o factor ya puestos; unidades incompatibles (g contra pz) van a revisión en el `🗒 Registro`, sin inventar. Corre al escribir una presentación (onEdit, con aviso), en 🚀 Configurar y desde el menú "⚖️ Llenar factores desde la presentación".
+* **Testing**: `catalogo.test.js` — casos de conversión, no pisar, incompatibles y sin contenido; visibles/ocultas actualizadas.
+
 ### Version 1.7.6p Altair — Traspasos desde Registrar Entradas y Motor de Conversión Completo (Octubre 2026) [EN PRUEBAS · DEV]
 * **🔄 Modo traspaso en `📥 Registrar entradas`** (celular): A2 pasa a ser el selector de modo (`📥 Entrada` · `🔄 Andares → Mercado` · `🔄 Mercado → Andares`; antes era la etiqueta "Día de carga"). En traspaso se usa una sola columna **TRASPASAR** (unidad de bodega): resta en el origen (SAL) y suma en el destino (ENT) el día elegido, todo dentro del libro de Bodega, con validación de semana activa de **ambas** bodegas, existencia en ambos inventarios y todo o nada; un folio por producto en `🔄 Traspasos` (`_procesarTraspasoEntradas`). Capturar en la otra columna en modo traspaso se rechaza. A2 entra en los rangos libres del blindaje; `_numEntrada` compartido.
 * **⚖️ Motor de conversión (existía desde 1.7.4) completado**:

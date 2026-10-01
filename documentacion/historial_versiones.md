@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6q Altair (Factor sugerido desde la presentación) — 2026-10-01 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG)
+* Presentación visible; fila 3 y categoría ocultas; unidad de pedido y factor sugeridos desde "Domo 454 g" sin pisar lo capturado.
+
+---
+
 ## ⚡ v1.7.6p Altair (Traspasos en Registrar entradas y conversión completa) — 2026-10-01 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG)
