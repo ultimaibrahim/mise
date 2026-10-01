@@ -11,6 +11,15 @@
 - [ ] Subir a PROD + 🚀 Configurar en los 3 libros + contraseña en cada libro + página de estado de PROD + avisar al equipo de los nombres nuevos de pestañas.
 - [ ] Consolidar **v1.7.6 oficial** (entradas a–r plegadas, badge, `package.json`, `MISE_VERSION`), merge a `master`, tag `v1.7.6`.
 
+## Fase 0.5 — 🌐 Página de estado más útil (1.7.7a) · primera mejora tras PROD
+- [ ] **Recepción de hoy por tienda**: "Andares: 12 pedidos · 9 registrados · 3 sin registrar" (lee Pedido/Surtido dentro de la misma recolección con caché de 10 min).
+- [ ] **Movimientos de hoy**: entradas y traspasos registrados (con folio).
+- [ ] **Unidades de pedido**: cuántos productos tienen factor activo y cuáles quedaron "a revisar".
+- [ ] Publicación de la página por la implementación de prueba (`/dev`, siempre el código más reciente, solo el dueño) para no republicar en cada subida.
+
+## Fase 1.5 — ✨ Gráficas dentro de las celdas (1.7.7)
+- [ ] **`SPARKLINE`** en 📦 Inventario (y opcional en 📋 Catálogo): una barra por producto que muestra dónde está el saldo entre su mínimo y su máximo, sin leer números. Las celdas no interpretan HTML; `SPARKLINE`, texto enriquecido, `IMAGE` e `HYPERLINK` sí.
+
 ## Fase 1 — 📊 Reportes con funciones nativas de Sheets (1.7.7a–c) · prioridad alta
 Lo que gerencia entiende sin explicación, construido con lo que Sheets hace mejor.
 - [ ] **Hoja `📊 Reportes`** en Bodega: **tabla dinámica** (`Range.createPivotTable`) de consumo por producto × tienda × semana, alimentada por datos en formato fila: `🗒 LOG_SURTIDO` de cada tienda (vía `_SYNC_LOG_*`) y `🔄 Traspasos`. El Kardex no sirve directo (está "a lo ancho" por día).

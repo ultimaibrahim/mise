@@ -5,9 +5,20 @@ Lo que se desarrolla vive en `plan_v1.7.6.md`. Marca `[x]` y anota fecha + resul
 > Herramienta principal: la **🌐 página de estado** (Bodega → Automatizaciones → 🌐 Abrir página de estado).
 > DEV la tiene desde 1.7.6h; PROD la tendrá cuando se suba la 1.7.6.
 
-## ⚠️ Mientras PROD siga en 1.7.5 (hasta subir la 1.7.6)
+## ✅ PROD en 1.7.6z desde el 01/oct/2026 (16:40) — los avisos de abajo eran para 1.7.5 y ya no aplican
 - **No usar** en Bodega PROD: "🔄 Reconciliar y descontar toda la semana activa" ni "🚚 Descontar pedidos de ayer (Manual)". En 1.7.5 toman el pedido **en curso** de las tiendas, lo descuentan en otro día y lo vacían (corregido en 1.7.6l).
 - "Descontar Pedidos de Hoy" sí es seguro, pero solo después de que las tiendas terminaron de recibir (vacía el pedido del día).
+
+## 🚀 Subida a PROD (01/oct/2026)
+- [x] Respaldo de los 3 libros en Drive: `[RESPALDO 1.7.5 · 01-oct-2026] Bodega / Andares / Mercado` (no editarlos; solo para restaurar).
+- [x] `npm run push:prod` + `verificar_prod.sh` → IDÉNTICO en los 3 libros (v1.7.6z).
+- [x] Página de estado de PROD publicada (Bodega PROD → 🌐 Página de estado).
+- [ ] **Bodega PROD**: recargar y ⚙️ Mise → 🚀 Configurar este libro (pestañas, Catálogo, Registrar entradas, activadores).
+- [ ] **Andares y Mercado PROD**: recargar y 🛠 Técnico → 🚀 Configurar (esquema 3 con respaldo, protección, latido).
+- [ ] 🔐 Definir la contraseña de administrador en los 3 libros PROD; 👥 Administradores si el gerente usará Powerhouse.
+- [ ] Avisar al equipo: pestañas y menús nuevos, Surtido con [PEDIDO - n], traspasos desde Registrar entradas.
+- [ ] Mañana: página de estado PROD en verde (cierre 23:00 con fases, reset 00:00 de ambas tiendas, catálogo al día).
+- [ ] Consolidar la **v1.7.6 oficial** (changelogs, etiqueta `v1.7.6`, `master`) cuando la operación lo valide.
 
 ## Esta noche · martes 29/sep
 - [ ] **DEV · cierre 23:00**: en la página de estado, "Cierres nocturnos" muestra la barra por fases (tiendas · log · kardex · vistas · push). Anotar qué fase pesa más: decide la optimización del push.

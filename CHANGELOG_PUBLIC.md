@@ -23,26 +23,26 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.7.6z Altair — Cambios de Unidad Solo Cuando Tú Decidas (Octubre 2026) [EN PRUEBAS]
+## Versión 1.7.6z Altair — Cambios de Unidad Solo Cuando Tú Decidas (Octubre 2026) [PROD]
 
 * ⚖️ Las equivalencias de unidad (bolsa, domo, caja…) ya no se activan solas al configurar: se activan producto por producto o desde el menú, con un aviso previo, para preparar al personal.
 
 ---
 
-## Versión 1.7.6y Altair — Cuánto Falta por Recibir (Octubre 2026) [EN PRUEBAS]
+## Versión 1.7.6y Altair — Cuánto Falta por Recibir (Octubre 2026) [PROD]
 
 * 🚚 Arriba del Surtido se ve en todo momento cuántos productos ya se registraron (por ejemplo "5 de 7 registrados"), y las instrucciones se leen completas.
 
 ---
 
-## Versión 1.7.6x Altair — Surtido Más Claro (Octubre 2026) [EN PRUEBAS]
+## Versión 1.7.6x Altair — Surtido Más Claro (Octubre 2026) [PROD]
 
 * 🚚 Debajo de cada producto se lee **[PEDIDO - n]** en negritas.
 * 🛠️ Corregido: al actualizar desde la versión anterior, el Surtido podía abrir sin la columna del producto. Ya no pasa y no se pierde ningún dato.
 
 ---
 
-## Versión 1.7.6w Altair — Todo a la Vista en el Celular (Octubre 2026) [EN PRUEBAS]
+## Versión 1.7.6w Altair — Todo a la Vista en el Celular (Octubre 2026) [PROD]
 
 * 🚚 **Surtido Rápido**: el nombre del producto y lo que se pidió siempre se ven, aun en pantallas chicas (los nombres largos se recortan con "…"). Las instrucciones de arriba se leen completas.
 * 🔄 **Traspasos como se pide en tienda**: se escriben en domos, cajas o paquetes y Mise los convierte a lo que cuenta la bodega.
@@ -51,7 +51,7 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.7.6v Altair — Pensado para el Celular (Octubre 2026) [EN PRUEBAS]
+## Versión 1.7.6v Altair — Pensado para el Celular (Octubre 2026) [PROD]
 
 * 🚚 **Surtido Rápido**: casillas ✅/❌ y letras más grandes, y la hoja ya no se desplaza a zonas vacías.
 * 📋 **Pedido Diario**: la casilla para abrir el Surtido Rápido es más grande.
@@ -60,27 +60,27 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.7.6u Altair — Más Fácil de Leer (Octubre 2026) [EN PRUEBAS]
+## Versión 1.7.6u Altair — Más Fácil de Leer (Octubre 2026) [PROD]
 
 * 📦 **Inventario**: la columna del día de hoy se resalta sola, los saldos negativos se pintan de rojo (avisan de un error de captura) y los ceros se ven tenues para que destaque lo importante.
 * 📋 **Pedido Diario** más cómodo en el celular: filas más altas y letra más grande en el producto y la cantidad a pedir.
 
 ---
 
-## Versión 1.7.6t Altair — Menú Más Simple (Octubre 2026) [EN PRUEBAS]
+## Versión 1.7.6t Altair — Menú Más Simple (Octubre 2026) [PROD]
 
 * 🧭 **El menú ⚙️ Mise ahora muestra solo lo del día a día**; lo técnico se movió a un menú aparte (🛠 Técnico) y las herramientas de prueba ya no aparecen en los libros de operación.
 
 ---
 
-## Versión 1.7.6s Altair — Inventario que se Explica Solo (Octubre 2026) [EN PRUEBAS]
+## Versión 1.7.6s Altair — Inventario que se Explica Solo (Octubre 2026) [PROD]
 
 * 📦 **Encabezado del inventario más claro**: arriba dice de qué bodega es, en qué semana está (con sus fechas) y qué significa cada columna: ENT = entró, SAL = salió, SLD = lo que queda.
 * 🧹 Fuera las filas con botones y datos que confundían.
 
 ---
 
-## Versión 1.7.6r Altair — Ver lo que Pasa Mientras Pasa (Octubre 2026) [EN PRUEBAS]
+## Versión 1.7.6r Altair — Ver lo que Pasa Mientras Pasa (Octubre 2026) [PROD]
 
 * ⏳ **Configurar muestra su avance en vivo**: una ventana lateral va marcando cada paso con ✅ o ❌ y cuánto tardó, sin bloquear la hoja.
 * ⚡ **Powerhouse más completo**: también se capturan ahí la unidad en que pide la tienda y su equivalencia en bodega.
@@ -88,14 +88,14 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.7.6q Altair — El Catálogo Calcula las Equivalencias (Octubre 2026) [EN PRUEBAS]
+## Versión 1.7.6q Altair — El Catálogo Calcula las Equivalencias (Octubre 2026) [PROD]
 
 * ⚖️ **Escribe cómo viene el producto y Mise hace la cuenta**: con la presentación "Domo 454 g", "Caja 100 pz" o "Paquete 50 pz", se llena sola la unidad en que pide la tienda y su equivalencia en bodega. Lo que ya estaba capturado no se toca.
 * 📋 El Catálogo muestra la presentación y oculta lo que no hace falta ver.
 
 ---
 
-## Versión 1.7.6p Altair — Traspasos desde el Celular y Cada Quien en Su Unidad (Octubre 2026) [EN PRUEBAS]
+## Versión 1.7.6p Altair — Traspasos desde el Celular y Cada Quien en Su Unidad (Octubre 2026) [PROD]
 
 * 🔄 **Traspasos desde el celular**: en 📥 Registrar entradas, arriba a la izquierda, se elige "Andares → Mercado" o "Mercado → Andares", se escribe cuánto y se envía. Queda registrado con folio en 🔄 Traspasos.
 * ⚖️ **Cada quien en su unidad**: las tiendas piden como les es natural (24 domos de fresa, 2 cajas de guantes, 3 paquetes de conos) y Bodega descuenta lo real (10.9 kg, 200 piezas, 150 piezas). En el Catálogo se ve la equivalencia de cada producto.
@@ -103,7 +103,7 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.7.6o Altair — Bodega Para Todos (Octubre 2026) [EN PRUEBAS]
+## Versión 1.7.6o Altair — Bodega Para Todos (Octubre 2026) [PROD]
 
 * 🏷️ **Pestañas que dicen qué hacen**: 📥 Registrar entradas · 📦 Inventario Andares · 📦 Inventario Mercado · 📋 Catálogo · 🔄 Traspasos · 🗄 Semanas pasadas · 🗒 Registro del sistema.
 * 📋 **Catálogo fácil desde la tableta**: cada columna dice qué es (por ejemplo "Andares · bodega · mín."), y solo se puede cambiar si un producto está activo y sus mínimos y máximos. Si se escribe algo que no va (letras, negativos, un máximo menor que el mínimo), la hoja lo rechaza y explica por qué.
@@ -111,20 +111,20 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.7.6n Altair — Traspasos en un Solo Lugar (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.6n Altair — Traspasos en un Solo Lugar (Septiembre 2026) [PROD]
 
 * 🔄 **Los traspasos entre Andares y Mercado se registran solo desde Bodega**: la opción de las tiendas se retiró porque no funcionaba bien con las cuentas de tienda ni en el celular.
 
 ---
 
-## Versión 1.7.6m Altair — Ventanas Más Robustas (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.6m Altair — Ventanas Más Robustas (Septiembre 2026) [PROD]
 
 * 🪟 **Productos con comillas o símbolos ya no descomponen las ventanas** de Powerhouse y Traspasos.
 * 🧹 Se retiraron piezas internas que ya no se usaban.
 
 ---
 
-## Versión 1.7.6l Altair — Reconciliar Sin Riesgo (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.6l Altair — Reconciliar Sin Riesgo (Septiembre 2026) [PROD]
 
 * 🛡️ **"Reconciliar la semana" ya no borra el pedido del día**: antes podía tomar lo que la tienda estaba capturando y vaciarlo. Ahora solo revisa los días anteriores con lo que ya quedó registrado.
 * 📅 **Nada se descuenta en la semana equivocada**: si un Kardex no ha cambiado de semana, Bodega espera en vez de anotar en la columna de otro día.
@@ -132,14 +132,14 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.7.6k Altair — Pedido Diario Más Limpio y Cambios de Catálogo Más Rápidos (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.6k Altair — Pedido Diario Más Limpio y Cambios de Catálogo Más Rápidos (Septiembre 2026) [PROD]
 
 * 🧹 **Una columna vacía menos en el Pedido Diario**: se retira sola por la noche, con respaldo automático y sin perder lo capturado.
 * ⚡ **Guardar cambios de orden o de productos activos es más ligero**: Bodega ya no reescribe el pedido de cada tienda; la tienda lo aplica sola al abrirse.
 
 ---
 
-## Versión 1.7.6j Altair — Más Seguro y Más Ligero (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.6j Altair — Más Seguro y Más Ligero (Septiembre 2026) [PROD]
 
 * 🔐 **Nueva contraseña de administrador**: la anterior deja de funcionar. La nueva la define solo el dueño de cada libro y se guarda cifrada.
 * 🛡️ **Restablecer una tienda ahora respeta el "No"**: antes, cancelar en la confirmación final no evitaba el borrado.
@@ -148,34 +148,34 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.7.6i Altair — Las Tiendas se Ponen al Día Solas con el Catálogo (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.6i Altair — Las Tiendas se Ponen al Día Solas con el Catálogo (Septiembre 2026) [PROD]
 
 * 🔔 **Cambios de catálogo que siempre llegan**: si en Bodega se cambia el orden de picking o se desactiva un producto, cada tienda lo aplica sola al abrirse o a medianoche, aunque en ese momento no hubiera conexión.
 * 🌐 La página de estado muestra si cada tienda ya tiene el catálogo al día.
 
 ---
 
-## Versión 1.7.6h Altair — Página de Estado de Mise (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.6h Altair — Página de Estado de Mise (Septiembre 2026) [PROD]
 
 * 🌐 **Todo el sistema de un vistazo**: una página privada, también desde el celular, que muestra en verde, amarillo o rojo cómo están Bodega y las tiendas, cuánto tardó cada cierre nocturno, los avisos de la semana, los productos bajo mínimo y accesos directos a cada hoja.
 
 ---
 
-## Versión 1.7.6g Altair — Bodega Sabe si las Tiendas Están al Día (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.6g Altair — Bodega Sabe si las Tiendas Están al Día (Septiembre 2026) [PROD]
 
 * 🩺 **Estado del sistema**: desde el menú de Bodega se ve en verde, amarillo o rojo si cada tienda está conectada, si corrió su reinicio de medianoche, si el cierre nocturno salió bien y si los Kardex están en la semana correcta.
 * 💓 **Sin pasos extra**: las tiendas avisan solas que están bien cada vez que se usan o en sus procesos nocturnos.
 
 ---
 
-## Versión 1.7.6f Altair — Descuento Nocturno Más Rápido y a Prueba de Repeticiones (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.6f Altair — Descuento Nocturno Más Rápido y a Prueba de Repeticiones (Septiembre 2026) [PROD]
 
 * 🛡️ **Nunca se descuenta dos veces**: si el descuento de la noche se vuelve a correr (reintento automático o botón manual), ya no resta de nuevo lo que ya había restado.
 * ⚡ **Cierre nocturno más ágil**: Bodega hace muchas menos consultas al descontar, y el registro técnico ahora muestra cuánto tarda cada paso.
 
 ---
 
-## Versión 1.7.6e Altair — Menos Cosas que Estorban (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.6e Altair — Menos Cosas que Estorban (Septiembre 2026) [PROD]
 
 * 🧹 **Se retira la marca de "Adición"**: una función antigua que ya no se usaba; desaparece también la columna "EsAdición" del registro de surtido.
 * 🚚 **Cancelar un producto del pedido lo quita del Surtido Rápido**: si se borra la cantidad a pedir, el producto ya no aparece por surtir.
@@ -184,7 +184,7 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.7.6d Altair — Bodega Más Fácil de Leer y de Usar (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.6d Altair — Bodega Más Fácil de Leer y de Usar (Septiembre 2026) [PROD]
 
 * 📊 **Kardex más limpio**:  
   Ahora solo se ven el producto, la unidad, el saldo anterior y los días de la semana. El resto de la información sigue ahí, pero ya no estorba ni confunde.
@@ -193,7 +193,7 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.7.6c Altair — Archivos Blindados y Recepción que Siempre se Registra (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.6c Altair — Archivos Blindados y Recepción que Siempre se Registra (Septiembre 2026) [PROD]
 
 * ✅ **Lo que se marca en Surtido Rápido siempre llega al Pedido Diario**:  
   Se encontró por qué, a veces, la recepción se pintaba en Surtido Rápido pero no quedaba registrada en el Pedido Diario: las cuentas de tienda no tenían permiso para escribir en esas columnas protegidas. Ahora el sistema hace esas anotaciones por su cuenta, sin importar quién marque.
@@ -204,14 +204,14 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
-## Versión 1.7.6b Altair — Andares y Mercado, Siempre Iguales por Dentro (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.6b Altair — Andares y Mercado, Siempre Iguales por Dentro (Septiembre 2026) [PROD]
 
 * 🧬 **Un solo sistema para las dos tiendas**:  
   Andares y Mercado ahora funcionan con exactamente el mismo sistema interno. Cada mejora o corrección llega a las dos al mismo tiempo y ya no pueden comportarse distinto, como llegó a pasar con el registro de surtido.
 
 ---
 
-## Versión 1.7.6a Altair — Entradas Más Seguras y Bodega Más Simple (Septiembre 2026) [EN PRUEBAS]
+## Versión 1.7.6a Altair — Entradas Más Seguras y Bodega Más Simple (Septiembre 2026) [PROD]
 
 * 📥 **Cada tienda con su propia semana en Entradas**:  
   Si una tienda tuviera la semana atrasada, la hoja de Entradas ya no registra su mercancía en la semana equivocada: avisa cuál tienda hay que poner al día antes de enviar.

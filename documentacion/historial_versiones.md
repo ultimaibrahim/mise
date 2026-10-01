@@ -5,182 +5,182 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
-## ⚡ v1.7.6z Altair (Factores solo a propósito) — 2026-10-01 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6z Altair (Factores solo a propósito) — 2026-10-01 [PROD]
 
 ### 🏬 Bodega (BDG)
 * Configurar ya no llena factores en masa; el menú pide confirmación.
 
 ---
 
-## ⚡ v1.7.6y Altair (Avance del Surtido) — 2026-10-01 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6y Altair (Avance del Surtido) — 2026-10-01 [PROD]
 
 ### 📱 Tiendas (PDA / PDM)
 * B2 congelada con "n de m registrados"; indicaciones en C2:H2.
 
 ---
 
-## ⚡ v1.7.6x Altair (Vista [PEDIDO - n] y fix de columnas ocultas) — 2026-10-01 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6x Altair (Vista [PEDIDO - n] y fix de columnas ocultas) — 2026-10-01 [PROD]
 
 ### 📱 Tiendas (PDA / PDM)
 * Surtido: se muestran todas las columnas antes de ocultar (la vista B ya no queda oculta al venir de versiones previas); vista en texto enriquecido con [PEDIDO - n] en negritas.
 
 ---
 
-## ⚡ v1.7.6w Altair (Surtido en pantallas chicas y traspasos en unidad de pedido) — 2026-10-01 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6w Altair (Surtido en pantallas chicas y traspasos en unidad de pedido) — 2026-10-01 [PROD]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
 * Vista congelada "producto + pedido" en el Surtido; traspasos con factor; pestañas con color en tiendas; práctica guiada.
 
 ---
 
-## ⚡ v1.7.6v Altair (Celular primero) — 2026-10-01 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6v Altair (Celular primero) — 2026-10-01 [PROD]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
 * Surtido táctil sin desplazamiento sobrante; casilla de Surtido más grande; hoy con colores originales y demás días atenuados; Entradas acomodada a 390 px.
 
 ---
 
-## ⚡ v1.7.6u Altair (UX de Inventario y Pedido) — 2026-10-01 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6u Altair (UX de Inventario y Pedido) — 2026-10-01 [PROD]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
 * Columna de hoy resaltada, SLD negativo en rojo y ceros atenuados; Pedido Diario con filas y letra táctiles.
 
 ---
 
-## ⚡ v1.7.6t Altair (Menús por uso) — 2026-10-01 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6t Altair (Menús por uso) — 2026-10-01 [PROD]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
 * Menús ⚙️ Mise / 🛠 Técnico / 🧪 Mise DEV; sugeridor con hojas y metros.
 
 ---
 
-## ⚡ v1.7.6s Altair (Encabezado del Inventario) — 2026-10-01 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6s Altair (Encabezado del Inventario) — 2026-10-01 [PROD]
 
 ### 🏬 Bodega (BDG)
 * Fila 2 con título, semana y leyenda; filas 3–4 ocultas; semana calculada desde G4; fuera las casillas de acciones de la fila 4.
 
 ---
 
-## ⚡ v1.7.6r Altair (Monitor de progreso y Powerhouse al día) — 2026-10-01 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6r Altair (Monitor de progreso y Powerhouse al día) — 2026-10-01 [PROD]
 
 ### 🏬 Bodega (BDG)
 * Configurar con monitor en vivo (diálogo sin bloqueo); Powerhouse con unidad de pedido y factor; administradores en las protecciones; roadmap 1.7.7.
 
 ---
 
-## ⚡ v1.7.6q Altair (Factor sugerido desde la presentación) — 2026-10-01 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6q Altair (Factor sugerido desde la presentación) — 2026-10-01 [PROD]
 
 ### 🏬 Bodega (BDG)
 * Presentación visible; fila 3 y categoría ocultas; unidad de pedido y factor sugeridos desde "Domo 454 g" sin pisar lo capturado.
 
 ---
 
-## ⚡ v1.7.6p Altair (Traspasos en Registrar entradas y conversión completa) — 2026-10-01 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6p Altair (Traspasos en Registrar entradas y conversión completa) — 2026-10-01 [PROD]
 
 ### 🏬 Bodega (BDG)
 * Modo traspaso en 📥 Registrar entradas; vista para tiendas en unidad de pedido (Kardex ÷ factor); factor solo con unidad de pedido; unidad y factor visibles (solo administrador) en el Catálogo.
 
 ---
 
-## ⚡ v1.7.6o Altair (Bodega para todos) — 2026-10-01 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6o Altair (Bodega para todos) — 2026-10-01 [PROD]
 
 ### 🏬 Bodega (BDG)
 * Pestañas por tarea (compatibles con los nombres anteriores); Catálogo híbrido con etiquetas, validaciones que rechazan y solo ACTIVO + MÍN/MÁX editables; fuera los botones por lote.
 
 ---
 
-## ⚡ v1.7.6n Altair (Traspasos solo desde Bodega) — 2026-09-29 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6n Altair (Traspasos solo desde Bodega) — 2026-09-29 [PROD]
 
 ### 📱 Tiendas (PDA / PDM)
 * Retirado el diálogo de traspaso de la tienda y sus funciones (escritura cruzada en el Kardex de Bodega).
 
 ---
 
-## ⚡ v1.7.6m Altair (Revisión de HTML y modales) — 2026-09-29 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6m Altair (Revisión de HTML y modales) — 2026-09-29 [PROD]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
 * `esc()` en los diálogos; fuera `MiseReconciler` y `MiseIdempotencyLedger.has`; hallazgo del traspaso desde tienda (escritura cruzada) pendiente de decisión.
 
 ---
 
-## ⚡ v1.7.6l Altair (Auditoría del descuento) — 2026-09-29 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6l Altair (Auditoría del descuento) — 2026-09-29 [PROD]
 
 ### 🏬 Bodega (BDG)
 * Reconciliación semanal no destructiva (días pasados, solo registros, por bodega); guarda de semana en el descuento; "descontar ayer" sin tocar el pedido en curso.
 
 ---
 
-## ⚡ v1.7.6k Altair (Esquema 3 y push remoto condicional) — 2026-09-29 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6k Altair (Esquema 3 y push remoto condicional) — 2026-09-29 [PROD]
 
 ### 📱 Tiendas (PDA / PDM) & 🏬 Bodega (BDG)
 * Migración nocturna quita la J reservada (MÍN|MÁX → J, auxiliares → K:N); estructura detectada por encabezado en tienda y en el escritor remoto de Bodega; el push solo reordena a distancia si cambiaron posiciones.
 
 ---
 
-## ⚡ v1.7.6j Altair (Fase 2: limpieza y contraseña rotada) — 2026-09-29 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6j Altair (Fase 2: limpieza y contraseña rotada) — 2026-09-29 [PROD]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
 * Contraseña de administrador solo como huella cifrada definida por el dueño; restablecimiento de tienda respeta el "No"; herramientas de desarrollo en `MiseDevTools.js` (solo DEV); ~15 funciones muertas fuera; logs unificados en `MiseLogger`; "descontar de ayer" corregido.
 
 ---
 
-## ⚡ v1.7.6i Altair (Suscripción al catálogo por huella) — 2026-09-29 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6i Altair (Suscripción al catálogo por huella) — 2026-09-29 [PROD]
 
 ### 📱 Tiendas (PDA / PDM) & 🏬 Bodega (BDG)
 * Huella del catálogo calculada desde `_SYNC` (tienda) y `VISTA_MOVIL` (Bodega); la tienda se reordena sola al abrir y a las 00:00 si cambió; componente de catálogo en la página de estado.
 
 ---
 
-## ⚡ v1.7.6h Altair (Página de estado) — 2026-09-29 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6h Altair (Página de estado) — 2026-09-29 [PROD]
 
 ### 🏬 Bodega (BDG)
 * Webapp `doGet` (solo el dueño) con semáforo, cierres por fase, incidentes, bajo mínimo, próximas ejecuciones, minutos del día y accesos directos (lo que era 🏠 INICIO).
 
 ---
 
-## ⚡ v1.7.6g Altair (Latido y resumen de salud) — 2026-09-29 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6g Altair (Latido y resumen de salud) — 2026-09-29 [PROD]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
 * Latido por eventos en `_ESTADO` de cada tienda; `bdg/MiseEstado.js` con `obtenerEstadoSistema()` (semáforo, cierres, Kardex, bajo mínimo, incidentes) y `🩺 Estado del sistema` en el menú.
 
 ---
 
-## ⚡ v1.7.6f Altair (Descuento nocturno idempotente y en bloque) — 2026-09-29 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6f Altair (Descuento nocturno idempotente y en bloque) — 2026-09-29 [PROD]
 
 ### 🏬 Bodega (BDG)
 * Corrige doble descuento al re-ejecutar una fecha (respaldo por `🗒 LOG_SURTIDO`); ledger en memoria, Kardex sin lecturas intercaladas, log por cola (400) y tiempos por fase en el `🗒 LOG`.
 
 ---
 
-## ⚡ v1.7.6e Altair (Hotfix integrado, adiós ADICIÓN e INICIO) — 2026-09-29 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6e Altair (Hotfix integrado, adiós ADICIÓN e INICIO) — 2026-09-29 [PROD]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
 * Integra 1.7.5s; retira ADICIÓN (columna J reservada vacía, log de 7 columnas); cancelar un producto lo quita de Surtido; se retira 🏠 INICIO.
 
 ---
 
-## ⚡ v1.7.6d Altair (Kardex simplificado y 🏠 INICIO) — 2026-09-28 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6d Altair (Kardex simplificado y 🏠 INICIO) — 2026-09-28 [PROD]
 
 ### 🏬 Bodega (BDG)
 * Kardex con solo PRODUCTO, UNIDAD, SALDO ANT y días visibles; portada `🏠 INICIO` con enlaces, acciones por casillas y estado del sistema; pestañas ordenadas por uso.
 
 ---
 
-## ⚡ v1.7.6c Altair (Blindaje por capas) — 2026-09-28 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6c Altair (Blindaje por capas) — 2026-09-28 [PROD]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
 * onEdit/onOpen instalables como el dueño (los simples se abstienen); hojas técnicas y Entradas blindadas; KARDEX sin desbloqueo de F:G y con G4 protegida; `🔐 Auditoría de permisos`.
 
 ---
 
-## ⚡ v1.7.6b Altair (Fase 2: fuente única de tiendas) — 2026-09-28 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6b Altair (Fase 2: fuente única de tiendas) — 2026-09-28 [PROD]
 
 ### 📱 Tiendas (PDA / PDM)
 * `tienda/miseTienda.js` como fuente única; `scripts/build-tienda.js` genera `pda/` y `pdm/`; `_filaPedido()` como constructor único de filas; instalador `instalarActivadoresTienda`.
 
 ---
 
-## ⚡ v1.7.6a Altair (Fase 1: Entradas por bodega, adiós Registro Rápido) — 2026-09-28 [EN PRUEBAS · DEV]
+## ⚡ v1.7.6a Altair (Fase 1: Entradas por bodega, adiós Registro Rápido) — 2026-09-28 [PROD]
 
 ### 🏬 Bodega (BDG)
 * `📥 ENTRADAS` valida la semana activa por bodega; se retira el Registro Rápido (PC) y su diálogo.
