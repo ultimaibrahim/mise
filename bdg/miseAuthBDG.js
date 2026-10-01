@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.6o Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.6p Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -408,6 +408,7 @@ function _onEditBodega(e) {
 
   // 1.7 Hoja de Entradas móvil (Checkbox Enviar en D2)
   if (name === SHEET_ENTRADAS) {
+    if (row === 2 && col === 1) { _aplicarModoEntradas(sheet, true); return; }
     if (row === 2 && col === 4 && e.range.getValue() === true) {
       e.range.setValue(false); // Reset inmediato preventivo contra dobles ejecuciones
       procesarEntradasKardex();
@@ -1151,6 +1152,12 @@ function _buildVista(key) {
   const lMaxQ = cMaxQ !== -1 ? map[key === "BA" ? "MÁX_Q_BA" : "MÁX_Q_BM"].letter : (map[key === "BA" ? "MÁX_BA" : "MÁX_BM"] ? map[key === "BA" ? "MÁX_BA" : "MÁX_BM"].letter : "H");
   const cPicKey = `PICKING_${key}`;
   const lPic = map[cPicKey] ? map[cPicKey].letter : (map["PICKING"] ? map["PICKING"].letter : null);
+  // Conversión: la tienda ve saldo/ENT/SAL en SU unidad de pedido (Kardex ÷ factor). Solo si el producto tiene
+  // UNIDAD_TIENDA y FACTOR > 0; si no, 1 (misma unidad). Misma regla que el descuento (MiseSmartSync).
+  const lUT = map["UNIDAD_TIENDA"] ? map["UNIDAD_TIENDA"].letter : null;
+  const lFact = map["FACTOR_CONVERSION"] ? map["FACTOR_CONVERSION"].letter : null;
+  const _divisor = (mr) => (lUT && lFact)
+    ? `IF(AND(LEN(${refMaestro}!${lUT}${mr})>0, N(${refMaestro}!${lFact}${mr})>0), ${refMaestro}!${lFact}${mr}, 1)` : "1";
   const refMaestro = _refHoja(SHEET_MAESTRO);
   const lAct = map["ACTIVO"] ? map["ACTIVO"].letter : "F";
   // Definición de columnas de Entradas y Salidas por día (LUN a DOM en Kardex)
@@ -1178,11 +1185,12 @@ function _buildVista(key) {
     }
 
     // Fórmulas
-    const fSaldo = `=IFERROR(${ref}!AD${kr}*1,0)`;
+    const div = _divisor(mr);
+    const fSaldo = div === "1" ? `=IFERROR(${ref}!AD${kr}*1,0)` : `=IFERROR(ROUND(${ref}!AD${kr}/${div}, 2),0)`;
     const entRefs = entCols.map(c => ref + '!' + c + kr).join(',');
-    const fEnt = `=IFERROR(CHOOSE(WEEKDAY(TODAY(),2),${entRefs}),0)`;
+    const fEnt = div === "1" ? `=IFERROR(CHOOSE(WEEKDAY(TODAY(),2),${entRefs}),0)` : `=IFERROR(ROUND(CHOOSE(WEEKDAY(TODAY(),2),${entRefs})/${div}, 2),0)`;
     const salRefs = salCols.map(c => ref + '!' + c + kr).join(',');
-    const fSal = `=IFERROR(CHOOSE(WEEKDAY(TODAY(),2),${salRefs}),0)`;
+    const fSal = div === "1" ? `=IFERROR(CHOOSE(WEEKDAY(TODAY(),2),${salRefs}),0)` : `=IFERROR(ROUND(CHOOSE(WEEKDAY(TODAY(),2),${salRefs})/${div}, 2),0)`;
     const fAct = `=${refMaestro}!${lAct}${mr}`;
     const fMinQ = `=${refMaestro}!${lMinQ}${mr}`;
     const fMaxQ = `=${refMaestro}!${lMaxQ}${mr}`;
@@ -2258,9 +2266,11 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.6o";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6p";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "🔄 Traspasos desde el celular: en 📥 Registrar entradas elige el modo (Andares → Mercado o al revés)",
+  "⚖️ Las tiendas piden en su unidad (domo, caja, paquete) y Bodega descuenta en la suya (kg, pz)",
   "Pestañas con nombres claros: 📋 Catálogo, 📦 Inventario Andares/Mercado, 📥 Registrar entradas…",
   "📋 Catálogo: solo se puede cambiar ACTIVO y los MÍN/MÁX, con etiquetas y avisos claros (también desde tableta)",
   "Reconciliar la semana ya no toca el pedido en curso de las tiendas",
@@ -3440,7 +3450,7 @@ function _blindarHojasTecnicasBDG() {
   const ent = _hoja(ss, SHEET_ENTRADAS);
   if (ent) {
     const filas = Math.max(ent.getMaxRows() - ENTRADAS_START + 1, 1);
-    _blindarHoja(ent, "Blindaje — 📥 ENTRADAS", [ent.getRange(ENTRADAS_START, 3, filas, 2), ent.getRange("B2"), ent.getRange("D2")]);
+    _blindarHoja(ent, "Blindaje — 📥 ENTRADAS", [ent.getRange(ENTRADAS_START, 3, filas, 2), ent.getRange("A2"), ent.getRange("B2"), ent.getRange("D2")]);
   }
 }
 
@@ -3475,7 +3485,7 @@ function protegerTodasLasHojasSeguras() {
 // Híbrido: en la hoja (tableta) solo se editan ACTIVO y los MÍN/MÁX; altas, bajas, nombres y picking en ⚡ Powerhouse.
 // Fila 2 = etiquetas claras por columna (con nota de ayuda); fila 3 = nombres técnicos que usa el código (no cambian).
 const CATALOGO_EDITABLES = ["ACTIVO", "MÍN_BA", "MÁX_BA", "MÍN_Q_BA", "MÁX_Q_BA", "MÍN_BM", "MÁX_BM", "MÍN_Q_BM", "MÁX_Q_BM"];
-const CATALOGO_VISIBLES = ["CATEGORÍA", "PRODUCTO", "UNIDAD", ...CATALOGO_EDITABLES];
+const CATALOGO_VISIBLES = ["CATEGORÍA", "PRODUCTO", "UNIDAD", ...CATALOGO_EDITABLES, "UNIDAD_TIENDA", "FACTOR_CONVERSION"];
 const CATALOGO_PARES = [["MÍN_BA", "MÁX_BA"], ["MÍN_Q_BA", "MÁX_Q_BA"], ["MÍN_BM", "MÁX_BM"], ["MÍN_Q_BM", "MÁX_Q_BM"]];
 const CATALOGO_ETIQUETAS = {
   "CATEGORÍA": ["Categoría"], "PRODUCTO": ["Producto"], "UNIDAD": ["Unidad"],
@@ -3487,7 +3497,9 @@ const CATALOGO_ETIQUETAS = {
   "MÍN_BM": ["Mercado\nbodega · mín.", "Mínimo en la bodega de Mercado. Por debajo, el inventario se pinta en naranja o rojo."],
   "MÁX_BM": ["Mercado\nbodega · máx.", "Máximo en la bodega de Mercado. Por encima, el inventario se pinta en azul."],
   "MÍN_Q_BM": ["Mercado\ntienda · mín.", "Mínimo que ve la tienda Mercado en su Pedido Diario."],
-  "MÁX_Q_BM": ["Mercado\ntienda · máx.", "Máximo que ve la tienda Mercado en su Pedido Diario."]
+  "MÁX_Q_BM": ["Mercado\ntienda · máx.", "Máximo que ve la tienda Mercado en su Pedido Diario."],
+  "UNIDAD_TIENDA": ["Unidad de pedido\n(tienda) 🔒", "Cómo pide la tienda: domo, caja, paquete… Vacío = la tienda pide en la misma unidad que bodega. Solo lo cambia el administrador."],
+  "FACTOR_CONVERSION": ["1 de pedido =\n¿cuánto en bodega? 🔒", "Ejemplos: 1 domo de fresa = 0.454 kg → 0.454 · 1 caja de guantes = 100 pz → 100 · 1 paquete de conos = 50 pz → 50. Vacío = 1. Bodega descuenta pedido × este número. Solo lo cambia el administrador."]
 };
 const CATALOGO_COLOR = { BA: "#DCEFE3", BM: "#E3E8F5", base: "#F5EFE6" };
 
@@ -3531,6 +3543,15 @@ function _prepararCatalogoAmigable(maestro) {
       .requireFormulaSatisfied(`=AND(ISNUMBER(${lMax}${r}), ${lMax}${r}>=0, OR(${lMin}${r}="", ${lMax}${r}>=${lMin}${r}))`)
       .setAllowInvalid(false).setHelpText("Escribe un número (0 o más) que no sea menor que el mínimo.").build());
   });
+
+  if (map["FACTOR_CONVERSION"]) {
+    const lF = map["FACTOR_CONVERSION"].letter;
+    maestro.getRange(MAESTRO_START, map["FACTOR_CONVERSION"].col, n, 1).setDataValidation(SpreadsheetApp.newDataValidation()
+      .requireFormulaSatisfied(`=AND(ISNUMBER(${lF}${MAESTRO_START}), ${lF}${MAESTRO_START}>0)`)
+      .setAllowInvalid(false).setHelpText("Número mayor que 0 (ej. 0.454 o 100). Vacío = 1.").build());
+    maestro.setColumnWidth(map["FACTOR_CONVERSION"].col, 110);
+  }
+  if (map["UNIDAD_TIENDA"]) maestro.setColumnWidth(map["UNIDAD_TIENDA"].col, 110);
 
   // 3. Solo lo útil a la vista: lo técnico (No, presentación, stock, selección, picking, unidad de tienda, factor) se oculta
   maestro.showColumns(1, lastCol);
@@ -4934,6 +4955,45 @@ function diagnosticarActivadores() {
 const SHEET_ENTRADAS   = "📥 Registrar entradas"; // nombre anterior en NOMBRES_ANTERIORES
 const ENTRADAS_START   = 5;      // primera fila de productos
 const ENTRADAS_HOY     = "HOY (automático)";
+// Modo de la hoja (A2, 1.7.6p): entradas a cada bodega o traspaso entre bodegas (en la unidad del Kardex)
+const ENTRADAS_MODOS   = ["📥 Entrada", "🔄 Andares → Mercado", "🔄 Mercado → Andares"];
+const ENTRADAS_TRASPASO = { "🔄 Andares → Mercado": { origen: "BA", destino: "BM" }, "🔄 Mercado → Andares": { origen: "BM", destino: "BA" } };
+
+function _modoEntradas(sheet) {
+  const v = String(sheet.getRange("A2").getValue() || "");
+  return ENTRADAS_MODOS.indexOf(v) !== -1 ? v : ENTRADAS_MODOS[0];
+}
+
+// Encabezados, colores e instrucción según el modo elegido en A2
+function _aplicarModoEntradas(sheet, conMensaje) {
+  const modo = _modoEntradas(sheet);
+  const tr = ENTRADAS_TRASPASO[modo];
+  const n = Math.max(sheet.getLastRow() - ENTRADAS_START + 1, 0);
+  const a2 = sheet.getRange("A2");
+  a2.setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(ENTRADAS_MODOS, true).setAllowInvalid(false).build());
+  if (String(a2.getValue()) !== modo) a2.setValue(modo);
+  a2.setBackground(C.yellow).setFontWeight("bold").setHorizontalAlignment("center");
+  if (tr) {
+    sheet.getRange(4, 3, 1, 2).setValues([[`TRASPASAR\n${BODEGAS[tr.origen].nombre} → ${BODEGAS[tr.destino].nombre}`, "—"]]).setWrap(true);
+    if (n) { sheet.getRange(ENTRADAS_START, 3, n, 1).setBackground("#E3F2FD"); sheet.getRange(ENTRADAS_START, 4, n, 1).setBackground("#EEEEEE"); }
+  } else {
+    sheet.getRange(4, 3, 1, 2).setValues([["ENT ANDARES", "ENT MERCADO"]]).setWrap(true);
+    if (n) sheet.getRange(ENTRADAS_START, 3, n, 2).setBackground(C.entBg);
+  }
+  sheet.setRowHeight(4, tr ? 40 : 24);
+  if (conMensaje) {
+    _estadoEntradas(sheet, tr
+      ? `🔄 Traspaso: escribe en TRASPASAR (unidad de bodega) lo que sale de ${BODEGAS[tr.origen].nombre} hacia ${BODEGAS[tr.destino].nombre} y marca Enviar ➜.`
+      : "ℹ️ Captura en la unidad del Kardex (kg, lt, pza) y marca Enviar ➜. Aquí verás el resultado.", "info");
+  }
+}
+
+// Número capturado: null si vacío, NaN si no es un número ≥ 0
+function _numEntrada(v) {
+  if (v === "" || v === null) return null;
+  const n = typeof v === "number" ? v : Number(String(v).replace(",", ".").trim());
+  return (isNaN(n) || n < 0) ? NaN : Math.round(n * 10000) / 10000;
+}
 
 function prepararHojaEntradasManualmente() {
   const sheet = _prepararHojaEntradas();
@@ -5014,12 +5074,12 @@ function _prepararHojaEntradas(keepQty = false) {
     sheet.setFrozenRows(0);
     sheet.setFrozenColumns(0);
     sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
-    sheet.getRange("A1:D1").merge().setValue("📥 ENTRADAS DE STOCK · Andares & Mercado")
+    sheet.getRange("A1:D1").merge().setValue("📥 ENTRADAS Y TRASPASOS · Andares & Mercado")
       .setBackground(C.dark).setFontColor("#FFFFFF").setFontWeight("bold").setFontSize(11)
       .setHorizontalAlignment("center").setVerticalAlignment("middle");
     sheet.setRowHeight(1, 32);
 
-    sheet.getRange("A2").setValue("📅 Día de carga:").setFontWeight("bold").setHorizontalAlignment("right");
+    sheet.getRange("A2").setValue(ENTRADAS_MODOS[0]);
     sheet.getRange("C2").setValue("Enviar ➜").setFontWeight("bold").setHorizontalAlignment("right");
     sheet.getRange("D2").insertCheckboxes().setValue(false);
     sheet.getRange("A2:D2").setBackground(C.cream).setVerticalAlignment("middle");
@@ -5068,10 +5128,8 @@ function _prepararHojaEntradas(keepQty = false) {
     sheet.getRange(ENTRADAS_START, 3, prods.length, 2).setNumberFormat("0.####").setHorizontalAlignment("center");
   }
 
-  // Fila 3 = línea de estado: si está vacía, mostrar la instrucción en lugar de una fila en blanco
-  if (esNueva || !String(sheet.getRange("A3").getValue()).trim()) {
-    _estadoEntradas(sheet, "ℹ️ Captura en la unidad del Kardex (kg, lt, pza) y marca Enviar ➜. Aquí verás el resultado.", "info");
-  }
+  // Modo (A2) y fila 3 = línea de estado: si está vacía, la instrucción del modo en lugar de una fila en blanco
+  _aplicarModoEntradas(sheet, esNueva || !String(sheet.getRange("A3").getValue()).trim());
   return sheet;
 }
 
@@ -5128,11 +5186,9 @@ function procesarEntradasKardex() {
     const invalidas = [];
     let capturadas = 0;
 
-    const _num = (v) => {
-      if (v === "" || v === null) return null;
-      const n = typeof v === "number" ? v : Number(String(v).replace(",", ".").trim());
-      return (isNaN(n) || n < 0) ? NaN : Math.round(n * 10000) / 10000;
-    };
+    const _num = _numEntrada;
+    const tr = ENTRADAS_TRASPASO[_modoEntradas(sheet)];
+    if (tr) { _procesarTraspasoEntradas(ss, sheet, rows, seleccionDia, tr); return; }
 
     rows.forEach((r, i) => {
       const nombre = String(r[0]).trim().toUpperCase();
@@ -5213,6 +5269,80 @@ function procesarEntradasKardex() {
   } finally {
     lock.releaseLock();
   }
+}
+
+// Traspaso desde 📥 Registrar entradas (1.7.6p): resta del origen (SAL) y suma al destino (ENT) el día elegido, en la
+// unidad del Kardex, todo en el libro de Bodega; folio por producto en 🔄 Traspasos. Todo o nada: valida números,
+// semana activa de AMBAS bodegas y que el producto exista en ambos Kardex antes de escribir.
+function _procesarTraspasoEntradas(ss, sheet, rows, seleccionDia, tr) {
+  const items = {};
+  const unidades = {};
+  const visibles = {};
+  const invalidas = [];
+  let enD = 0;
+  rows.forEach((r, i) => {
+    const nombre = String(r[0]).trim().toUpperCase();
+    if (!nombre) return;
+    if (r[3] !== "" && r[3] !== null) enD++;
+    const n = _numEntrada(r[2]);
+    if (n === null || n === 0) return;
+    if (isNaN(n)) { invalidas.push(ENTRADAS_START + i); return; }
+    items[nombre] = (items[nombre] || 0) + n;
+    unidades[nombre] = String(r[1] || "");
+    visibles[nombre] = String(r[0]).trim();
+  });
+  if (enD > 0) {
+    _estadoEntradas(sheet, "❌ En traspaso solo se usa la columna TRASPASAR. Borra lo escrito en la última columna. No se envió nada.", "error");
+    return;
+  }
+  if (invalidas.length > 0) {
+    invalidas.forEach(row => sheet.getRange(row, 3).setBackground("#FFCDD2"));
+    _estadoEntradas(sheet, `❌ ${invalidas.length} celda(s) en rojo no son números ≥ 0. Corrige y vuelve a enviar. No se envió nada.`, "error");
+    return;
+  }
+  const nombres = Object.keys(items);
+  if (nombres.length === 0) { _estadoEntradas(sheet, "No hay cantidades capturadas para traspasar.", "info"); return; }
+
+  const dia = { [tr.origen]: _resolverDiaEntradas(ss, seleccionDia, tr.origen), [tr.destino]: _resolverDiaEntradas(ss, seleccionDia, tr.destino) };
+  const planes = {};
+  const faltantes = [];
+  [tr.origen, tr.destino].forEach(key => {
+    const kSheet = _hoja(ss, BODEGAS[key].kardex);
+    if (!kSheet) throw new Error(`No existe ${BODEGAS[key].kardex}.`);
+    const count = kSheet.getLastRow() - KARDEX_START + 1;
+    const idxMap = {};
+    kSheet.getRange(KARDEX_START, 3, count, 1).getValues().forEach((p, i) => { const n = String(p[0]).trim().toUpperCase(); if (n) idxMap[n] = i; });
+    nombres.forEach(n => { if (idxMap[n] === undefined) faltantes.push(`${n} (${BODEGAS[key].nombre})`); });
+    planes[key] = { kSheet, count, idxMap };
+  });
+  if (faltantes.length > 0) {
+    _estadoEntradas(sheet, `❌ No están en el inventario: ${faltantes.slice(0, 3).join(", ")}${faltantes.length > 3 ? "…" : ""}. No se envió nada.`, "error");
+    return;
+  }
+
+  // Origen: SAL del día · Destino: ENT del día (1 lectura + 1 escritura por columna)
+  [[tr.origen, 1], [tr.destino, 0]].forEach(([key, desfase]) => {
+    const { kSheet, count, idxMap } = planes[key];
+    const rng = kSheet.getRange(KARDEX_START, 10 + dia[key] * 3 + desfase, count, 1);
+    const vals = rng.getValues();
+    nombres.forEach(n => { const i = idxMap[n]; vals[i][0] = Math.round(((parseFloat(vals[i][0]) || 0) + items[n]) * 10000) / 10000; });
+    rng.setValues(vals);
+  });
+
+  const ahora = new Date();
+  const base = "TRP-" + Utilities.formatDate(ahora, Session.getScriptTimeZone(), "yyyyMMdd-HHmmss");
+  let usuario = "";
+  try { usuario = Session.getActiveUser().getEmail(); } catch (e) {}
+  const filas = nombres.map((n, k) => [`${base}-${k + 1}`, ahora, BODEGAS[tr.origen].nombre, BODEGAS[tr.destino].nombre, visibles[n], items[n],
+    unidades[n], 1, items[n], "📥 Registrar entradas", usuario || "—"]);
+  const hojaT = MiseTraspasos._asegurarHojaTraspasos(ss);
+  hojaT.getRange(Math.max(hojaT.getLastRow() + 1, 2), 1, filas.length, 11).setValues(filas);
+  MiseLogger.info("_procesarTraspasoEntradas", `${base}: ${BODEGAS[tr.origen].nombre} → ${BODEGAS[tr.destino].nombre} ` +
+    nombres.map(n => `${n} ${items[n]}`).join(", "));
+
+  _prepararHojaEntradas(false);
+  const hora = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm");
+  _estadoEntradas(sheet, `✅ ${nombres.length} traspaso(s) ${BODEGAS[tr.origen].nombre} → ${BODEGAS[tr.destino].nombre} (${DIAS[dia[tr.origen]]}) · ${hora} · folio ${base}`, "ok");
 }
 
 // ── ISSUES 7 & 8: DESCUENTO AUTOMÁTICO DE INVENTARIO DESDE LOGS Y SAFEGUARD DE SEMANA ──

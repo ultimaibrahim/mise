@@ -1331,9 +1331,10 @@ function _aplicarFormatosCondicionales(sheet) {
   sheet.setConditionalFormatRules(rules);
 }
 
-const MISE_VERSION = "1.7.6o";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6p";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "Pides en tu unidad (domo, caja, paquete) y el saldo y los colores ya se ven en esa misma unidad",
   "Pedido Diario más limpio: se retiró una columna vacía que quedaba de una función antigua",
   "Los cambios de catálogo de Bodega (orden y productos desactivados) se aplican solos al abrir",
   "Bodega ve si esta tienda está al día (latido automático, sin pasos extra)",

@@ -23,6 +23,14 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6p Altair — Traspasos desde el Celular y Cada Quien en Su Unidad (Octubre 2026) [EN PRUEBAS]
+
+* 🔄 **Traspasos desde el celular**: en 📥 Registrar entradas, arriba a la izquierda, se elige "Andares → Mercado" o "Mercado → Andares", se escribe cuánto y se envía. Queda registrado con folio en 🔄 Traspasos.
+* ⚖️ **Cada quien en su unidad**: las tiendas piden como les es natural (24 domos de fresa, 2 cajas de guantes, 3 paquetes de conos) y Bodega descuenta lo real (10.9 kg, 200 piezas, 150 piezas). En el Catálogo se ve la equivalencia de cada producto.
+* 🎨 Los colores de saldo en las tiendas ya comparan en la misma unidad.
+
+---
+
 ## Versión 1.7.6o Altair — Bodega Para Todos (Octubre 2026) [EN PRUEBAS]
 
 * 🏷️ **Pestañas que dicen qué hacen**: 📥 Registrar entradas · 📦 Inventario Andares · 📦 Inventario Mercado · 📋 Catálogo · 🔄 Traspasos · 🗄 Semanas pasadas · 🗒 Registro del sistema.

@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6p Altair (Traspasos en Registrar entradas y conversión completa) — 2026-10-01 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG)
+* Modo traspaso en 📥 Registrar entradas; vista para tiendas en unidad de pedido (Kardex ÷ factor); factor solo con unidad de pedido; unidad y factor visibles (solo administrador) en el Catálogo.
+
+---
+
 ## ⚡ v1.7.6o Altair (Bodega para todos) — 2026-10-01 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG)

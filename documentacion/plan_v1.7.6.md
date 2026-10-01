@@ -48,7 +48,8 @@
 ## Fase 2.5 — Blindaje y UX de Bodega (pedido 28/sep)
 - [x] *(1.7.6m)* **Revisar los HTML y modales**: inventario, `esc()` en los diálogos, `MiseReconciler` muerto fuera. Criterio de Ibrahim (29/sep): *keep it simple*, lo de un solo uso se retira.
 - [x] *(1.7.6n)* **Traspaso desde la tienda**: retirado; traspasos solo desde Bodega.
-- [ ] **Traspasos desde el celular**: el diálogo de Bodega es un modal (no sale en la app móvil). Propuesta: tipo de movimiento en `📥 ENTRADAS` (Entrada / Traspaso a la otra bodega). Pendiente de OK.
+- [x] *(1.7.6p)* **Traspasos desde el celular**: modo en `📥 Registrar entradas` (A2).
+- [x] *(1.7.6p)* **Motor de conversión** pedido → bodega completo: vista en unidad de pedido, regla única (factor solo con unidad de pedido), factores visibles en el Catálogo (solo administrador).
 - [x] *(1.7.6o)* **MAESTRO más amigable** → `📋 Catálogo` híbrido (hoja + Powerhouse), etiquetas claras, validaciones que rechazan, solo ACTIVO + MÍN/MÁX editables; pestañas por tarea en todo Bodega.
 - [x] **Blindaje por capas** *(1.7.6c)*: instalables como dueño, hojas técnicas y Entradas protegidas, Kardex sin F:G ni G4 editables, `🔐 Auditoría de permisos`.
 - [x] **Kardex simplificado** *(1.7.6d)*: visibles solo PRODUCTO, UNIDAD, SALDO ANTERIOR y las columnas de los días.
@@ -56,6 +57,7 @@
 - [ ] **Manual visual/tutorial** por rol, con qué funciona sin internet (lo arma Ibrahim; apoyo con página compartible).
 
 ## Fase 2.6 — Auditorías pendientes
+- [ ] **Pruebas: aislar el emulador por suite** — algunas suites reemplazan métodos en el prototipo compartido (`setFormulas`, antes `setName`) y contaminan a las siguientes. Crear prototipos por contexto.
 - [x] *(1.7.6l)* **`MiseSmartSync.reconciliarSemanaCompleta`**: auditada. No duplicaba (heredó la 1.7.6f), pero era **destructiva** (pedido de hoy como si fuera del lunes, vaciado en plena operación), usaba la semana de Andares para ambas y tardaba ~5 min. Ahora: días pasados, solo registros, por bodega. Además: guarda de semana en el descuento y "descontar ayer" corregido.
 - [x] *(29/sep)* Skill `mise-gas-ops` actualizada con las trampas nuevas (`setFormulas` → `#NAME?`, protecciones vs activadores simples, huella del catálogo, DevTools, webapp versionada).
 

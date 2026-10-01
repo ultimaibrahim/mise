@@ -160,14 +160,17 @@ const MiseSmartSync = {
           const mapM = _getMaestroHeaderMap(maestroSheet);
           const cProdM = mapM["PRODUCTO"] ? mapM["PRODUCTO"].index : 2;
           const cFactM = mapM["FACTOR_CONVERSION"] ? mapM["FACTOR_CONVERSION"].index : -1;
-          if (cFactM !== -1) {
+          const cUTM = mapM["UNIDAD_TIENDA"] ? mapM["UNIDAD_TIENDA"].index : -1;
+          if (cFactM !== -1 && cUTM !== -1) {
             const mData = maestroSheet.getRange(MAESTRO_START, 1, mlr - MAESTRO_START + 1, maestroSheet.getLastColumn()).getValues();
             mData.forEach(r => {
               const pKey = _norm(r[cProdM]);
               let fact = r[cFactM];
               if (typeof fact === "string") fact = fact.replace(',', '.').trim();
               const numFact = parseFloat(fact);
-              if (pKey && !isNaN(numFact) && numFact > 0) {
+              // El factor solo aplica si el producto tiene UNIDAD DE PEDIDO (la tienda pide en esa unidad);
+              // sin ella la tienda ve y pide en la unidad de bodega (misma regla que _buildVista).
+              if (pKey && !isNaN(numFact) && numFact > 0 && String(r[cUTM] || "").trim()) {
                 factorMap[pKey] = numFact;
               }
             });
