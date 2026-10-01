@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6x Altair (Vista [PEDIDO - n] y fix de columnas ocultas) — 2026-10-01 [EN PRUEBAS · DEV]
+
+### 📱 Tiendas (PDA / PDM)
+* Surtido: se muestran todas las columnas antes de ocultar (la vista B ya no queda oculta al venir de versiones previas); vista en texto enriquecido con [PEDIDO - n] en negritas.
+
+---
+
 ## ⚡ v1.7.6w Altair (Surtido en pantallas chicas y traspasos en unidad de pedido) — 2026-10-01 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)

@@ -1382,7 +1382,7 @@ function _aplicarFormatosCondicionales(sheet) {
   _estiloTactilPedido(sheet, count);
 }
 
-const MISE_VERSION = "1.7.6w";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6x";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "🚚 Surtido: el producto y lo pedido siempre a la vista, incluso en pantallas chicas",
@@ -1492,10 +1492,17 @@ function _formulaCantFinal(r) {
   return `=IF($G${r}=TRUE,0,IF($E${r}<>"",$E${r},IF($F${r}=TRUE,$D${r},"")))`;
 }
 
-// Vista del Surtido (columna B): "Queso mozzarella fresc…" ⏎ "pidió 5". Lee C (nombre) y D (pedido), que siguen siendo
-// la fuente de verdad (el nombre identifica al producto en el descuento y en la sincronización con el Pedido).
-function _formulaVistaSurtido(r) {
-  return `=IF(C${r}="","",IF(LEN(C${r})>24,LEFT(C${r},23)&"…",C${r})&CHAR(10)&"pidió "&D${r})`;
+// Vista del Surtido (columna B, 1.7.6x): "Queso mozzarella fresc…" ⏎ "[PEDIDO - 5]" en negritas. Texto enriquecido (una
+// fórmula no puede poner solo una parte en negritas); es seguro porque el Surtido se regenera desde el Pedido y lo pedido
+// no se edita aquí. C (nombre) y D (pedido) siguen siendo la fuente de verdad que leen el descuento y la sincronización.
+function _vistaSurtido(nombre, pedido) {
+  const n = String(nombre || "").trim();
+  const corto = n.length > 24 ? n.slice(0, 23) + "…" : n;
+  const etiqueta = `[PEDIDO - ${pedido}]`;
+  const texto = `${corto}\n${etiqueta}`;
+  return SpreadsheetApp.newRichTextValue().setText(texto)
+    .setTextStyle(texto.length - etiqueta.length, texto.length, SpreadsheetApp.newTextStyle().setBold(true).build())
+    .build();
 }
 
 function _generarSurtidoRapidoInternal(activateSheet) {
@@ -1605,6 +1612,9 @@ function _generarSurtidoRapidoInternal(activateSheet) {
   sSheet.setColumnWidth(7, 62);   // ❌ NO LLEGÓ
   sSheet.setColumnWidth(8, 66);   // FINAL (fórmula)
 
+  // Primero mostrar TODO: clear() conserva qué columnas estaban ocultas (versiones previas ocultaban A:B; la vista B quedaba
+  // oculta). Después se oculta solo lo que corresponde.
+  sSheet.showColumns(1, sSheet.getMaxColumns());
   sSheet.hideColumns(1);    // No
   sSheet.hideColumns(3, 2); // PRODUCTO y CANT. PEDIDA (los muestra la vista B)
 
@@ -1661,8 +1671,8 @@ function _generarSurtidoRapidoInternal(activateSheet) {
 
     // Escribir datos básicos Cols 1-4 (No, Cat, Prod, CantPedir)
     sSheet.getRange(4, 1, rows, 4).setValues(values);
-    // Columna B = vista (1.7.6w): nombre (recortado con "…" si es largo) y debajo lo pedido
-    sSheet.getRange(4, 2, rows, 1).setFormulas(Array.from({ length: rows }, (_, i) => [_formulaVistaSurtido(4 + i)]));
+    // Columna B = vista: nombre (recortado con "…" si es largo) y debajo [PEDIDO - n] en negritas
+    sSheet.getRange(4, 2, rows, 1).setRichTextValues(values.map(v => [_vistaSurtido(v[2], v[3])]));
     
     // Inyectar valores numéricos puros en Col E (Cero fórmulas, cero congelamiento)
     sSheet.getRange(4, 5, rows, 1).setValues(valuesE);

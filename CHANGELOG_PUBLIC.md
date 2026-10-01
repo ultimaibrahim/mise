@@ -23,6 +23,13 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6x Altair — Surtido Más Claro (Octubre 2026) [EN PRUEBAS]
+
+* 🚚 Debajo de cada producto se lee **[PEDIDO - n]** en negritas.
+* 🛠️ Corregido: al actualizar desde la versión anterior, el Surtido podía abrir sin la columna del producto. Ya no pasa y no se pierde ningún dato.
+
+---
+
 ## Versión 1.7.6w Altair — Todo a la Vista en el Celular (Octubre 2026) [EN PRUEBAS]
 
 * 🚚 **Surtido Rápido**: el nombre del producto y lo que se pidió siempre se ven, aun en pantallas chicas (los nombres largos se recortan con "…"). Las instrucciones de arriba se leen completas.

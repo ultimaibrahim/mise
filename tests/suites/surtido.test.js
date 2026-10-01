@@ -33,8 +33,15 @@ function runSurtidoTests() {
     const tag = dir.toUpperCase();
     const { ss, sandbox, _formulas } = crearContextoTienda(dir, archivo);
     const pedido = _sembrarPedido(ss);
+    // Surtido de una versión previa con A:B ocultas (caso real 1.7.6w): clear() conserva columnas ocultas
+    const previo = ss.insertSheet("🚚 SURTIDO RÁPIDO");
+    const ocultas = new Set([1, 2]);
+    previo.hideColumns = (c, n = 1) => { for (let i = 0; i < n; i++) ocultas.add(c + i); return previo; };
+    previo.showColumns = (c, n = 1) => { for (let i = 0; i < n; i++) ocultas.delete(c + i); return previo; };
     sandbox._generarSurtidoRapidoInternal(false);
     const s = ss.getSheetByName("🚚 SURTIDO RÁPIDO");
+    assert.ok(!ocultas.has(2), `${tag}: la vista B queda visible aunque la hoja previa la tuviera oculta`);
+    assert.ok([1, 3, 4].every(c => ocultas.has(c)) && ![5, 6, 7, 8].some(c => ocultas.has(c)), `${tag}: ocultas solo A, C y D`);
 
     // 1. Estructura: 8 columnas (C = nombre y D = pedido siguen en su lugar: el código los lee), CANT. FINAL al final;
     //    congelada solo la vista B "producto + lo pedido" (1.7.6w: cabe en un iPhone)
@@ -42,8 +49,12 @@ function runSurtidoTests() {
       ["No", "PRODUCTO · PEDIDO", "PRODUCTO", "CANT. PEDIDA", "RECIBIDA", "✅ COMPLETO", "❌ NO LLEGÓ", "FINAL"], `${tag}: encabezados`);
     assert.strictEqual(s.frozenCols, 2, `${tag}: congelada solo la vista (A:B)`);
     for (let r = 4; r <= 6; r++) {
-      assert.strictEqual(_formulas[`🚚 SURTIDO RÁPIDO!${r},2`],
-        `=IF(C${r}="","",IF(LEN(C${r})>24,LEFT(C${r},23)&"…",C${r})&CHAR(10)&"pidió "&D${r})`, `${tag}: vista B fila ${r} (nombre recortado + pedido)`);
+      const texto = String(s.getRange(r, 2).getValue());
+      const rt = s._rich[`${r},2`];
+      const m = texto.match(/^(.+)\n\[PEDIDO - (\d+(?:\.\d+)?)\]$/);
+      assert.ok(m && m[1].length <= 24, `${tag}: vista B fila ${r} = nombre (≤ 24) ⏎ [PEDIDO - n]: ${JSON.stringify(texto)}`);
+      assert.strictEqual(Number(m[2]), Number(s.getRange(r, 4).getValue()), `${tag}: [PEDIDO - n] = CANT. PEDIDA de la fila ${r}`);
+      assert.deepStrictEqual(JSON.parse(JSON.stringify(rt.negritas)), [[texto.indexOf("["), texto.length]], `${tag}: solo [PEDIDO - n] en negritas`);
     }
     assert.strictEqual(s.getRange(7, 3).getValue(), "", `${tag}: solo productos con pedido > 0`);
     for (let r = 4; r <= 6; r++) {

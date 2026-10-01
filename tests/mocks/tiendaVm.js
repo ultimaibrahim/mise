@@ -22,6 +22,13 @@ function crearContextoTienda(dir, archivo, propsIniciales = {}) {
     return this;
   };
   rangeProto.setBorder = function() { return this; };
+  rangeProto.setRichTextValues = function(m) {
+    m.forEach((fila, r) => fila.forEach((rt, c) => {
+      this.sheet._setCell(this.row + r, this.col + c, rt.getText());
+      (this.sheet._rich = this.sheet._rich || {})[`${this.row + r},${this.col + c}`] = rt;
+    }));
+    return this;
+  };
   if (!rangeProto.getSheet) rangeProto.getSheet = function() { return this.sheet; };
   if (!rangeProto.getRow) rangeProto.getRow = function() { return this.row; };
   if (!rangeProto.getColumn) rangeProto.getColumn = function() { return this.col; };
@@ -61,6 +68,12 @@ function crearContextoTienda(dir, archivo, propsIniciales = {}) {
     console: { log() {}, warn() {}, error() {} },
     SpreadsheetApp: Object.assign({}, MockSpreadsheetApp, {
       getActiveSpreadsheet: () => ss, getActive: () => ss,
+      // Texto enriquecido: texto + rangos en negritas (como RichTextValue de Apps Script)
+      newRichTextValue: () => { const v = { texto: "", negritas: [] }; const b = {
+        setText(t) { v.texto = t; return b; },
+        setTextStyle(i, f, estilo) { if (estilo && estilo.bold) v.negritas.push([i, f]); return b; },
+        build() { return { getText: () => v.texto, negritas: v.negritas }; } }; return b; },
+      newTextStyle: () => { const e = {}; const b = { setBold(x) { e.bold = x; return b; }, build() { return e; } }; return b; },
       newConditionalFormatRule: reglaBuilder, newDataValidation: valBuilder,
       ProtectionType: { SHEET: "SHEET", RANGE: "RANGE" }, BorderStyle: { SOLID: "SOLID" }
     }),
