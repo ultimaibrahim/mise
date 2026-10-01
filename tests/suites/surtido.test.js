@@ -42,6 +42,8 @@ function runSurtidoTests() {
     const s = ss.getSheetByName("🚚 SURTIDO RÁPIDO");
     assert.ok(!ocultas.has(2), `${tag}: la vista B queda visible aunque la hoja previa la tuviera oculta`);
     assert.ok([1, 3, 4].every(c => ocultas.has(c)) && ![5, 6, 7, 8].some(c => ocultas.has(c)), `${tag}: ocultas solo A, C y D`);
+    assert.ok(/registrados"$/.test(String(_formulas["🚚 SURTIDO RÁPIDO!2,1"] || s.getRange(2, 1).getValue())), `${tag}: B2 (congelada) = avance "n de m registrados"`);
+    assert.ok(/^Escribe lo que llegó/.test(String(s.getRange(2, 3).getValue())), `${tag}: indicaciones en C2:H2 (visibles en E:H)`);
 
     // 1. Estructura: 8 columnas (C = nombre y D = pedido siguen en su lugar: el código los lee), CANT. FINAL al final;
     //    congelada solo la vista B "producto + lo pedido" (1.7.6w: cabe en un iPhone)

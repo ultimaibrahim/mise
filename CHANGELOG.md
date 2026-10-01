@@ -33,6 +33,10 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.6y Altair — Surtido: Avance en Vivo e Indicaciones Completas (Octubre 2026) [EN PRUEBAS · DEV]
+* **Fila 2 del Surtido** (sugerencia de Ibrahim): las indicaciones pasan a **C2:H2** (C:D ocultas → se leen completas en E:H) y la celda congelada **B2 muestra el avance en vivo**: `📋 5 de 7 registrados` (productos con FINAL de los pedidos). Combinaciones siguen partidas en la frontera congelada A:B | C:H.
+* **Testing**: B2 = fórmula de avance; indicaciones en C2.
+
 ### Version 1.7.6x Altair — Surtido: Vista "[PEDIDO - n]" y Fix de Columnas Ocultas Heredadas (Octubre 2026) [EN PRUEBAS · DEV]
 * **Bug (reportado por Ibrahim en DEV)**: al regenerar un Surtido creado por una versión previa, la vista B quedaba **oculta** (la versión anterior ocultaba A:B y `clear()` conserva las columnas ocultas; 1.7.6w ocultaba C:D sin volver a mostrar B) → solo se veían E:H. No hubo pérdida de datos (las capturas viven en el Pedido Diario y en los respaldos de migración). Ahora se muestran todas las columnas antes de ocultar A, C y D. Importante para el paso de PROD (sus Surtidos son de 1.7.5).
 * **Vista B como texto enriquecido** (`_vistaSurtido`): nombre (≤ 24, con "…") ⏎ **`[PEDIDO - n]` en negritas** (pedido de Ibrahim; una fórmula no puede tener negritas parciales). Seguro porque el Surtido se regenera desde el Pedido.

@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6y Altair (Avance del Surtido) — 2026-10-01 [EN PRUEBAS · DEV]
+
+### 📱 Tiendas (PDA / PDM)
+* B2 congelada con "n de m registrados"; indicaciones en C2:H2.
+
+---
+
 ## ⚡ v1.7.6x Altair (Vista [PEDIDO - n] y fix de columnas ocultas) — 2026-10-01 [EN PRUEBAS · DEV]
 
 ### 📱 Tiendas (PDA / PDM)

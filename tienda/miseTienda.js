@@ -1382,7 +1382,7 @@ function _aplicarFormatosCondicionales(sheet) {
   _estiloTactilPedido(sheet, count);
 }
 
-const MISE_VERSION = "1.7.6x";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6y";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "🚚 Surtido: el producto y lo pedido siempre a la vista, incluso en pantallas chicas",
@@ -1583,12 +1583,15 @@ function _generarSurtidoRapidoInternal(activateSheet) {
   sSheet.getRange("C1:H1").merge().setBackground("#3D5A47");
   sSheet.setRowHeight(1, 30);
 
+  // Fila 2 (1.7.6y): avance en la celda congelada (siempre visible) e indicaciones en C2:H2 (C:D ocultas → se leen en E:H)
   sSheet.getRange("A2:B2").merge()
+    .setBackground("#E8F5E9").setFontColor("#1B5E20").setFontWeight("bold").setFontSize(10).setWrap(true)
+    .setHorizontalAlignment("left").setVerticalAlignment("middle");
+  sSheet.getRange("C2:H2").merge()
     .setValue("Escribe lo que llegó en RECIBIDA, o marca ✅ si llegó completo / ❌ si no llegó.")
     .setBackground("#F5EFE6").setFontColor("#333333").setFontSize(9).setWrap(true)
     .setHorizontalAlignment("left").setVerticalAlignment("middle");
-  sSheet.getRange("C2:H2").merge().setBackground("#F5EFE6");
-  sSheet.setRowHeight(2, 52);
+  sSheet.setRowHeight(2, 44);
 
   // Headers de columnas (Fila 3)
   const headers = ["No", "PRODUCTO · PEDIDO", "PRODUCTO", "CANT. PEDIDA", "RECIBIDA", "✅ COMPLETO", "❌ NO LLEGÓ", "FINAL"];
@@ -1744,6 +1747,10 @@ function _generarSurtidoRapidoInternal(activateSheet) {
 
   // --- TABLA DE RESUMEN (COLUMNAS J-K, basada en CANT. FINAL) ---
   const lastS = 3 + rows;
+  // Avance en vivo en la celda congelada: cuántos productos ya tienen FINAL (registrados) de los pedidos
+  sSheet.getRange("A2").setFormula(filtered.length
+    ? `="📋 "&SUMPRODUCT((H4:H${lastS}<>"")*1)&" de "&SUMPRODUCT((C4:C${lastS}<>"")*1)&" registrados"`
+    : `="📋 Sin productos pedidos"`);
   const rH = `H4:H${lastS}`, rD = `D4:D${lastS}`;
   sSheet.getRange("J3:K3").merge()
     .setValue("RESUMEN SURTIDO")
