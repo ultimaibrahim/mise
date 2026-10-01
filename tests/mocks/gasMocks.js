@@ -295,6 +295,16 @@ class MockSheet {
 
   getProtections() { return []; }
 
+  // Como Google: renombrar mantiene la hoja (y su contenido) bajo el nombre nuevo
+  setName(nombre) {
+    if (this.spreadsheet && this.spreadsheet.sheets) {
+      this.spreadsheet.sheets.delete(this.name);
+      this.spreadsheet.sheets.set(nombre, this);
+    }
+    this.name = nombre;
+    return this;
+  }
+
   // ID numérico estable por nombre (como el gid de Google)
   getSheetId() {
     let h = 0;

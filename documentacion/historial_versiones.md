@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6o Altair (Bodega para todos) — 2026-10-01 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG)
+* Pestañas por tarea (compatibles con los nombres anteriores); Catálogo híbrido con etiquetas, validaciones que rechazan y solo ACTIVO + MÍN/MÁX editables; fuera los botones por lote.
+
+---
+
 ## ⚡ v1.7.6n Altair (Traspasos solo desde Bodega) — 2026-09-29 [EN PRUEBAS · DEV]
 
 ### 📱 Tiendas (PDA / PDM)

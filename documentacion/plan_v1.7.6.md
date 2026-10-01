@@ -49,7 +49,7 @@
 - [x] *(1.7.6m)* **Revisar los HTML y modales**: inventario, `esc()` en los diálogos, `MiseReconciler` muerto fuera. Criterio de Ibrahim (29/sep): *keep it simple*, lo de un solo uso se retira.
 - [x] *(1.7.6n)* **Traspaso desde la tienda**: retirado; traspasos solo desde Bodega.
 - [ ] **Traspasos desde el celular**: el diálogo de Bodega es un modal (no sale en la app móvil). Propuesta: tipo de movimiento en `📥 ENTRADAS` (Entrada / Traspaso a la otra bodega). Pendiente de OK.
-- [ ] **MAESTRO más amigable**: columnas visibles mínimas, encabezados y validaciones claras, ayudas en celda (el Kardex ya se simplificó en 1.7.6d; MAESTRO no).
+- [x] *(1.7.6o)* **MAESTRO más amigable** → `📋 Catálogo` híbrido (hoja + Powerhouse), etiquetas claras, validaciones que rechazan, solo ACTIVO + MÍN/MÁX editables; pestañas por tarea en todo Bodega.
 - [x] **Blindaje por capas** *(1.7.6c)*: instalables como dueño, hojas técnicas y Entradas protegidas, Kardex sin F:G ni G4 editables, `🔐 Auditoría de permisos`.
 - [x] **Kardex simplificado** *(1.7.6d)*: visibles solo PRODUCTO, UNIDAD, SALDO ANTERIOR y las columnas de los días.
 - [x] **Hoja `🏠 INICIO` en Bodega** *(hecha en 1.7.6d, retirada en 1.7.6e; sus accesos y estado viven desde 1.7.6h en la página de estado)*: accesos y acciones con casillas (funcionan en celular) y estado del sistema en la propia hoja.

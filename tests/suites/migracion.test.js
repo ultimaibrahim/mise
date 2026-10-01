@@ -21,11 +21,7 @@ function _preparar(ctx) {
     copia.grid = Object.assign({}, this.grid);
     return copia;
   };
-  sheetProto.setName = function(n) {
-    const book = ctx.ss;
-    book.sheets.delete(this.name); this.name = n; book.sheets.set(n, this);
-    return this;
-  };
+  // setName: lo trae el emulador (renombra dentro del libro de la propia hoja)
   if (!sheetProto.getMaxColumns) sheetProto.getMaxColumns = function() { return Math.max(this.getLastColumn(), 26); };
   if (!sheetProto.getMaxRows) sheetProto.getMaxRows = function() { return Math.max(this.getLastRow(), 200); };
   ["showRows", "hideRows", "showColumns", "setHiddenGridlines", "setTabColor", "autoResizeColumns"]

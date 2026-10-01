@@ -19,6 +19,7 @@ Lo que se desarrolla vive en `plan_v1.7.6.md`. Marca `[x]` y anota fecha + resul
 - [ ] **PROD**: `🗒 LOG_SURTIDO` de ambas tiendas con encabezado "Fecha…" en la fila 1 y estados reales (nada de `#NAME?`).
 - [ ] **DEV**: página de estado toda en 🟢 tras abrir cada tienda (latido "apertura", catálogo al día).
 - [ ] **DEV · esquema 3 (1.7.6k)**: tras la migración de las 00:00 (o menú 🔄 Aplicar actualización de estructura pendiente), en ambas tiendas DEV: MÍN | MÁX en la columna J, sin columna vacía entre ESTADO y MÍN | MÁX, semáforo con colores, capturas del día en su producto, y `🗒 LOG` con "Esquema 2 → 3 … 0 sin restaurar". Existen `_RESPALDO_PEDIDO_v3` y `_RESPALDO_SURTIDO_v3` ocultas.
+- [ ] **DEV · 1.7.6o**: 🚀 Configurar en Bodega DEV → pestañas con los nombres nuevos y en orden; los semáforos de 📦 Inventario y 📋 Catálogo siguen pintando; 📋 Catálogo con etiquetas en la fila 2. Con la **cuenta de prueba en tableta**: escribir letras, un negativo o un máximo menor que el mínimo → rechazo con mensaje; editar cualquier otra columna → bloqueado.
 - [ ] **DEV · catálogo**: cambiar el picking o desactivar un producto en Bodega → la página marca 🟡 "pendiente" → abrir la tienda → 🟢 y el pedido reordenado.
 
 ## Jueves 1/oct

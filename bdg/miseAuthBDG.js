@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.6n Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.6o Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -21,12 +21,51 @@
 
 // ── CONSTANTES ────────────────────────────────────────────────────────────────
 const BODEGAS = {
-  BA: { key: "BA", nombre: "Andares", kardex: "KARDEX_BA", vista: "VISTA_MOVIL_BA" },
-  BM: { key: "BM", nombre: "Mercado", kardex: "KARDEX_BM", vista: "VISTA_MOVIL_BM" }
+  BA: { key: "BA", nombre: "Andares", kardex: "📦 Inventario Andares", historial: "🗄 Semanas pasadas Andares", vista: "VISTA_MOVIL_BA" },
+  BM: { key: "BM", nombre: "Mercado", kardex: "📦 Inventario Mercado", historial: "🗄 Semanas pasadas Mercado", vista: "VISTA_MOVIL_BM" }
 };
 
-const SHEET_MAESTRO  = "MAESTRO";
-const SHEET_LOG      = "🗒 LOG";
+const SHEET_MAESTRO  = "📋 Catálogo";
+const SHEET_LOG      = "🗒 Registro del sistema";
+const SHEET_TRASPASOS = "🔄 Traspasos"; // aquí y no en MiseKardexEngine.js: HOJAS_TECNICAS_BDG la usa al cargar
+
+// ── NOMBRES DE PESTAÑAS (1.7.6o) ─────────────────────────────────────────────────────────────
+// Nombres por tarea para el usuario. Las hojas técnicas ocultas (VISTA_MOVIL_*, _SYNC_*, _…) NO cambian: las tiendas
+// las leen por IMPORTRANGE. _hoja() acepta el nombre nuevo o el anterior, así el código funciona antes, durante y
+// después del renombrado (lo hacen 🚀 Configurar, el onOpen instalable y el cierre de las 23:00).
+const NOMBRES_ANTERIORES = {
+  "📋 Catálogo": "MAESTRO",
+  "📦 Inventario Andares": "KARDEX_BA",
+  "📦 Inventario Mercado": "KARDEX_BM",
+  "🗄 Semanas pasadas Andares": "HISTORIAL_BA",
+  "🗄 Semanas pasadas Mercado": "HISTORIAL_BM",
+  "📥 Registrar entradas": "📥 ENTRADAS",
+  "🔄 Traspasos": "🔄 TRASPASOS",
+  "🗒 Registro del sistema": "🗒 LOG"
+};
+
+function _hoja(libro, nombre) {
+  if (!libro) return null;
+  return libro.getSheetByName(nombre) || (NOMBRES_ANTERIORES[nombre] ? libro.getSheetByName(NOMBRES_ANTERIORES[nombre]) : null);
+}
+
+// Nombre vigente de una hoja aunque aún tenga su nombre anterior (para comparar en onEdit, listas, etc.)
+function _nombreCanonico(nombre) {
+  const nuevo = Object.keys(NOMBRES_ANTERIORES).find(n => NOMBRES_ANTERIORES[n] === nombre);
+  return nuevo || nombre;
+}
+
+function _renombrarHojasBDG() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const hechos = [];
+  Object.keys(NOMBRES_ANTERIORES).forEach(nuevo => {
+    const vieja = ss.getSheetByName(NOMBRES_ANTERIORES[nuevo]);
+    if (vieja && !ss.getSheetByName(nuevo)) { vieja.setName(nuevo); hechos.push(`${NOMBRES_ANTERIORES[nuevo]} → ${nuevo}`); }
+  });
+  if (hechos.length) Object.keys(_refHojaCache).forEach(k => delete _refHojaCache[k]);
+  if (hechos.length) MiseLogger.info("_renombrarHojasBDG", `Pestañas renombradas: ${hechos.join(" · ")}`);
+  return hechos;
+}
 const MAESTRO_START  = 4;   // fila donde empiezan datos en MAESTRO
 const KARDEX_START   = 7;   // fila donde empiezan datos en KARDEX
 const KARDEX_SLD_ANT = 9;   // col I — SALDO ANTERIOR
@@ -76,7 +115,7 @@ function _mapaFilasPorProducto(sheet, startRow, colProd) {
 }
 
 function _getMaestroHeaderMap(sheet) {
-  const targetSheet = sheet || SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_MAESTRO);
+  const targetSheet = sheet || _hoja(SpreadsheetApp.getActiveSpreadsheet(), SHEET_MAESTRO);
   if (!targetSheet) return {};
   const lastCol = targetSheet.getLastColumn();
   if (lastCol < 1) return {};
@@ -163,7 +202,7 @@ function onOpen() {
     if (PropertiesService.getScriptProperties().getProperty("ONOPEN_INSTALABLE") !== "1") {
       _autoVerificarYAvanzarSemanaSilencioso(true, 18000);
       _ensureTriggersBDG();
-      if (!SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_ENTRADAS)) _prepararHojaEntradas();
+      if (!_hoja(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ENTRADAS)) _prepararHojaEntradas();
     }
   } catch(e) {}
   try {
@@ -183,7 +222,7 @@ function onOpen() {
       .addSeparator()
       .addItem("🚚 Descontar Pedidos de Hoy (Cierre diario)", "descontarSurtidoAutomaticoManualmente")
       .addItem("🔄 Registrar Traspaso entre Sucursales",  "abrirDialogoTraspasoBDGHTML")
-      .addItem("📥 Preparar hoja de Entradas (móvil)",   "prepararHojaEntradasManualmente")
+      .addItem("📥 Preparar 📥 Registrar entradas (celular)",   "prepararHojaEntradasManualmente")
       .addItem("⚡ Mise Powerhouse (Catálogo & Picking)", "abrirConstructorPickingHTML")
       .addItem("📅 Sincronizar semana actual (Ambas bodegas)", "configurarSemanaAmbas")
       .addSeparator()
@@ -199,15 +238,14 @@ function onOpen() {
         .addItem("⏩ Auto-verificar y avanzar semana ahora", "forzarAutoVerificarYAvanzarSemana"))
       // Gestión de Catálogo
       .addSubMenu(ui.createMenu("🛠️ Gestión de Catálogo")
-        .addItem("🗑️ Eliminar productos seleccionados",    "eliminarSeleccionadosMaestro")
         .addItem("🧹 Eliminar productos duplicados",        "eliminarDuplicadosCatalogo"))
       .addSeparator()
       // Cuarentena de Alto Riesgo / Mantenimiento
       .addSubMenu(ui.createMenu("⚠️ Mantenimiento Avanzado y Zona de Riesgo")
         .addSubMenu(ui.createMenu("🚨 Reconstrucción y Respaldo")
-          .addItem("🏗️ Reconstruir KARDEX Andares (con respaldo en RAM)", "reconstruirKardexBAConRespaldo")
-          .addItem("🏗️ Reconstruir KARDEX Mercado (con respaldo en RAM)", "reconstruirKardexBMConRespaldo")
-          .addItem("🏗️ Reconstruir MAESTRO (con respaldo en RAM)",       "reconstruirMaestroConRespaldo")
+          .addItem("🏗️ Reconstruir 📦 Inventario Andares (con respaldo)", "reconstruirKardexBAConRespaldo")
+          .addItem("🏗️ Reconstruir 📦 Inventario Mercado (con respaldo)", "reconstruirKardexBMConRespaldo")
+          .addItem("🏗️ Reconstruir 📋 Catálogo (con respaldo)",       "reconstruirMaestroConRespaldo")
           .addSeparator()
           .addItem("📊 Recrear VISTA_MOVIL_BA",             "crearVistaMovilBA")
           .addItem("📊 Recrear VISTA_MOVIL_BM",             "crearVistaMovilBM"))
@@ -239,7 +277,7 @@ function repararYSincronizarSistemaManualmente() {
 
 function repararYSincronizarSistema(silent = false) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  const maestro = _hoja(ss, SHEET_MAESTRO);
   if (!maestro) return;
 
   let repairsCount = 0;
@@ -304,36 +342,12 @@ function onEdit(e) {
 function _onEditBodega(e) {
   if (!e) return;
   const sheet = e.range.getSheet();
-  const name  = sheet.getName();
+  const name  = _nombreCanonico(sheet.getName());
   const row   = e.range.getRow();
   const col   = e.range.getColumn();
 
   // 1. Manejo del Dropdown Nativo en MAESTRO (Desactivar/Anular productos y lote)
   if (name === SHEET_MAESTRO) {
-    if (row === 2) {
-      if (col === 4) { // D2 - Desactivar Seleccionados
-        if (e.range.getValue() === true) {
-          e.range.setValue(false);
-          desactivarSeleccionadosMaestro();
-        }
-      } else if (col === 6) { // F2 - Activar Seleccionados
-        if (e.range.getValue() === true) {
-          e.range.setValue(false);
-          activarSeleccionadosMaestro();
-        }
-      } else if (col === 8) { // H2 - Eliminar Seleccionados
-        if (e.range.getValue() === true) {
-          e.range.setValue(false);
-          eliminarSeleccionadosMaestro();
-        }
-      } else if (col === 10) { // J2 - Limpiar Selección
-        if (e.range.getValue() === true) {
-          e.range.setValue(false);
-          limpiarSeleccionMaestro();
-        }
-      }
-      return;
-    }
 
     // 1.2 Manejo del Dropdown ACTIVO (SÍ / NO) en Columna F (col 6)
     const map = _getMaestroHeaderMap(sheet);
@@ -347,7 +361,7 @@ function _onEditBodega(e) {
         const cProdM = map["PRODUCTO"] ? map["PRODUCTO"].col : 3;
         const prodKey = String(sheet.getRange(row, cProdM).getValue() || "").trim().toUpperCase();
         Object.values(BODEGAS).forEach(b => {
-          const kSheet = ss.getSheetByName(b.kardex);
+          const kSheet = _hoja(ss, b.kardex);
           const kardexRow = _mapaFilasPorProducto(kSheet, KARDEX_START, 3)[prodKey];
           if (kSheet && kardexRow) {
             if (val === "NO") {
@@ -565,14 +579,14 @@ function setupCompleto() {
   });
   
   ss.getSheets().forEach(s => {
-    const name = s.getName();
+    const name = _nombreCanonico(s.getName());
     if (!systemSheetNames.includes(name)) {
       try { ss.deleteSheet(s); } catch(e) {}
     }
   });
 
   function getOrCreateSheet(name) {
-    let s = ss.getSheetByName(name);
+    let s = _hoja(ss, name);
     if (s) {
       s.clear();
       s.clearConditionalFormatRules();
@@ -650,16 +664,16 @@ function _aplicarReglasMaestro(maestro) {
   
   // Rules for STOCK_BA
   rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied(`=AND($${lMinBA}${MAESTRO_START}>0, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("'KARDEX_BA'!$C:$AD"), 28, FALSE), 0) < 0.5*$${lMinBA}${MAESTRO_START})`)
+    .whenFormulaSatisfied(`=AND($${lMinBA}${MAESTRO_START}>0, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("${_refHoja(BODEGAS.BA.kardex)}!$C:$AD"), 28, FALSE), 0) < 0.5*$${lMinBA}${MAESTRO_START})`)
     .setBackground("#FFCDD2").setFontColor("#B71C1C").setRanges([rangeBA]).build());
   rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied(`=AND($${lMinBA}${MAESTRO_START}>0, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("'KARDEX_BA'!$C:$AD"), 28, FALSE), 0) < $${lMinBA}${MAESTRO_START}, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("'KARDEX_BA'!$C:$AD"), 28, FALSE), 0) >= 0.5*$${lMinBA}${MAESTRO_START})`)
+    .whenFormulaSatisfied(`=AND($${lMinBA}${MAESTRO_START}>0, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("${_refHoja(BODEGAS.BA.kardex)}!$C:$AD"), 28, FALSE), 0) < $${lMinBA}${MAESTRO_START}, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("${_refHoja(BODEGAS.BA.kardex)}!$C:$AD"), 28, FALSE), 0) >= 0.5*$${lMinBA}${MAESTRO_START})`)
     .setBackground("#FFE0B2").setFontColor("#BF360C").setRanges([rangeBA]).build());
   rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied(`=AND(OR($${lMinBA}${MAESTRO_START}>0, $${lMaxBA}${MAESTRO_START}>0), IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("'KARDEX_BA'!$C:$AD"), 28, FALSE), 0) >= $${lMinBA}${MAESTRO_START}, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("'KARDEX_BA'!$C:$AD"), 28, FALSE), 0) <= $${lMaxBA}${MAESTRO_START})`)
+    .whenFormulaSatisfied(`=AND(OR($${lMinBA}${MAESTRO_START}>0, $${lMaxBA}${MAESTRO_START}>0), IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("${_refHoja(BODEGAS.BA.kardex)}!$C:$AD"), 28, FALSE), 0) >= $${lMinBA}${MAESTRO_START}, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("${_refHoja(BODEGAS.BA.kardex)}!$C:$AD"), 28, FALSE), 0) <= $${lMaxBA}${MAESTRO_START})`)
     .setBackground("#C8E6C9").setFontColor("#1B5E20").setRanges([rangeBA]).build());
   rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied(`=AND($${lMaxBA}${MAESTRO_START}>0, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("'KARDEX_BA'!$C:$AD"), 28, FALSE), 0) > $${lMaxBA}${MAESTRO_START})`)
+    .whenFormulaSatisfied(`=AND($${lMaxBA}${MAESTRO_START}>0, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("${_refHoja(BODEGAS.BA.kardex)}!$C:$AD"), 28, FALSE), 0) > $${lMaxBA}${MAESTRO_START})`)
     .setBackground("#B3E5FC").setFontColor("#0D47A1").setRanges([rangeBA]).build());
   rules.push(SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied(`=AND($${lMinBA}${MAESTRO_START}=0, $${lMaxBA}${MAESTRO_START}=0)`)
@@ -667,16 +681,16 @@ function _aplicarReglasMaestro(maestro) {
 
   // Rules for STOCK_BM
   rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied(`=AND($${lMinBM}${MAESTRO_START}>0, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("'KARDEX_BM'!$C:$AD"), 28, FALSE), 0) < 0.5*$${lMinBM}${MAESTRO_START})`)
+    .whenFormulaSatisfied(`=AND($${lMinBM}${MAESTRO_START}>0, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("${_refHoja(BODEGAS.BM.kardex)}!$C:$AD"), 28, FALSE), 0) < 0.5*$${lMinBM}${MAESTRO_START})`)
     .setBackground("#FFCDD2").setFontColor("#B71C1C").setRanges([rangeBM]).build());
   rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied(`=AND($${lMinBM}${MAESTRO_START}>0, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("'KARDEX_BM'!$C:$AD"), 28, FALSE), 0) < $${lMinBM}${MAESTRO_START}, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("'KARDEX_BM'!$C:$AD"), 28, FALSE), 0) >= 0.5*$${lMinBM}${MAESTRO_START})`)
+    .whenFormulaSatisfied(`=AND($${lMinBM}${MAESTRO_START}>0, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("${_refHoja(BODEGAS.BM.kardex)}!$C:$AD"), 28, FALSE), 0) < $${lMinBM}${MAESTRO_START}, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("${_refHoja(BODEGAS.BM.kardex)}!$C:$AD"), 28, FALSE), 0) >= 0.5*$${lMinBM}${MAESTRO_START})`)
     .setBackground("#FFE0B2").setFontColor("#BF360C").setRanges([rangeBM]).build());
   rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied(`=AND(OR($${lMinBM}${MAESTRO_START}>0, $${lMaxBM}${MAESTRO_START}>0), IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("'KARDEX_BM'!$C:$AD"), 28, FALSE), 0) >= $${lMinBM}${MAESTRO_START}, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("'KARDEX_BM'!$C:$AD"), 28, FALSE), 0) <= $${lMaxBM}${MAESTRO_START})`)
+    .whenFormulaSatisfied(`=AND(OR($${lMinBM}${MAESTRO_START}>0, $${lMaxBM}${MAESTRO_START}>0), IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("${_refHoja(BODEGAS.BM.kardex)}!$C:$AD"), 28, FALSE), 0) >= $${lMinBM}${MAESTRO_START}, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("${_refHoja(BODEGAS.BM.kardex)}!$C:$AD"), 28, FALSE), 0) <= $${lMaxBM}${MAESTRO_START})`)
     .setBackground("#C8E6C9").setFontColor("#1B5E20").setRanges([rangeBM]).build());
   rules.push(SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied(`=AND($${lMaxBM}${MAESTRO_START}>0, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("'KARDEX_BM'!$C:$AD"), 28, FALSE), 0) > $${lMaxBM}${MAESTRO_START})`)
+    .whenFormulaSatisfied(`=AND($${lMaxBM}${MAESTRO_START}>0, IFERROR(VLOOKUP($${lProd}${MAESTRO_START}, INDIRECT("${_refHoja(BODEGAS.BM.kardex)}!$C:$AD"), 28, FALSE), 0) > $${lMaxBM}${MAESTRO_START})`)
     .setBackground("#B3E5FC").setFontColor("#0D47A1").setRanges([rangeBM]).build());
   rules.push(SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied(`=AND($${lMinBM}${MAESTRO_START}=0, $${lMaxBM}${MAESTRO_START}=0)`)
@@ -737,8 +751,8 @@ function _buildMaestro(sheet) {
   const formulasBM = [];
   for (let i = 0; i < datos.length; i++) {
     const rn = MAESTRO_START + i;
-    const fBA = `=IFERROR(VLOOKUP(C${rn}, 'KARDEX_BA'!C:AD, 28, FALSE), 0) & IF(AND(G${rn}=0, H${rn}=0), "", IF(VLOOKUP(C${rn}, 'KARDEX_BA'!C:AD, 28, FALSE)<G${rn}, " (-" & (G${rn}-VLOOKUP(C${rn}, 'KARDEX_BA'!C:AD, 28, FALSE)) & ")", IF(VLOOKUP(C${rn}, 'KARDEX_BA'!C:AD, 28, FALSE)>H${rn}, " (+" & (VLOOKUP(C${rn}, 'KARDEX_BA'!C:AD, 28, FALSE)-H${rn}) & ")", " (-)")))`;
-    const fBM = `=IFERROR(VLOOKUP(C${rn}, 'KARDEX_BM'!C:AD, 28, FALSE), 0) & IF(AND(J${rn}=0, K${rn}=0), "", IF(VLOOKUP(C${rn}, 'KARDEX_BM'!C:AD, 28, FALSE)<J${rn}, " (-" & (J${rn}-VLOOKUP(C${rn}, 'KARDEX_BM'!C:AD, 28, FALSE)) & ")", IF(VLOOKUP(C${rn}, 'KARDEX_BM'!C:AD, 28, FALSE)>K${rn}, " (+" & (VLOOKUP(C${rn}, 'KARDEX_BM'!C:AD, 28, FALSE)-K${rn}) & ")", " (-)")))`;
+    const fBA = `=IFERROR(VLOOKUP(C${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 28, FALSE), 0) & IF(AND(G${rn}=0, H${rn}=0), "", IF(VLOOKUP(C${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 28, FALSE)<G${rn}, " (-" & (G${rn}-VLOOKUP(C${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 28, FALSE)) & ")", IF(VLOOKUP(C${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 28, FALSE)>H${rn}, " (+" & (VLOOKUP(C${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 28, FALSE)-H${rn}) & ")", " (-)")))`;
+    const fBM = `=IFERROR(VLOOKUP(C${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 28, FALSE), 0) & IF(AND(J${rn}=0, K${rn}=0), "", IF(VLOOKUP(C${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 28, FALSE)<J${rn}, " (-" & (J${rn}-VLOOKUP(C${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 28, FALSE)) & ")", IF(VLOOKUP(C${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 28, FALSE)>K${rn}, " (+" & (VLOOKUP(C${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 28, FALSE)-K${rn}) & ")", " (-)")))`;
     formulasBA.push([fBA]);
     formulasBM.push([fBM]);
   }
@@ -936,7 +950,7 @@ function _buildKardex(sheet, nombre) {
 // ── POBLAR KARDEX DESDE MAESTRO ───────────────────────────────────────────────
 function _poblarKardex(sheet) {
   const ss      = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  const maestro = _hoja(ss, SHEET_MAESTRO);
   if (!maestro) return;
 
   const lr   = maestro.getLastRow();
@@ -972,12 +986,12 @@ function _poblarKardex(sheet) {
     .setValues(prods.map(p => [p[cNo], p[cCat], p[cProd], p[cPres], p[cUni]]));
 
   // Inyectar fórmulas de semáforo de stock en KARDEX (col H = 8)
-  const sheetName = sheet.getName();
+  const sheetName = _nombreCanonico(sheet.getName());
   const formulasH = [];
   for (let r = 0; r < count; r++) {
     const rn = KARDEX_START + r;
     let f = "";
-    if (sheetName === "KARDEX_BA") {
+    if (sheetName === BODEGAS.BA.kardex) {
       f = `=IF(AND(IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMinBA}, FALSE), 0)=0, IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMaxBA}, FALSE), 0)=0), "", IF(AD${rn}<IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMinBA}, FALSE), 0), "🔴 -" & (IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMinBA}, FALSE), 0)-AD${rn}), IF(AD${rn}>IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMaxBA}, FALSE), 0), "🔵 +" & (AD${rn}-IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMaxBA}, FALSE), 0)), "🟢 -")))`;
     } else {
       f = `=IF(AND(IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMinBM}, FALSE), 0)=0, IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMaxBM}, FALSE), 0)=0), "", IF(AD${rn}<IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMinBM}, FALSE), 0), "🔴 -" & (IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMinBM}, FALSE), 0)-AD${rn}), IF(AD${rn}>IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMaxBM}, FALSE), 0), "🔵 +" & (AD${rn}-IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMaxBM}, FALSE), 0)), "🟢 -")))`;
@@ -1030,7 +1044,7 @@ function _buildVista(key) {
   const bodega = BODEGAS[key];
   const ss     = SpreadsheetApp.getActiveSpreadsheet();
 
-  let sheet = ss.getSheetByName(bodega.vista);
+  let sheet = _hoja(ss, bodega.vista);
   if (sheet) {
     sheet.clear();
     sheet.clearConditionalFormatRules();
@@ -1067,13 +1081,13 @@ function _buildVista(key) {
   sheet.setFrozenRows(3);
 
   // Poblar desde KARDEX y MAESTRO (con categoría viva de MAESTRO)
-  const kardex = ss.getSheetByName(bodega.kardex);
+  const kardex = _hoja(ss, bodega.kardex);
   if (!kardex) return;
 
   const lr = kardex.getLastRow();
   if (lr < KARDEX_START) return;
 
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  const maestro = _hoja(ss, SHEET_MAESTRO);
   if (!maestro) return;
   _asegurarColumnasQuioscoEnMaestro(maestro);
   const mlr     = maestro.getLastRow();
@@ -1130,14 +1144,14 @@ function _buildVista(key) {
   if (count === 0) return;
 
   const DR  = 4;
-  const ref = _quoteName(bodega.kardex);
+  const ref = _refHoja(bodega.kardex);
 
   // PREPARACIÓN MATRICIAL DE ALTO RENDIMIENTO (Batch I/O consolidado)
   const lMinQ = cMinQ !== -1 ? map[key === "BA" ? "MÍN_Q_BA" : "MÍN_Q_BM"].letter : (map[key === "BA" ? "MÍN_BA" : "MÍN_BM"] ? map[key === "BA" ? "MÍN_BA" : "MÍN_BM"].letter : "G");
   const lMaxQ = cMaxQ !== -1 ? map[key === "BA" ? "MÁX_Q_BA" : "MÁX_Q_BM"].letter : (map[key === "BA" ? "MÁX_BA" : "MÁX_BM"] ? map[key === "BA" ? "MÁX_BA" : "MÁX_BM"].letter : "H");
   const cPicKey = `PICKING_${key}`;
   const lPic = map[cPicKey] ? map[cPicKey].letter : (map["PICKING"] ? map["PICKING"].letter : null);
-  const refMaestro = _quoteName(SHEET_MAESTRO);
+  const refMaestro = _refHoja(SHEET_MAESTRO);
   const lAct = map["ACTIVO"] ? map["ACTIVO"].letter : "F";
   // Definición de columnas de Entradas y Salidas por día (LUN a DOM en Kardex)
   const entCols = ["J","M","P","S","V","Y","AB"];
@@ -1244,7 +1258,7 @@ function crearCaducidades() {
   const ss     = SpreadsheetApp.getActiveSpreadsheet();
   const NOMBRE = "CADUCIDADES";
 
-  let sheet = ss.getSheetByName(NOMBRE);
+  let sheet = _hoja(ss, NOMBRE);
   if (sheet) {
     try {
       ss.deleteSheet(sheet);
@@ -1333,7 +1347,7 @@ function crearCaducidades() {
   const maps  = { BA: mapBA, BM: mapBM };
 
   Object.entries(BODEGAS).forEach(([key, b]) => {
-    const ks = ss.getSheetByName(b.kardex);
+    const ks = _hoja(ss, b.kardex);
     if (!ks) return;
     const lr = ks.getLastRow();
     if (lr < KARDEX_START) return;
@@ -1345,15 +1359,15 @@ function crearCaducidades() {
   });
 
   // Datos desde MAESTRO
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  const maestro = _hoja(ss, SHEET_MAESTRO);
   const lr2     = maestro.getLastRow();
   const mData   = maestro.getRange(MAESTRO_START, 1, lr2 - MAESTRO_START + 1, 6).getValues()
     .filter(r => r[0] !== "");
 
   const DR    = 4;
   const count = mData.length;
-  const refBA = _quoteName(BODEGAS.BA.kardex);
-  const refBM = _quoteName(BODEGAS.BM.kardex);
+  const refBA = _refHoja(BODEGAS.BA.kardex);
+  const refBM = _refHoja(BODEGAS.BM.kardex);
 
   mData.forEach((p, i) => {
     const r      = DR + i;
@@ -1459,7 +1473,7 @@ function _configurarSemana(key) {
   const ui     = SpreadsheetApp.getUi();
   const bodega = BODEGAS[key];
   const ss     = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet  = ss.getSheetByName(bodega.kardex);
+  const sheet  = _hoja(ss, bodega.kardex);
   if (!sheet) { ui.alert(`No existe ${bodega.kardex}.`); return; }
 
   const modo = ui.alert(
@@ -1503,7 +1517,7 @@ function _avanzarSemana(key) {
   const ui     = SpreadsheetApp.getUi();
   const bodega = BODEGAS[key];
   const ss     = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet  = ss.getSheetByName(bodega.kardex);
+  const sheet  = _hoja(ss, bodega.kardex);
   if (!sheet) { ui.alert(`No existe ${bodega.kardex}.`); return; }
 
   const d4 = sheet.getRange("G4").getValue();
@@ -1567,9 +1581,9 @@ function _archivarSemanaSeguro(key, sheet, numRows, d4, sem) {
   try {
     _guardarHistHorizontal(key, sheet, numRows, d4, sem);
   } catch (err) {
-    MiseLogger.error("_archivarSemanaSeguro", `HISTORIAL_${key} falló (${err.message}); semana ${sem} respaldada en _HISTORIAL_RESPALDO y el avance continúa.`, err);
+    MiseLogger.error("_archivarSemanaSeguro", `${BODEGAS[key].historial} falló (${err.message}); semana ${sem} respaldada en _HISTORIAL_RESPALDO y el avance continúa.`, err);
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let r = ss.getSheetByName("_HISTORIAL_RESPALDO");
+    let r = _hoja(ss, "_HISTORIAL_RESPALDO");
     if (!r) {
       r = ss.insertSheet("_HISTORIAL_RESPALDO");
       const enc = ["BODEGA", "SEMANA", "LUNES", "PRODUCTO"];
@@ -1619,8 +1633,8 @@ function _siguienteColumnaHistorial(hSheet, numRows) {
 
 function _guardarHistHorizontal(key, sheet, numRows, monday, sem) {
   const ss   = SpreadsheetApp.getActiveSpreadsheet();
-  const histName = `HISTORIAL_${key}`;
-  let hSheet = ss.getSheetByName(histName);
+  const histName = BODEGAS[key].historial;
+  let hSheet = _hoja(ss, histName);
   
   if (!hSheet) {
     hSheet = ss.insertSheet(histName);
@@ -1747,7 +1761,7 @@ function _guardarHistHorizontal(key, sheet, numRows, monday, sem) {
 function agregarProducto() {
   const ui      = SpreadsheetApp.getUi();
   const ss      = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  const maestro = _hoja(ss, SHEET_MAESTRO);
   if (!maestro) { ui.alert("No existe MAESTRO."); return; }
 
   const pResp = ui.prompt("🆕 Nuevo Producto", "Nombre del producto:", ui.ButtonSet.OK_CANCEL);
@@ -1814,7 +1828,7 @@ function agregarProducto() {
 
     // 2. Insertar en KARDEX_BA y KARDEX_BM
     Object.values(BODEGAS).forEach(b => {
-      const kSheet = ss.getSheetByName(b.kardex);
+      const kSheet = _hoja(ss, b.kardex);
       if (kSheet) {
         const lastRowK = kSheet.getLastRow();
         const nextRowK = lastRowK + 1;
@@ -1850,8 +1864,8 @@ function agregarProducto() {
 
     // 3. Insertar en HISTORIAL_BA y HISTORIAL_BM
     Object.values(BODEGAS).forEach(b => {
-      const histName = `HISTORIAL_${b.key}`;
-      const hSheet = ss.getSheetByName(histName);
+      const histName = BODEGAS[b.key].historial;
+      const hSheet = _hoja(ss, histName);
       if (hSheet) {
         const lastRowH = hSheet.getLastRow();
         const nextRowH = lastRowH + 1;
@@ -1880,7 +1894,7 @@ function agregarProducto() {
 function anularProducto() {
   const ui = SpreadsheetApp.getUi();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  const maestro = _hoja(ss, SHEET_MAESTRO);
   if (!maestro) { ui.alert("No existe MAESTRO."); return; }
 
   const resp = ui.prompt(
@@ -1922,7 +1936,7 @@ function anularProducto() {
     
     // Ocultar en Kardex la fila de ESE producto
     Object.values(BODEGAS).forEach(b => {
-      const kSheet = ss.getSheetByName(b.kardex);
+      const kSheet = _hoja(ss, b.kardex);
       const kardexRow = _mapaFilasPorProducto(kSheet, KARDEX_START, 3)[prodKey];
       if (kSheet && kardexRow) {
         kSheet.hideRows(kardexRow);
@@ -1945,7 +1959,7 @@ function anularProducto() {
 // ── MIGRACIÓN IN-SITU NO DESTRUCTIVA (13 COLUMNAS) ────────────────────────────
 function migrarEstructuraMaestro13Cols() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  const maestro = _hoja(ss, SHEET_MAESTRO);
   if (!maestro) return;
 
   const headerRange = maestro.getRange(3, 1, 1, maestro.getLastColumn());
@@ -1984,6 +1998,17 @@ function _col(n) {
   let s = "", c = n;
   while (c > 0) { c--; s = String.fromCharCode(65 + c % 26) + s; c = Math.floor(c / 26); }
   return s;
+}
+
+// Referencia de fórmula a una hoja con su nombre REAL actual (nuevo o anterior): nunca #REF! a mitad del renombrado.
+// Memorizada por ejecución (se usa dentro de bucles por fila).
+const _refHojaCache = {};
+function _refHoja(nombre) {
+  if (!_refHojaCache[nombre]) {
+    const h = _hoja(SpreadsheetApp.getActiveSpreadsheet(), nombre);
+    _refHojaCache[nombre] = _quoteName(h ? h.getName() : nombre);
+  }
+  return _refHojaCache[nombre];
 }
 
 function _quoteName(name) {
@@ -2058,7 +2083,7 @@ const MiseLogger = {
     // 2. Persistencia en hoja de cálculo 🗒 LOG (Orden Descendente: más nuevo arriba)
     try {
       const ss = SpreadsheetApp.getActiveSpreadsheet();
-      let sheetLog = ss.getSheetByName(SHEET_LOG);
+      let sheetLog = _hoja(ss, SHEET_LOG);
       if (!sheetLog) {
         sheetLog = ss.insertSheet(SHEET_LOG);
         sheetLog.appendRow(["TIMESTAMP", "NIVEL", "FUNCIÓN", "DURACIÓN (ms)", "DETALLE", "USUARIO", "STACK TRACE"]);
@@ -2233,9 +2258,11 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.6n";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6o";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "Pestañas con nombres claros: 📋 Catálogo, 📦 Inventario Andares/Mercado, 📥 Registrar entradas…",
+  "📋 Catálogo: solo se puede cambiar ACTIVO y los MÍN/MÁX, con etiquetas y avisos claros (también desde tableta)",
   "Reconciliar la semana ya no toca el pedido en curso de las tiendas",
   "🌐 Página de estado: todo el sistema de un vistazo, también desde el celular",
   "🩺 Estado del sistema: Bodega y tiendas en verde, amarillo o rojo (menú Automatizaciones)",
@@ -2274,199 +2301,10 @@ function acercaDe() {
     ui.ButtonSet.OK);
 }
 
-// ── ACCIONES EN LOTE Y CARGA MASIVA DE BODEGA ────────────────────────────────
-function desactivarSeleccionadosMaestro() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
-  if (!maestro) return;
-  const lr = maestro.getLastRow();
-  if (lr < MAESTRO_START) return;
-  const count = lr - MAESTRO_START + 1;
-  const map = _getMaestroHeaderMap(maestro);
-  const cAct = map["ACTIVO"] ? map["ACTIVO"].index : 5;
-  const cSel = map["SELECCIONAR"] ? map["SELECCIONAR"].index : 12;
-
-  const rangeMaestro = maestro.getRange(MAESTRO_START, 1, count, maestro.getLastColumn());
-  const valuesMaestro = rangeMaestro.getValues();
-  
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(15000)) {
-    SpreadsheetApp.getUi().alert("El archivo está ocupado. Intenta de nuevo.");
-    return;
-  }
-  
-  try {
-    let affected = 0;
-    for (let i = 0; i < count; i++) {
-      if (valuesMaestro[i][cSel] === true) {
-        valuesMaestro[i][cAct] = "NO";
-        valuesMaestro[i][cSel] = false;
-        const kardexRow = KARDEX_START + i;
-        Object.values(BODEGAS).forEach(b => {
-          const kSheet = ss.getSheetByName(b.kardex);
-          if (kSheet) kSheet.hideRows(kardexRow);
-        });
-        affected++;
-      }
-    }
-    if (affected > 0) {
-      rangeMaestro.setValues(valuesMaestro);
-      _buildVista("BA");
-      _buildVista("BM");
-      sincronizarRemotamenteTiendasPush();
-      SpreadsheetApp.getActive().toast(`Se desactivaron ${affected} productos ✓`, "⚙️ Mise", 4);
-    }
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function activarSeleccionadosMaestro() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
-  if (!maestro) return;
-  const lr = maestro.getLastRow();
-  if (lr < MAESTRO_START) return;
-  const count = lr - MAESTRO_START + 1;
-  const map = _getMaestroHeaderMap(maestro);
-  const cAct = map["ACTIVO"] ? map["ACTIVO"].index : 5;
-  const cSel = map["SELECCIONAR"] ? map["SELECCIONAR"].index : 12;
-
-  const rangeMaestro = maestro.getRange(MAESTRO_START, 1, count, maestro.getLastColumn());
-  const valuesMaestro = rangeMaestro.getValues();
-  
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(15000)) {
-    SpreadsheetApp.getUi().alert("El archivo está ocupado. Intenta de nuevo.");
-    return;
-  }
-  
-  try {
-    let affected = 0;
-    for (let i = 0; i < count; i++) {
-      if (valuesMaestro[i][cSel] === true) {
-        valuesMaestro[i][cAct] = "SÍ";
-        valuesMaestro[i][cSel] = false;
-        const kardexRow = KARDEX_START + i;
-        Object.values(BODEGAS).forEach(b => {
-          const kSheet = ss.getSheetByName(b.kardex);
-          if (kSheet) kSheet.showRows(kardexRow);
-        });
-        affected++;
-      }
-    }
-    if (affected > 0) {
-      rangeMaestro.setValues(valuesMaestro);
-      _buildVista("BA");
-      _buildVista("BM");
-      sincronizarRemotamenteTiendasPush();
-      // crearCaducidades(); // Feature deshabilitada
-      SpreadsheetApp.getActive().toast(`Se activaron ${affected} productos ✓`, "⚙️ Mise", 4);
-    }
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function limpiarSeleccionMaestro() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
-  if (!maestro) return;
-  const lr = maestro.getLastRow();
-  if (lr < MAESTRO_START) return;
-  const count = lr - MAESTRO_START + 1;
-  const map = _getMaestroHeaderMap(maestro);
-  const cSel = map["SELECCIONAR"] ? map["SELECCIONAR"].col : 13;
-  maestro.getRange(MAESTRO_START, cSel, count, 1).setValue(false);
-  SpreadsheetApp.getActive().toast("Selección limpiada ✓", "⚙️ Mise", 3);
-}
-
-function eliminarSeleccionadosMaestro() {
-  const ui = SpreadsheetApp.getUi();
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
-  if (!maestro) return;
-  const lr = maestro.getLastRow();
-  if (lr < MAESTRO_START) return;
-  const count = lr - MAESTRO_START + 1;
-  const map = _getMaestroHeaderMap(maestro);
-  const cSel = map["SELECCIONAR"] ? map["SELECCIONAR"].index : 12;
-  const cProd = map["PRODUCTO"] ? map["PRODUCTO"].index : 2;
-  const data = maestro.getRange(MAESTRO_START, 1, count, maestro.getLastColumn()).getValues();
-  
-  // Encontrar filas seleccionadas
-  const selectedRows = [];
-  for (let i = 0; i < count; i++) {
-    if (data[i][cSel] === true) {
-      selectedRows.push(i);
-    }
-  }
-  
-  if (selectedRows.length === 0) {
-    ui.alert("No hay productos seleccionados para eliminar.");
-    return;
-  }
-  
-  const nombres = selectedRows.map(i => data[i][cProd]).join(", ");
-  const resp = ui.alert(
-    "🗑 Eliminar Productos Definitivamente",
-    `Se eliminarán ${selectedRows.length} producto(s) de TODAS las hojas (MAESTRO, KARDEX, HISTORIAL, CADUCIDADES):\n\n${nombres}\n\nEsta acción NO se puede deshacer. ¿Continuar?`,
-    ui.ButtonSet.YES_NO
-  );
-  if (resp !== ui.Button.YES) return;
-  
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(15000)) { ui.alert("El archivo está ocupado."); return; }
-  
-  try {
-    SpreadsheetApp.getActive().toast("⏳ Eliminando productos seleccionados de todas las hojas...", "⚙️ Mise", 5);
-    // Eliminar de abajo hacia arriba para no desplazar índices
-    for (let i = selectedRows.length - 1; i >= 0; i--) {
-      const rowIdx = selectedRows[i];
-      const maestroRow = MAESTRO_START + rowIdx;
-      const kardexRow = KARDEX_START + rowIdx;
-      
-      // Eliminar de MAESTRO
-      maestro.deleteRow(maestroRow);
-      
-      // Eliminar de KARDEX
-      Object.values(BODEGAS).forEach(b => {
-        const kSheet = ss.getSheetByName(b.kardex);
-        if (kSheet && kardexRow <= kSheet.getLastRow()) {
-          kSheet.deleteRow(kardexRow);
-        }
-      });
-      
-      // Eliminar de HISTORIAL
-      Object.values(BODEGAS).forEach(b => {
-        const hSheet = ss.getSheetByName(`HISTORIAL_${b.key}`);
-        const histRow = 4 + rowIdx; // historial starts at row 5 (header rows 1-4)
-        if (hSheet && histRow <= hSheet.getLastRow()) {
-          hSheet.deleteRow(histRow + 1);
-        }
-      });
-    }
-    
-    // Re-numerar y re-formatear
-    _ordenarYRenumerarTodo();
-    
-    // Recrear vistas y caducidades
-    _buildVista("BA");
-    _buildVista("BM");
-    // crearCaducidades(); // Feature deshabilitada
-    
-    SpreadsheetApp.getActive().toast("✅ Eliminación completada", "⚙️ Mise", 4);
-    ui.alert("✅ Eliminación completada", `Se eliminaron ${selectedRows.length} producto(s) definitivamente.`, ui.ButtonSet.OK);
-    MiseLogger.info("eliminarSeleccionadosMaestro", `Eliminados: ${nombres}`);
-  } finally {
-    lock.releaseLock();
-  }
-}
-
 function eliminarDuplicadosCatalogo() {
   const ui = SpreadsheetApp.getUi();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  const maestro = _hoja(ss, SHEET_MAESTRO);
   if (!maestro) return;
   const lr = maestro.getLastRow();
   if (lr < MAESTRO_START) {
@@ -2527,7 +2365,7 @@ function eliminarDuplicadosCatalogo() {
       
       // 2. Eliminar de KARDEX
       Object.values(BODEGAS).forEach(b => {
-        const kSheet = ss.getSheetByName(b.kardex);
+        const kSheet = _hoja(ss, b.kardex);
         if (kSheet && kardexRow <= kSheet.getLastRow()) {
           kSheet.deleteRow(kardexRow);
         }
@@ -2535,7 +2373,7 @@ function eliminarDuplicadosCatalogo() {
       
       // 3. Eliminar de HISTORIAL
       Object.values(BODEGAS).forEach(b => {
-        const hSheet = ss.getSheetByName(`HISTORIAL_${b.key}`);
+        const hSheet = _hoja(ss, BODEGAS[b.key].historial);
         const histRow = 4 + rowIdx; // historial starts at row 5
         if (hSheet && histRow <= hSheet.getLastRow()) {
           hSheet.deleteRow(histRow + 1);
@@ -2560,7 +2398,7 @@ function eliminarDuplicadosCatalogo() {
 
 function _ordenarYRenumerarTodo() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  const maestro = _hoja(ss, SHEET_MAESTRO);
   if (!maestro) return;
   const lr = maestro.getLastRow();
   if (lr < MAESTRO_START) return;
@@ -2593,7 +2431,7 @@ function _ordenarYRenumerarTodo() {
   
   // Auditar y enviar huérfanos a Cuarentena antes de purgar
   const ssCuarentena = SpreadsheetApp.getActiveSpreadsheet();
-  let qSheet = ssCuarentena.getSheetByName("⚠️ REVISIÓN_HUÉRFANOS");
+  let qSheet = _hoja(ssCuarentena, "⚠️ REVISIÓN_HUÉRFANOS");
   if (!qSheet) {
     qSheet = ssCuarentena.insertSheet("⚠️ REVISIÓN_HUÉRFANOS");
     qSheet.appendRow(["FECHA_DETECCIÓN", "ORIGEN", "FILA_ORIGINAL", "TEXTO_INGRESADO", "VALORES_DETECTADOS", "ESTADO_RESOLUCIÓN", "NOTAS"]);
@@ -2616,7 +2454,7 @@ function _ordenarYRenumerarTodo() {
       purgados.push(prod || `Fila ${MAESTRO_START + i}`);
       qSheet.appendRow([
         new Date(),
-        "MAESTRO",
+        SHEET_MAESTRO,
         MAESTRO_START + i,
         prod || "[Sin Nombre]",
         JSON.stringify(row.filter(c => c !== "")),
@@ -2689,8 +2527,8 @@ function _ordenarYRenumerarTodo() {
   const formulasBM = new Array(data.length);
   for (let i = 0; i < data.length; i++) {
     const rn = MAESTRO_START + i;
-    const fBA = `=IFERROR(VLOOKUP(${lProd}${rn}, 'KARDEX_BA'!C:AD, 26, FALSE), 0) & IF(AND(${lMinBA}${rn}=0, ${lMaxBA}${rn}=0), "", IF(VLOOKUP(${lProd}${rn}, 'KARDEX_BA'!C:AD, 26, FALSE)<${lMinBA}${rn}, " (-" & (${lMinBA}${rn}-VLOOKUP(${lProd}${rn}, 'KARDEX_BA'!C:AD, 26, FALSE)) & ")", IF(VLOOKUP(${lProd}${rn}, 'KARDEX_BA'!C:AD, 26, FALSE)>${lMaxBA}${rn}, " (+" & (VLOOKUP(${lProd}${rn}, 'KARDEX_BA'!C:AD, 26, FALSE)-${lMaxBA}${rn}) & ")", " (-)")))`;
-    const fBM = `=IFERROR(VLOOKUP(${lProd}${rn}, 'KARDEX_BM'!C:AD, 26, FALSE), 0) & IF(AND(${lMinBM}${rn}=0, ${lMaxBM}${rn}=0), "", IF(VLOOKUP(${lProd}${rn}, 'KARDEX_BM'!C:AD, 26, FALSE)<${lMinBM}${rn}, " (-" & (${lMinBM}${rn}-VLOOKUP(${lProd}${rn}, 'KARDEX_BM'!C:AD, 26, FALSE)) & ")", IF(VLOOKUP(${lProd}${rn}, 'KARDEX_BM'!C:AD, 26, FALSE)>${lMaxBM}${rn}, " (+" & (VLOOKUP(${lProd}${rn}, 'KARDEX_BM'!C:AD, 26, FALSE)-${lMaxBM}${rn}) & ")", " (-)")))`;
+    const fBA = `=IFERROR(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 26, FALSE), 0) & IF(AND(${lMinBA}${rn}=0, ${lMaxBA}${rn}=0), "", IF(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 26, FALSE)<${lMinBA}${rn}, " (-" & (${lMinBA}${rn}-VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 26, FALSE)) & ")", IF(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 26, FALSE)>${lMaxBA}${rn}, " (+" & (VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 26, FALSE)-${lMaxBA}${rn}) & ")", " (-)")))`;
+    const fBM = `=IFERROR(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 26, FALSE), 0) & IF(AND(${lMinBM}${rn}=0, ${lMaxBM}${rn}=0), "", IF(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 26, FALSE)<${lMinBM}${rn}, " (-" & (${lMinBM}${rn}-VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 26, FALSE)) & ")", IF(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 26, FALSE)>${lMaxBM}${rn}, " (+" & (VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 26, FALSE)-${lMaxBM}${rn}) & ")", " (-)")))`;
     formulasBA[i] = [fBA];
     formulasBM[i] = [fBM];
   }
@@ -2704,7 +2542,7 @@ function _ordenarYRenumerarTodo() {
   
   // 6. Reconstruir KARDEX con los datos re-ordenados y LIMPIAR filas sobrantes en KARDEX
   Object.values(BODEGAS).forEach(b => {
-    const kSheet = ss.getSheetByName(b.kardex);
+    const kSheet = _hoja(ss, b.kardex);
     if (!kSheet) return;
     const klr = kSheet.getLastRow();
     if (klr < KARDEX_START) return;
@@ -2928,7 +2766,7 @@ function _reconstruirKardexConRespaldo(key) {
   const tId = MiseLogger.timeStart(`_reconstruirKardexConRespaldo_${key}`);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const bodega = BODEGAS[key];
-  const kSheet = ss.getSheetByName(bodega.kardex);
+  const kSheet = _hoja(ss, bodega.kardex);
   if (!kSheet) return;
 
   const ui = SpreadsheetApp.getUi();
@@ -3030,7 +2868,7 @@ function _reconstruirKardexConRespaldo(key) {
 
       // Si hubo insumos que no hicieron match con ningún producto oficial, registrarlos en Cuarentena
       if (noMapeados.length > 0) {
-        let qSheet = ss.getSheetByName("⚠️ REVISIÓN_HUÉRFANOS");
+        let qSheet = _hoja(ss, "⚠️ REVISIÓN_HUÉRFANOS");
         if (!qSheet) {
           qSheet = ss.insertSheet("⚠️ REVISIÓN_HUÉRFANOS");
           qSheet.appendRow(["FECHA_DETECCIÓN", "ORIGEN", "FILA_ORIGINAL", "TEXTO_INGRESADO", "VALORES_DETECTADOS", "ESTADO_RESOLUCIÓN", "NOTAS"]);
@@ -3085,7 +2923,7 @@ function _reconstruirKardexConRespaldo(key) {
 function reconstruirMaestroConRespaldo() {
   const tId = MiseLogger.timeStart("reconstruirMaestroConRespaldo");
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  const maestro = _hoja(ss, SHEET_MAESTRO);
   if (!maestro) return;
 
   const ui = SpreadsheetApp.getUi();
@@ -3359,8 +3197,8 @@ function abrirReconciliadorInteligenteHTML() {
 
 function obtenerCasosReconciliacion() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const qSheet = ss.getSheetByName("⚠️ REVISIÓN_HUÉRFANOS");
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  const qSheet = _hoja(ss, "⚠️ REVISIÓN_HUÉRFANOS");
+  const maestro = _hoja(ss, SHEET_MAESTRO);
   if (!qSheet || !maestro || qSheet.getLastRow() < 2) return [];
 
   const lr = maestro.getLastRow();
@@ -3422,7 +3260,7 @@ function aprobarVinculacionAlias(textoIngresado, productoOficial, filaCuarentena
 
   // Actualizar estado en la hoja de Cuarentena
   if (filaCuarentena) {
-    const qSheet = ss.getSheetByName("⚠️ REVISIÓN_HUÉRFANOS");
+    const qSheet = _hoja(ss, "⚠️ REVISIÓN_HUÉRFANOS");
     if (qSheet && filaCuarentena <= qSheet.getLastRow()) {
       try {
         qSheet.getRange(filaCuarentena, 6).setValue("RESUELTO");
@@ -3436,7 +3274,7 @@ function aprobarVinculacionAlias(textoIngresado, productoOficial, filaCuarentena
 // ── SISTEMA DE BLINDAJE ESTRUCTURAL Y PROTECCIONES (ANTI-MANIPULACIÓN) ────────
 function protegerMaestroSeguro() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  const maestro = _hoja(ss, SHEET_MAESTRO);
   if (!maestro) return;
   
   // 1. Remover protecciones anteriores en esta hoja
@@ -3463,22 +3301,14 @@ function protegerMaestroSeguro() {
     sheetProtection.addEditor(me);
   } catch(e) {}
   
-  // 3. Desproteger celdas interactivas:
-  // - Checkboxes fila 2: D2 (Desactivar), F2 (Activar), H2 (Eliminar), J2 (Limpiar)
-  // - Checkboxes col 13 (SELECCIONAR)
-  // - Columna 6 / F (Dropdown ACTIVO SÍ/NO)
+  // 3. Desproteger SOLO lo editable desde la hoja (1.7.6o): ACTIVO y los MÍN/MÁX de bodega y quiosco de cada tienda.
+  //    Altas, bajas, nombres y picking: ⚡ Powerhouse.
   const lr = Math.max(maestro.getLastRow(), MAESTRO_START);
   const count = lr - MAESTRO_START + 1;
   const map = _getMaestroHeaderMap(maestro);
-  const cSel = map["SELECCIONAR"] ? map["SELECCIONAR"].col : 13;
-  const cAct = map["ACTIVO"] ? map["ACTIVO"].col : 6;
-
-  const rangoSelect = maestro.getRange(MAESTRO_START, cSel, count, 1);
-  const rangoActivo = maestro.getRange(MAESTRO_START, cAct, count, 1);
-  const checkboxesFila2 = maestro.getRange("D2:J2");
-  
-  sheetProtection.setUnprotectedRanges([rangoSelect, rangoActivo, checkboxesFila2]);
-  MiseLogger.info("protegerMaestroSeguro", "Hoja MAESTRO blindada exitosamente: Checkboxes y selección operativos.");
+  const libres = CATALOGO_EDITABLES.filter(k => map[k]).map(k => maestro.getRange(MAESTRO_START, map[k].col, count, 1));
+  sheetProtection.setUnprotectedRanges(libres);
+  MiseLogger.info("protegerMaestroSeguro", `${SHEET_MAESTRO} blindado: editables ${CATALOGO_EDITABLES.filter(k => map[k]).join(", ")}.`);
 }
 
 function protegerKardexSeguro(keyOrSheet) {
@@ -3489,15 +3319,15 @@ function protegerKardexSeguro(keyOrSheet) {
   if (typeof keyOrSheet === "string") {
     const bConfig = BODEGAS[keyOrSheet];
     if (bConfig) {
-      kSheet = ss.getSheetByName(bConfig.kardex);
+      kSheet = _hoja(ss, bConfig.kardex);
       kardexName = bConfig.kardex;
     } else {
-      kSheet = ss.getSheetByName(keyOrSheet);
+      kSheet = _hoja(ss, keyOrSheet);
       kardexName = keyOrSheet;
     }
   } else if (keyOrSheet && typeof keyOrSheet.getName === "function") {
     kSheet = keyOrSheet;
-    kardexName = kSheet.getName();
+    kardexName = _nombreCanonico(kSheet.getName());
   }
 
   if (!kSheet) return;
@@ -3570,17 +3400,17 @@ function _simplificarVistaKardex(sheet) {
 function _organizarPestanasBDG() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const orden = [[SHEET_ENTRADAS, "#F9A825"], [BODEGAS.BA.kardex, C.sage], [BODEGAS.BM.kardex, C.sage],
-                 [SHEET_MAESTRO, C.mdGreen], ["HISTORIAL_BA", "#B0BEC5"], ["HISTORIAL_BM", "#B0BEC5"], ["🔄 TRASPASOS", "#B0BEC5"], [SHEET_LOG, "#B0BEC5"]];
+                 [SHEET_MAESTRO, C.mdGreen], [BODEGAS.BA.historial, "#B0BEC5"], [BODEGAS.BM.historial, "#B0BEC5"], [SHEET_TRASPASOS, "#B0BEC5"], [SHEET_LOG, "#B0BEC5"]];
   let pos = 1;
   orden.forEach(([n, color]) => {
-    const sh = ss.getSheetByName(n);
+    const sh = _hoja(ss, n);
     if (!sh) return;
     try { sh.setTabColor(color); ss.setActiveSheet(sh); ss.moveActiveSheet(pos++); } catch (e) {}
   });
   // La hoja 🏠 INICIO se retiró (1.7.6e): si quedó de una versión previa, se elimina
-  const inicio = ss.getSheetByName("🏠 INICIO");
+  const inicio = _hoja(ss, "🏠 INICIO");
   if (inicio) { try { ss.deleteSheet(inicio); } catch (e) {} }
-  const ent = ss.getSheetByName(SHEET_ENTRADAS);
+  const ent = _hoja(ss, SHEET_ENTRADAS);
   if (ent) ss.setActiveSheet(ent);
 }
 
@@ -3597,17 +3427,17 @@ function _blindarHoja(sheet, desc, libres) {
 }
 
 // Hojas técnicas de Bodega (solo lectura) y cuáles se ocultan para simplificar la vista
-const HOJAS_TECNICAS_BDG = ["VISTA_MOVIL_BA", "VISTA_MOVIL_BM", "HISTORIAL_BA", "HISTORIAL_BM", "_HISTORIAL_RESPALDO",
-  "🗒 LOG", "_DICCIONARIO_ALIAS", "⚠️ REVISIÓN_HUÉRFANOS", "_SYNC_LOG_BA", "_SYNC_LOG_BM", "🔄 TRASPASOS", "_ESTADO_SISTEMA"];
+const HOJAS_TECNICAS_BDG = ["VISTA_MOVIL_BA", "VISTA_MOVIL_BM", BODEGAS.BA.historial, BODEGAS.BM.historial, "_HISTORIAL_RESPALDO",
+  SHEET_LOG, "_DICCIONARIO_ALIAS", "⚠️ REVISIÓN_HUÉRFANOS", "_SYNC_LOG_BA", "_SYNC_LOG_BM", SHEET_TRASPASOS, "_ESTADO_SISTEMA"];
 const HOJAS_OCULTAS_BDG = ["VISTA_MOVIL_BA", "VISTA_MOVIL_BM", "_HISTORIAL_RESPALDO", "_DICCIONARIO_ALIAS",
   "⚠️ REVISIÓN_HUÉRFANOS", "_SYNC_LOG_BA", "_SYNC_LOG_BM", "_ESTADO_SISTEMA"];
 
 function _blindarHojasTecnicasBDG() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  HOJAS_TECNICAS_BDG.forEach(n => _blindarHoja(ss.getSheetByName(n), `Blindaje técnico — ${n}`));
-  HOJAS_OCULTAS_BDG.forEach(n => { const sh = ss.getSheetByName(n); if (sh) try { sh.hideSheet(); } catch (e) {} });
+  HOJAS_TECNICAS_BDG.forEach(n => _blindarHoja(_hoja(ss, n), `Blindaje técnico — ${n}`));
+  HOJAS_OCULTAS_BDG.forEach(n => { const sh = _hoja(ss, n); if (sh) try { sh.hideSheet(); } catch (e) {} });
   // 📥 ENTRADAS: solo las cantidades, el día y la casilla Enviar
-  const ent = ss.getSheetByName(SHEET_ENTRADAS);
+  const ent = _hoja(ss, SHEET_ENTRADAS);
   if (ent) {
     const filas = Math.max(ent.getMaxRows() - ENTRADAS_START + 1, 1);
     _blindarHoja(ent, "Blindaje — 📥 ENTRADAS", [ent.getRange(ENTRADAS_START, 3, filas, 2), ent.getRange("B2"), ent.getRange("D2")]);
@@ -3641,9 +3471,84 @@ function protegerTodasLasHojasSeguras() {
   SpreadsheetApp.getActive().toast("🔒 MAESTRO y KARDEX blindados con éxito ✓", "⚙️ Mise", 4);
 }
 
+// ── 📋 CATÁLOGO AMIGABLE (1.7.6o) ─────────────────────────────────────────────────────────────
+// Híbrido: en la hoja (tableta) solo se editan ACTIVO y los MÍN/MÁX; altas, bajas, nombres y picking en ⚡ Powerhouse.
+// Fila 2 = etiquetas claras por columna (con nota de ayuda); fila 3 = nombres técnicos que usa el código (no cambian).
+const CATALOGO_EDITABLES = ["ACTIVO", "MÍN_BA", "MÁX_BA", "MÍN_Q_BA", "MÁX_Q_BA", "MÍN_BM", "MÁX_BM", "MÍN_Q_BM", "MÁX_Q_BM"];
+const CATALOGO_VISIBLES = ["CATEGORÍA", "PRODUCTO", "UNIDAD", ...CATALOGO_EDITABLES];
+const CATALOGO_PARES = [["MÍN_BA", "MÁX_BA"], ["MÍN_Q_BA", "MÁX_Q_BA"], ["MÍN_BM", "MÁX_BM"], ["MÍN_Q_BM", "MÁX_Q_BM"]];
+const CATALOGO_ETIQUETAS = {
+  "CATEGORÍA": ["Categoría"], "PRODUCTO": ["Producto"], "UNIDAD": ["Unidad"],
+  "ACTIVO": ["¿Activo?", "SÍ = se usa (aparece en inventario y en el pedido de las tiendas). NO = se oculta en todo."],
+  "MÍN_BA": ["Andares\nbodega · mín.", "Mínimo en la bodega de Andares. Por debajo, el inventario se pinta en naranja o rojo."],
+  "MÁX_BA": ["Andares\nbodega · máx.", "Máximo en la bodega de Andares. Por encima, el inventario se pinta en azul."],
+  "MÍN_Q_BA": ["Andares\ntienda · mín.", "Mínimo que ve la tienda Andares en su Pedido Diario."],
+  "MÁX_Q_BA": ["Andares\ntienda · máx.", "Máximo que ve la tienda Andares en su Pedido Diario."],
+  "MÍN_BM": ["Mercado\nbodega · mín.", "Mínimo en la bodega de Mercado. Por debajo, el inventario se pinta en naranja o rojo."],
+  "MÁX_BM": ["Mercado\nbodega · máx.", "Máximo en la bodega de Mercado. Por encima, el inventario se pinta en azul."],
+  "MÍN_Q_BM": ["Mercado\ntienda · mín.", "Mínimo que ve la tienda Mercado en su Pedido Diario."],
+  "MÁX_Q_BM": ["Mercado\ntienda · máx.", "Máximo que ve la tienda Mercado en su Pedido Diario."]
+};
+const CATALOGO_COLOR = { BA: "#DCEFE3", BM: "#E3E8F5", base: "#F5EFE6" };
+
+function _prepararCatalogoAmigable(maestro) {
+  const map = _getMaestroHeaderMap(maestro);
+  const lastCol = maestro.getLastColumn();
+  const lr = Math.max(maestro.getLastRow(), MAESTRO_START);
+  const n = lr - MAESTRO_START + 1;
+
+  // 1. Fila 2: etiquetas (antes, botones por lote; se separan sus combinaciones antes de reescribir)
+  try { _separarCombinaciones(maestro.getRange(2, 1, 1, lastCol)); SpreadsheetApp.flush(); } catch (e) {}
+  const fila2 = maestro.getRange(2, 1, 1, lastCol);
+  fila2.clearDataValidations();
+  fila2.clearContent();
+  fila2.setBackground(CATALOGO_COLOR.base);
+  Object.keys(CATALOGO_ETIQUETAS).forEach(k => {
+    if (!map[k]) return;
+    const [texto, ayuda] = CATALOGO_ETIQUETAS[k];
+    const color = /_BA$/.test(k) ? CATALOGO_COLOR.BA : /_BM$/.test(k) ? CATALOGO_COLOR.BM : CATALOGO_COLOR.base;
+    const celda = maestro.getRange(2, map[k].col);
+    celda.setValue(texto).setFontWeight("bold").setFontSize(10).setWrap(true)
+      .setHorizontalAlignment("center").setVerticalAlignment("middle").setBackground(color);
+    if (ayuda) celda.setNote(ayuda);
+    if (CATALOGO_EDITABLES.includes(k)) maestro.getRange(MAESTRO_START, map[k].col, n, 1).setBackground(color);
+  });
+  maestro.setRowHeight(2, 46);
+
+  // 2. Validaciones que RECHAZAN lo inválido (con mensaje claro)
+  if (map["ACTIVO"]) {
+    maestro.getRange(MAESTRO_START, map["ACTIVO"].col, n, 1).setDataValidation(SpreadsheetApp.newDataValidation()
+      .requireValueInList(["SÍ", "NO"], true).setAllowInvalid(false)
+      .setHelpText("Elige SÍ o NO de la lista.").build());
+  }
+  CATALOGO_PARES.forEach(([kMin, kMax]) => {
+    if (!map[kMin] || !map[kMax]) return;
+    const lMin = map[kMin].letter, lMax = map[kMax].letter, r = MAESTRO_START;
+    maestro.getRange(r, map[kMin].col, n, 1).setDataValidation(SpreadsheetApp.newDataValidation()
+      .requireFormulaSatisfied(`=AND(ISNUMBER(${lMin}${r}), ${lMin}${r}>=0, OR(${lMax}${r}="", ${lMin}${r}<=${lMax}${r}))`)
+      .setAllowInvalid(false).setHelpText("Escribe un número (0 o más) que no sea mayor que el máximo.").build());
+    maestro.getRange(r, map[kMax].col, n, 1).setDataValidation(SpreadsheetApp.newDataValidation()
+      .requireFormulaSatisfied(`=AND(ISNUMBER(${lMax}${r}), ${lMax}${r}>=0, OR(${lMin}${r}="", ${lMax}${r}>=${lMin}${r}))`)
+      .setAllowInvalid(false).setHelpText("Escribe un número (0 o más) que no sea menor que el mínimo.").build());
+  });
+
+  // 3. Solo lo útil a la vista: lo técnico (No, presentación, stock, selección, picking, unidad de tienda, factor) se oculta
+  maestro.showColumns(1, lastCol);
+  const visibles = new Set(CATALOGO_VISIBLES.filter(k => map[k]).map(k => map[k].col));
+  for (let c = 1; c <= lastCol; c++) if (!visibles.has(c)) maestro.hideColumns(c);
+
+  // 4. Tamaños para tableta
+  if (map["PRODUCTO"]) maestro.setColumnWidth(map["PRODUCTO"].col, 260);
+  if (map["CATEGORÍA"]) maestro.setColumnWidth(map["CATEGORÍA"].col, 120);
+  ["UNIDAD", "ACTIVO"].forEach(k => { if (map[k]) maestro.setColumnWidth(map[k].col, 80); });
+  CATALOGO_EDITABLES.filter(k => k !== "ACTIVO" && map[k]).forEach(k => maestro.setColumnWidth(map[k].col, 96));
+  maestro.setRowHeights(MAESTRO_START, n, 30);
+  maestro.getRange(MAESTRO_START, 1, n, lastCol).setFontSize(11).setVerticalAlignment("middle");
+}
+
 function restaurarValidacionesMaestro() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  const maestro = _hoja(ss, SHEET_MAESTRO);
   if (!maestro) return;
   const lr = maestro.getLastRow();
   if (lr < MAESTRO_START) return;
@@ -3652,19 +3557,8 @@ function restaurarValidacionesMaestro() {
 
   const cCat = map["CATEGORÍA"]    ? map["CATEGORÍA"].col    : 2;
   const cAct = map["ACTIVO"]       ? map["ACTIVO"].col       : 6;
-  const cSel = map["SELECCIONAR"] ? map["SELECCIONAR"].col : 13;
-  
-  // 1. Restaurar Dropdown ACTIVO (col 6 / F)
-  try {
-    const rangeAct = maestro.getRange(MAESTRO_START, cAct, count, 1);
-    rangeAct.clearDataValidations();
-    const validationRule = SpreadsheetApp.newDataValidation()
-      .requireValueInList(["SÍ", "NO"], true)
-      .setAllowInvalid(true)
-      .setHelpText("Selecciona SÍ o NO para activar/desactivar el producto.")
-      .build();
-    rangeAct.setDataValidation(validationRule);
-  } catch(e) {}
+  // 1. ACTIVO, MÍN/MÁX, etiquetas, columnas visibles y tamaños: catálogo amigable (1.7.6o)
+  try { _prepararCatalogoAmigable(maestro); } catch(e) { MiseLogger.warn("restaurarValidacionesMaestro", `Catálogo amigable: ${e.message}`); }
   
   // 1.5. Extraer categorías únicas existentes en la hoja + CATEGORIAS_LISTA base
   try {
@@ -3687,27 +3581,18 @@ function restaurarValidacionesMaestro() {
     }
   } catch(e) {}
   
-  // 2. Restaurar Checkboxes SELECCIONAR (col 13 / M)
-  try {
-    maestro.getRange(MAESTRO_START, cSel, count, 1).insertCheckboxes();
-  } catch(e) {}
   
   // 3. Re-aplicar Formato Condicional Dinámico
   try {
     _aplicarReglasMaestro(maestro);
   } catch(e) {}
 
-  // 4. Restaurar Centro de Control Táctil (Botones por lote en Fila 2)
-  try {
-    _restaurarFila2AccionesLote(maestro, maestro.getLastColumn());
-  } catch(e) {}
-
-  SpreadsheetApp.getActive().toast("Validaciones y botones de MAESTRO restaurados ✓", "⚙️ Mise", 4);
+  SpreadsheetApp.getActive().toast("Catálogo listo: etiquetas, validaciones y columnas ✓", "⚙️ Mise", 4);
 }
 
 function procesarCargaMasiva() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const tempSheet = ss.getSheetByName("➕ AGREGAR_MÚLTIPLES");
+  const tempSheet = _hoja(ss, "➕ AGREGAR_MÚLTIPLES");
   if (!tempSheet) return;
   
   const lastRowT = tempSheet.getLastRow();
@@ -3765,7 +3650,7 @@ function procesarCargaMasiva() {
   
   try {
     SpreadsheetApp.getActive().toast("⏳ Paso 1/4: Registrando productos en MAESTRO...", "⚙️ Agregar productos", 5);
-    const maestro = ss.getSheetByName(SHEET_MAESTRO);
+    const maestro = _hoja(ss, SHEET_MAESTRO);
     const lrM = maestro.getLastRow();
     const nos = maestro.getRange(MAESTRO_START, 1, lrM - MAESTRO_START + 1, 1).getValues();
     let lastNo = nos.reduce((max, r) => Math.max(max, parseInt(r[0]) || 0), 0);
@@ -3814,7 +3699,7 @@ function procesarCargaMasiva() {
     SpreadsheetApp.getActive().toast("⏳ Paso 2/4: Extendiendo KARDEX de Andares y Mercado...", "⚙️ Agregar productos", 5);
     // 2. Insertar en KARDEX_BA y KARDEX_BM
     Object.values(BODEGAS).forEach(b => {
-      const kSheet = ss.getSheetByName(b.kardex);
+      const kSheet = _hoja(ss, b.kardex);
       if (kSheet) {
         const lastRowK = kSheet.getLastRow();
         const startRowK = lastRowK + 1;
@@ -3870,8 +3755,8 @@ function procesarCargaMasiva() {
     SpreadsheetApp.getActive().toast("⏳ Paso 3/4: Creando históricos de consumo...", "⚙️ Agregar productos", 5);
     // 3. Insertar en HISTORIAL_BA y HISTORIAL_BM
     Object.values(BODEGAS).forEach(b => {
-      const histName = `HISTORIAL_${b.key}`;
-      const hSheet = ss.getSheetByName(histName);
+      const histName = BODEGAS[b.key].historial;
+      const hSheet = _hoja(ss, histName);
       if (hSheet) {
         const lastRowH = hSheet.getLastRow();
         const startRowH = lastRowH + 1;
@@ -3918,7 +3803,7 @@ function procesarCargaMasiva() {
 
 function procesarEdicionMasiva() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const editSheet = ss.getSheetByName("✏️ EDITAR_PRODUCTOS");
+  const editSheet = _hoja(ss, "✏️ EDITAR_PRODUCTOS");
   if (!editSheet) return;
   
   const lastRowE = editSheet.getLastRow();
@@ -3976,7 +3861,7 @@ function procesarEdicionMasiva() {
   
   try {
     SpreadsheetApp.getActive().toast("⏳ Paso 1/4: Actualizando datos en MAESTRO...", "📝 Editar productos", 5);
-    const maestro = ss.getSheetByName(SHEET_MAESTRO);
+    const maestro = _hoja(ss, SHEET_MAESTRO);
     const lrM = maestro.getLastRow();
     if (lrM >= MAESTRO_START) {
       const map = _getMaestroHeaderMap(maestro);
@@ -4013,7 +3898,7 @@ function procesarEdicionMasiva() {
     SpreadsheetApp.getActive().toast("⏳ Paso 2/4: Actualizando KARDEX de Andares y Mercado...", "📝 Editar productos", 5);
     // 2. Actualizar KARDEX_BA y KARDEX_BM (No, CATEGORÍA, PRODUCTO, PRESENTACIÓN, UNIDAD)
     Object.values(BODEGAS).forEach(b => {
-      const kSheet = ss.getSheetByName(b.kardex);
+      const kSheet = _hoja(ss, b.kardex);
       if (kSheet) {
         const lrK = kSheet.getLastRow();
         if (lrK >= KARDEX_START) {
@@ -4037,7 +3922,7 @@ function procesarEdicionMasiva() {
     SpreadsheetApp.getActive().toast("⏳ Paso 3/4: Sincronizando históricos de consumo...", "📝 Editar productos", 5);
     // 3. Actualizar HISTORIAL_BA y HISTORIAL_BM (No, PRODUCTO, UNIDAD)
     Object.values(BODEGAS).forEach(b => {
-      const hSheet = ss.getSheetByName(`HISTORIAL_${b.key}`);
+      const hSheet = _hoja(ss, BODEGAS[b.key].historial);
       if (hSheet) {
         const lrH = hSheet.getLastRow();
         if (lrH >= 5) {
@@ -4083,7 +3968,7 @@ function procesarEdicionMasiva() {
 
 function obtenerDatosPowerhouse(key = "BA") {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  const maestro = _hoja(ss, SHEET_MAESTRO);
   if (!maestro) return { items: [], categorias: CATEGORIAS_LISTA, unidades: ["kg", "lt", "pza", "paq", "g", "ml", "rol", "fco", "dom", "bol", "caj"] };
 
   _asegurarColumnasQuioscoEnMaestro(maestro);
@@ -4215,7 +4100,7 @@ function guardarPowerhouseBatch(key, payload) {
 function _renombrarEnKardex(renombres) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   Object.values(BODEGAS).forEach(b => {
-    const k = ss.getSheetByName(b.kardex);
+    const k = _hoja(ss, b.kardex);
     if (!k || k.getLastRow() < KARDEX_START) return;
     const rng = k.getRange(KARDEX_START, 3, k.getLastRow() - KARDEX_START + 1, 1);
     const vals = rng.getValues();
@@ -4228,7 +4113,7 @@ function _renombrarEnKardex(renombres) {
 function _guardarCatalogoPowerhouse(key, payload) {
   {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const maestro = ss.getSheetByName(SHEET_MAESTRO);
+    const maestro = _hoja(ss, SHEET_MAESTRO);
     if (!maestro) throw new Error("No se encontró la hoja MAESTRO.");
 
     _asegurarColumnasQuioscoEnMaestro(maestro);
@@ -4407,7 +4292,7 @@ function _guardarCatalogoPowerhouse(key, payload) {
       if (nRen) _renombrarEnKardex(renombres);
       if (nAct) {
         Object.values(BODEGAS).forEach(b => {
-          const kSheet = ss.getSheetByName(b.kardex);
+          const kSheet = _hoja(ss, b.kardex);
           const filas = _mapaFilasPorProducto(kSheet, KARDEX_START, 3);
           Object.keys(cambiosActivo).forEach(n => {
             const r = filas[n];
@@ -4465,7 +4350,7 @@ function sincronizarRemotamenteTiendasPush(sourceKey = null, sourceRankMap = nul
           try { targetSs = _abrirLibro(t.url); } catch(err) {}
         }
 
-        const vistaSheet = ss.getSheetByName(t.vistaName);
+        const vistaSheet = _hoja(ss, t.vistaName);
         if (targetSs && vistaSheet) {
           const vLr = vistaSheet.getLastRow();
           const vCount = Math.max(vLr - 3, 0);
@@ -4475,9 +4360,9 @@ function sincronizarRemotamenteTiendasPush(sourceKey = null, sourceRankMap = nul
           const datosFrescos = vistaSheet.getRange(4, 1, vCount, 12).getValues();
 
           // 2. Buscar la hoja de sincronización en la tienda remota (_SYNC_BA, _SYNC_BM o _SYNC)
-          let syncSheet = targetSs.getSheetByName(`_SYNC_${t.key}`) || 
-                          targetSs.getSheetByName("_SYNC") ||
-                          targetSs.getSheetByName(`_SYNC_${t.key.toLowerCase()}`);
+          let syncSheet = _hoja(targetSs, `_SYNC_${t.key}`) || 
+                          _hoja(targetSs, "_SYNC") ||
+                          _hoja(targetSs, `_SYNC_${t.key.toLowerCase()}`);
           
           if (!syncSheet) {
             syncSheet = targetSs.getSheets().find(s => s.getName().startsWith("_SYNC"));
@@ -4488,7 +4373,7 @@ function sincronizarRemotamenteTiendasPush(sourceKey = null, sourceRankMap = nul
           //    de fila y, sin reordenar antes de refrescar, las capturas quedarían en el producto equivocado).
           //    Picking, activos y el cierre nocturno no mueven filas: basta refrescar el enlace y la tienda se
           //    reordena sola por la huella del catálogo (1.7.6i). Menos escritura cruzada y push más rápido.
-          const pedidoSheet = targetSs.getSheetByName("📋 PEDIDO DIARIO");
+          const pedidoSheet = _hoja(targetSs, "📋 PEDIDO DIARIO");
           if (pedidoSheet && syncSheet) {
             const nSync = Math.max(syncSheet.getLastRow() - 3, 0);
             const actuales = nSync > 0 ? syncSheet.getRange(4, 3, nSync, 1).getValues().map(r => String(r[0]).trim()) : [];
@@ -4695,46 +4580,10 @@ function _reordenarPedidoRemotoDirecto(targetSs, syncSheet, pedidoSheet, syncVal
 }
 
 /**
- * Restaura y protege estrictamente el centro de control táctil de Fila 2 en MAESTRO
- */
-function _restaurarFila2AccionesLote(sheet, lastCol) {
-  const colCount = Math.max(lastCol || sheet.getLastColumn(), 13);
-  sheet.getRange(2, 1, 1, colCount).setBackground(C.cream);
-
-  // A2:B2 - Etiqueta de acciones
-  try { _separarCombinaciones(sheet.getRange("A2:B2")); SpreadsheetApp.flush(); } catch(e) {}
-  sheet.getRange("A2:B2").merge()
-    .setValue("⚠️ Acciones por lote:").setFontWeight("bold").setFontColor(C.dark)
-    .setHorizontalAlignment("right").setVerticalAlignment("middle").setFontSize(9);
-
-  // C2 y D2 - Desactivar
-  sheet.getRange("C2").setValue("Desactivar").setFontWeight("bold").setFontColor(C.dark)
-    .setHorizontalAlignment("right").setVerticalAlignment("middle").setFontSize(9);
-  sheet.getRange("D2").insertCheckboxes().setValue(false).setBackground(C.yellow);
-
-  // E2 y F2 - Activar
-  sheet.getRange("E2").setValue("Activar").setFontWeight("bold").setFontColor(C.dark)
-    .setHorizontalAlignment("right").setVerticalAlignment("middle").setFontSize(9);
-  sheet.getRange("F2").insertCheckboxes().setValue(false).setBackground(C.yellow);
-
-  // G2 y H2 - Eliminar Sel.
-  sheet.getRange("G2").setValue("Eliminar Sel.").setFontWeight("bold").setFontColor(C.dark)
-    .setHorizontalAlignment("right").setVerticalAlignment("middle").setFontSize(9);
-  sheet.getRange("H2").insertCheckboxes().setValue(false).setBackground(C.yellow);
-
-  // I2 y J2 - Limpiar Sel.
-  sheet.getRange("I2").setValue("Limpiar Sel.").setFontWeight("bold").setFontColor(C.dark)
-    .setHorizontalAlignment("right").setVerticalAlignment("middle").setFontSize(9);
-  sheet.getRange("J2").insertCheckboxes().setValue(false).setBackground(C.yellow);
-
-  sheet.setRowHeight(2, 24);
-}
-
-/**
  * Asegura la existencia y formateo de las columnas de stock de quiosco y picking en MAESTRO
  */
 function _asegurarColumnasQuioscoEnMaestro(maestroSheet) {
-  const sheet = maestroSheet || SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_MAESTRO);
+  const sheet = maestroSheet || _hoja(SpreadsheetApp.getActiveSpreadsheet(), SHEET_MAESTRO);
   if (!sheet) return;
 
   const map = _getMaestroHeaderMap(sheet);
@@ -4799,7 +4648,7 @@ function _asegurarColumnasQuioscoEnMaestro(maestroSheet) {
  * y restaura de forma segura los botones de Fila 2 sin romper celdas
  */
 function _asegurarFormatoHeadersMaestro(maestroSheet) {
-  const sheet = maestroSheet || SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_MAESTRO);
+  const sheet = maestroSheet || _hoja(SpreadsheetApp.getActiveSpreadsheet(), SHEET_MAESTRO);
   if (!sheet) return;
   const lastCol = sheet.getLastColumn();
   if (lastCol < 1) return;
@@ -4813,7 +4662,6 @@ function _asegurarFormatoHeadersMaestro(maestroSheet) {
   sheet.setRowHeight(1, 32);
 
   // Fila 2: Centro de Control Táctil (preservación y restauración sagrada de botones)
-  _restaurarFila2AccionesLote(sheet, lastCol);
 
   // Header Fila 3: Formato institucional C.sage a TODAS las columnas
   sheet.getRange(3, 1, 1, lastCol)
@@ -4839,7 +4687,7 @@ function configurarSemanaAmbas() {
   const hoy = new Date();
   const lunes = _obtenerLunesSemanaActual();
   Object.keys(BODEGAS).forEach(key => {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(BODEGAS[key].kardex);
+    const sheet = _hoja(SpreadsheetApp.getActiveSpreadsheet(), BODEGAS[key].kardex);
     if (sheet) {
       sheet.getRange("G4").setValue(lunes).setNumberFormat("DD/MMM/YYYY");
       _actualizarBadgeEstadoSemana(sheet, key, true);
@@ -4870,7 +4718,7 @@ function _autoVerificarYAvanzarSemanaSilencioso(silent = true, presupuestoMs = n
     
     Object.keys(BODEGAS).forEach(key => {
       const bodega = BODEGAS[key];
-      const sheet = ss.getSheetByName(bodega.kardex);
+      const sheet = _hoja(ss, bodega.kardex);
       if (!sheet) return;
       
       let d4 = sheet.getRange("G4").getValue();
@@ -5016,7 +4864,7 @@ function abrirDialogoTraspasoBDGHTML() {
 
 function obtenerCatalogoParaTraspaso() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  const maestro = _hoja(ss, SHEET_MAESTRO);
   if (!maestro) return [];
   const lr = maestro.getLastRow();
   if (lr < MAESTRO_START) return [];
@@ -5083,7 +4931,7 @@ function diagnosticarActivadores() {
 // Hoja persistente optimizada para la app nativa de Sheets: sin menús ni alerts.
 // Captura en UNIDAD de Kardex, suma a la ENT del día elegido (HOY por default)
 // y confirma con el checkbox de D2. El resultado se escribe en la fila 3.
-const SHEET_ENTRADAS   = "📥 ENTRADAS";
+const SHEET_ENTRADAS   = "📥 Registrar entradas"; // nombre anterior en NOMBRES_ANTERIORES
 const ENTRADAS_START   = 5;      // primera fila de productos
 const ENTRADAS_HOY     = "HOY (automático)";
 
@@ -5096,7 +4944,7 @@ function prepararHojaEntradasManualmente() {
 // Devuelve el lunes de la semana activa del Kardex de una bodega (G4) a las 00:00.
 // Cada bodega tiene su propia semana: si una se atrasa, no puede arrastrar a la otra.
 function _lunesSemanaActivaKardex(ss, key = "BA") {
-  const k = ss.getSheetByName(BODEGAS[key].kardex);
+  const k = _hoja(ss, BODEGAS[key].kardex);
   let monday = k ? k.getRange("G4").getValue() : null;
   if (!monday || !(monday instanceof Date) || isNaN(monday.getTime())) {
     monday = _obtenerLunesSemanaActual();
@@ -5117,10 +4965,10 @@ function _opcionesDiaEntradas(monday) {
 // Crea (o re-sincroniza) la hoja. Conserva cantidades capturadas si keepQty = true.
 function _prepararHojaEntradas(keepQty = false) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const kBA = ss.getSheetByName(BODEGAS.BA.kardex);
-  if (!kBA) throw new Error("No existe KARDEX_BA.");
+  const kBA = _hoja(ss, BODEGAS.BA.kardex);
+  if (!kBA) throw new Error(`No existe ${BODEGAS.BA.kardex}.`);
 
-  let sheet = ss.getSheetByName(SHEET_ENTRADAS);
+  let sheet = _hoja(ss, SHEET_ENTRADAS);
   if (!sheet) sheet = ss.insertSheet(SHEET_ENTRADAS, 0);
   // Encabezado incompleto (hoja nueva o intento previo interrumpido) → se arma completo
   const esNueva = sheet.getRange(4, 1).getValue() !== "PRODUCTO";
@@ -5137,7 +4985,7 @@ function _prepararHojaEntradas(keepQty = false) {
   // Productos activos en el orden del Kardex (agrupado por categoría)
   const klr = kBA.getLastRow();
   const kData = klr >= KARDEX_START ? kBA.getRange(KARDEX_START, 1, klr - KARDEX_START + 1, 5).getValues() : [];
-  const maestro = ss.getSheetByName(SHEET_MAESTRO);
+  const maestro = _hoja(ss, SHEET_MAESTRO);
   const inactivos = new Set();
   if (maestro && maestro.getLastRow() >= MAESTRO_START) {
     const map = _getMaestroHeaderMap(maestro);
@@ -5258,7 +5106,7 @@ function _resolverDiaEntradas(ss, seleccion, key = "BA") {
 
 function procesarEntradasKardex() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_ENTRADAS);
+  const sheet = _hoja(ss, SHEET_ENTRADAS);
   if (!sheet) return;
 
   const lock = LockService.getScriptLock();
@@ -5320,7 +5168,7 @@ function procesarEntradasKardex() {
     Object.keys(pedidos).forEach(key => {
       const nombres = Object.keys(pedidos[key]);
       if (nombres.length === 0) return;
-      const kSheet = ss.getSheetByName(BODEGAS[key].kardex);
+      const kSheet = _hoja(ss, BODEGAS[key].kardex);
       if (!kSheet) throw new Error(`No existe ${BODEGAS[key].kardex}.`);
       const klr = kSheet.getLastRow();
       const count = klr - KARDEX_START + 1;
@@ -5400,6 +5248,7 @@ function forzarAutoVerificarYAvanzarSemana() {
 }
 
 function descontarSurtidoAutomatico(silent = true) {
+  try { _renombrarHojasBDG(); } catch (err) { MiseLogger.warn("descontarSurtidoAutomatico", `Renombrar pestañas: ${err.message}`); }
   // 1. Ejecutar descuento de pedidos de ayer y vaciado de tiendas
   MiseSmartSync.ejecutarDescuento(silent);
   PropertiesService.getScriptProperties().setProperty("ULTIMO_CIERRE",
@@ -5487,7 +5336,7 @@ function _asegurarHojasSyncLogBDG() {
 
   const idBA = props.getProperty("PDA_SPREADSHEET_ID");
   if (idBA) {
-    let sheetBA = ss.getSheetByName("_SYNC_LOG_BA");
+    let sheetBA = _hoja(ss, "_SYNC_LOG_BA");
     if (!sheetBA) {
       sheetBA = ss.insertSheet("_SYNC_LOG_BA");
       try { sheetBA.hideSheet(); } catch(e) {}
@@ -5497,7 +5346,7 @@ function _asegurarHojasSyncLogBDG() {
 
   const idBM = props.getProperty("PDM_SPREADSHEET_ID");
   if (idBM) {
-    let sheetBM = ss.getSheetByName("_SYNC_LOG_BM");
+    let sheetBM = _hoja(ss, "_SYNC_LOG_BM");
     if (!sheetBM) {
       sheetBM = ss.insertSheet("_SYNC_LOG_BM");
       try { sheetBM.hideSheet(); } catch(e) {}
@@ -5528,7 +5377,7 @@ function ejecutarMantenimientoSemanalBDG() {
 
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const maestro = ss.getSheetByName(SHEET_MAESTRO);
+    const maestro = _hoja(ss, SHEET_MAESTRO);
     if (!maestro) throw new Error("No se encontró la hoja MAESTRO.");
 
     let purgasCount = 0;
@@ -5593,7 +5442,7 @@ function ejecutarMantenimientoSemanalBDG() {
     _buildVista("BA");
     _buildVista("BM");
     protegerTodasLasHojasSeguras();
-    Object.values(BODEGAS).forEach(b => _simplificarVistaKardex(ss.getSheetByName(b.kardex)));
+    Object.values(BODEGAS).forEach(b => _simplificarVistaKardex(_hoja(ss, b.kardex)));
 
     const dur = MiseLogger.timeEnd(tId);
     MiseLogger.info("ejecutarMantenimientoSemanalBDG", `Mantenimiento Semanal Exitoso: ${purgasCount} filas purgadas, ${semanasAvanzadas} bodegas avanzadas, fórmulas saneadas y blindaje activo.`, dur);
@@ -5639,10 +5488,11 @@ function instalarActivadoresNocturnosBDG() {
 
 // onOpen INSTALABLE: al abrir Bodega pone al día AMBOS Kardex (sin el límite de 30 s del simple)
 function onOpenBodegaInstalable(e) {
+  try { _renombrarHojasBDG(); } catch (err) { MiseLogger.warn("onOpenBodegaInstalable", `Renombrar pestañas: ${err.message}`); }
   try {
     const n = _autoVerificarYAvanzarSemanaSilencioso(true);
     if (n > 0) MiseLogger.info("onOpenBodegaInstalable", `Semana avanzada al abrir: ${n} bodega(s).`);
-    if (!SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_ENTRADAS)) _prepararHojaEntradas();
+    if (!_hoja(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ENTRADAS)) _prepararHojaEntradas();
   } catch (err) {
     MiseLogger.error("onOpenBodegaInstalable", err.message, err);
   }
@@ -5688,11 +5538,13 @@ function configurarEsteLibroBDG() {
     try { const d = fn(); pasos.push(`✅ ${nombre}${d ? " — " + d : ""}`); }
     catch (err) { pasos.push(`❌ ${nombre} — ${err.message}`); MiseLogger.error("configurarEsteLibroBDG", `${nombre}: ${err.message}`, err); }
   };
+  paso("Nombres de pestañas", () => { const r = _renombrarHojasBDG(); return r.length ? `${r.length} renombradas` : "al día"; });
   paso("Activadores", () => { const r = _reiniciarActivadoresBDG(); return `${r.borrados.length} viejos borrados, ${r.creados.length} creados`; });
-  paso("Hoja 📥 ENTRADAS", () => { _prepararHojaEntradas(true); return "lista"; });
+  paso("📋 Catálogo amigable", () => { restaurarValidacionesMaestro(); protegerMaestroSeguro(); return "etiquetas, validaciones y solo ACTIVO + MÍN/MÁX editables"; });
+  paso("Hoja 📥 Registrar entradas", () => { _prepararHojaEntradas(true); return "lista"; });
   paso("Vistas móviles", () => { _buildVista("BA"); _buildVista("BM"); return "BA y BM reconstruidas"; });
   paso("Tiendas actualizadas", () => { sincronizarRemotamenteTiendasPush(); return "catálogo, picking y activos enviados"; });
-  paso("Kardex simplificado", () => { Object.values(BODEGAS).forEach(b => _simplificarVistaKardex(SpreadsheetApp.getActiveSpreadsheet().getSheetByName(b.kardex))); return "solo producto, unidad, saldo anterior y días"; });
+  paso("Kardex simplificado", () => { Object.values(BODEGAS).forEach(b => _simplificarVistaKardex(_hoja(SpreadsheetApp.getActiveSpreadsheet(), b.kardex))); return "solo producto, unidad, saldo anterior y días"; });
   paso("Pestañas", () => { _organizarPestanasBDG(); return "ordenadas y coloreadas por uso"; });
   paso("Blindaje", () => {
     protegerTodasLasHojasSeguras();

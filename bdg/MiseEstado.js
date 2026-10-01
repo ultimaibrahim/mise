@@ -44,7 +44,7 @@ function _historialCierres() {
 // ── Punto de entrada ─────────────────────────────────────────────────────────────────────────
 function obtenerEstadoSistema(forzar) {
   if (!forzar) {
-    const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_ESTADO_SISTEMA);
+    const hoja = _hoja(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ESTADO_SISTEMA);
     if (hoja) {
       try {
         const cache = JSON.parse(hoja.getRange(1, 1).getValue());
@@ -69,7 +69,7 @@ function _recolectarEstadoSistema() {
   resumen.componentes = _evaluarComponentes(resumen, ahora);
   resumen.estadoGeneral = _peorEstado(resumen.componentes.map(c => c.estado));
 
-  let hoja = ss.getSheetByName(SHEET_ESTADO_SISTEMA);
+  let hoja = _hoja(ss, SHEET_ESTADO_SISTEMA);
   if (!hoja) {
     hoja = ss.insertSheet(SHEET_ESTADO_SISTEMA);
     try { hoja.hideSheet(); } catch (e) {}
@@ -93,11 +93,11 @@ function _estadoBodega(ss) {
       kardex[key] = { nombre: BODEGAS[key].nombre, semana: _isoWeek(lunes), semanaActual: _isoWeek(actual),
         lunes: lunes.toISOString(), alDia: lunes.getTime() >= new Date(actual.getFullYear(), actual.getMonth(), actual.getDate()).getTime() };
     } catch (e) { kardex[key] = { nombre: BODEGAS[key].nombre, error: e.message }; }
-    bajoMinimo[key] = _productosBajoMinimo(ss.getSheetByName(BODEGAS[key].vista));
-    const vista = ss.getSheetByName(BODEGAS[key].vista);
+    bajoMinimo[key] = _productosBajoMinimo(_hoja(ss, BODEGAS[key].vista));
+    const vista = _hoja(ss, BODEGAS[key].vista);
     huellas[key] = vista && vista.getLastRow() >= 4 ? _huellaCatalogo(vista.getRange(4, 1, vista.getLastRow() - 3, 12).getValues()) : "";
   });
-  const log = ss.getSheetByName(SHEET_LOG);
+  const log = _hoja(ss, SHEET_LOG);
   const filasLog = log && log.getLastRow() >= 2 ? log.getRange(2, 1, Math.min(log.getLastRow() - 1, 300), 7).getValues() : [];
   // 🗒 LOG de Bodega: [TIMESTAMP, NIVEL, FUNCIÓN, DURACIÓN, DETALLE, USUARIO, STACK]
   const reg = filasLog.map(r => ({ fecha: r[0], nivel: r[1], funcion: r[2], ms: r[3], detalle: r[4] }));
@@ -136,12 +136,12 @@ function _estadoTienda(key, props) {
   if (!tss) return { nombre, accesible: false, error: id || url ? "No se pudo abrir el libro" : "Sin ID/URL configurado" };
 
   const estado = {};
-  const hoja = tss.getSheetByName("_ESTADO");
+  const hoja = _hoja(tss, "_ESTADO");
   if (hoja && hoja.getLastRow() >= 2) {
     hoja.getRange(2, 1, Math.min(hoja.getLastRow() - 1, 40), 2).getValues().forEach(r => { if (r[0]) estado[String(r[0]).trim()] = r[1]; });
   }
   // _LOGS de tienda: fila 3 en adelante = [FECHA "yyyy-MM-dd HH:mm:ss", USUARIO, FUNCIÓN, NIVEL, DURACIÓN, DETALLE, STACK]
-  const logs = tss.getSheetByName("_LOGS");
+  const logs = _hoja(tss, "_LOGS");
   const filas = logs && logs.getLastRow() >= 3 ? logs.getRange(3, 1, Math.min(logs.getLastRow() - 2, 300), 7).getValues() : [];
   const reg = filas.map(r => ({ fecha: _fechaLogTienda(r[0]), nivel: r[3], funcion: r[2], ms: r[4], detalle: r[5] }));
   return { nombre, accesible: true, conLatido: Object.keys(estado).length > 0, estado, incidentes: _incidentes(reg), minutosHoy: _minutosHoy(reg) };
@@ -267,9 +267,9 @@ function _accesosEstado() {
   const props = PropertiesService.getScriptProperties();
   const base = ss.getUrl().replace(/\/edit.*$/, "/edit");
   const accesos = [{ nombre: "🏬 Bodega", url: base }];
-  [[SHEET_ENTRADAS, "📥 Entradas"], ["KARDEX_BA", "📊 Kardex Andares"], ["KARDEX_BM", "📊 Kardex Mercado"], [SHEET_MAESTRO, "🗂 Maestro"], [SHEET_LOG, "🗒 Log"]]
+  [[SHEET_ENTRADAS, "📥 Entradas"], [BODEGAS.BA.kardex, "📦 Inventario Andares"], [BODEGAS.BM.kardex, "📦 Inventario Mercado"], [SHEET_MAESTRO, "📋 Catálogo"], [SHEET_LOG, "🗒 Log"]]
     .forEach(([hoja, nombre]) => {
-      const h = ss.getSheetByName(hoja);
+      const h = _hoja(ss, hoja);
       if (h) accesos.push({ nombre, url: `${base}#gid=${h.getSheetId()}` });
     });
   Object.keys(BODEGAS).forEach(key => {

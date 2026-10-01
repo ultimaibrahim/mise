@@ -19,7 +19,8 @@ function crearContextoBDG(opts = {}) {
   if (!rangeProto.merge)      rangeProto.merge = function() { return this; };
   if (!rangeProto.breakApart) rangeProto.breakApart = function() { return this; };
   if (!sheetProto.getMaxRows) sheetProto.getMaxRows = function() { return Math.max(this.getLastRow(), 200); };
-  ["setFontFamily", "setFontStyle"].forEach(m => { if (!rangeProto[m]) rangeProto[m] = function() { return this; }; });
+  ["setFontFamily", "setFontStyle", "setWrap", "clearDataValidations"].forEach(m => { if (!rangeProto[m]) rangeProto[m] = function() { return this; }; });
+  rangeProto.setNote = function(t) { this.sheet._notas = this.sheet._notas || {}; this.sheet._notas[`${this.row},${this.col}`] = t; return this; };
   ["clearConditionalFormatRules", "setConditionalFormatRules", "setHiddenGridlines", "showRows", "hideRows", "hideColumns", "showColumns"]
     .forEach(m => { if (!sheetProto[m]) sheetProto[m] = function() { return this; }; });
   if (!sheetProto.getConditionalFormatRules) sheetProto.getConditionalFormatRules = function() { return []; };
@@ -51,7 +52,10 @@ function crearContextoBDG(opts = {}) {
         const rule = { values: null };
         const b = {
           requireValueInList(v) { rule.values = v; return b; },
-          setAllowInvalid() { return b; },
+          requireFormulaSatisfied(f) { rule.formula = f; return b; },
+          requireNumberGreaterThanOrEqualTo(x) { rule.min = x; return b; },
+          setAllowInvalid(v) { rule.allowInvalid = v; return b; },
+          setHelpText(t) { rule.help = t; return b; },
           build() { return rule; }
         };
         return b;

@@ -32,7 +32,7 @@ function _escenario(lockEstado) {
     s.getRange(7, 1, 2, 5).setValues([[1, "REF", "Fresa", "DOMO", "kg"], [2, "LAC", "Leche", "LT", "lt"]]);
     s.getRange(7, 30, 2, 1).setValues([[5], [3]]); // SLD domingo
   });
-  const g4 = (k) => ctx.ss.getSheetByName(k).getRange("G4").getValue().getTime();
+  const g4 = (k) => ctx.sandbox._hoja(ctx.ss, k === "KARDEX_BA" ? "📦 Inventario Andares" : k === "KARDEX_BM" ? "📦 Inventario Mercado" : k).getRange("G4").getValue().getTime(); // nombre nuevo o anterior
   return { ctx, VMDate, lunesPasado, g4, semana: 7 * 86400000 };
 }
 

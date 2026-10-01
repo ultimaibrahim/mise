@@ -9,14 +9,14 @@
 function prepararPlantillaRecuperacionSemana() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheetName = "📥 RECUPERAR_SEMANA";
-  let sheet = ss.getSheetByName(sheetName);
+  let sheet = _hoja(ss, sheetName);
   if (sheet) {
     try { ss.deleteSheet(sheet); } catch(e) {}
   }
   sheet = ss.insertSheet(sheetName, 0);
 
   // Obtener lunes de la semana activa
-  const kBA = ss.getSheetByName("KARDEX_BA");
+  const kBA = _hoja(ss, BODEGAS.BA.kardex);
   let monday = kBA ? kBA.getRange("G4").getValue() : null;
   if (!monday || !(monday instanceof Date) || isNaN(monday.getTime())) {
     monday = _obtenerLunesSemanaActual();
@@ -66,8 +66,8 @@ function prepararPlantillaRecuperacionSemana() {
   sheet.getRange(3, 13, 1, 11).setValues([headersBM]).setBackground("#2E5D4B").setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center");
 
   // 3. Obtener productos de VISTA_MOVIL_BA y VISTA_MOVIL_BM
-  const vBA = ss.getSheetByName("VISTA_MOVIL_BA");
-  const vBM = ss.getSheetByName("VISTA_MOVIL_BM");
+  const vBA = _hoja(ss, "VISTA_MOVIL_BA");
+  const vBM = _hoja(ss, "VISTA_MOVIL_BM");
   const countBA = vBA ? Math.max(vBA.getLastRow() - 3, 0) : 0;
   const countBM = vBM ? Math.max(vBM.getLastRow() - 3, 0) : 0;
 
@@ -108,14 +108,14 @@ function procesarInyeccionRecuperacionKardex() {
 
   const ui = SpreadsheetApp.getUi();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const recSheet = ss.getSheetByName("📥 RECUPERAR_SEMANA");
+  const recSheet = _hoja(ss, "📥 RECUPERAR_SEMANA");
   if (!recSheet) {
     ui.alert("No se encontró la pestaña '📥 RECUPERAR_SEMANA'. Por favor prepárala primero desde el menú.");
     return;
   }
 
-  const kBA = ss.getSheetByName("KARDEX_BA");
-  const kBM = ss.getSheetByName("KARDEX_BM");
+  const kBA = _hoja(ss, BODEGAS.BA.kardex);
+  const kBM = _hoja(ss, BODEGAS.BM.kardex);
   if (!kBA || !kBM) {
     ui.alert("No se encontraron las hojas de Kardex.");
     return;
@@ -226,7 +226,7 @@ function procesarInyeccionRecuperacionKardex() {
       // Guardar en LOG_SURTIDO de PDA
       if (remoteBA && logsBA.length > 0) {
         try {
-          let logSheet = remoteBA.getSheetByName("🗒 LOG_SURTIDO");
+          let logSheet = _hoja(remoteBA, "🗒 LOG_SURTIDO");
           if (!logSheet) {
             logSheet = remoteBA.insertSheet("🗒 LOG_SURTIDO");
             logSheet.getRange(1, 1, 1, 8).setValues([["Fecha", "Bodega", "Producto", "Categoría", "Cant.Pedida", "Cant.Recibida", "Estado", "EsAdición"]])
@@ -293,7 +293,7 @@ function procesarInyeccionRecuperacionKardex() {
       // Guardar en LOG_SURTIDO de PDM
       if (remoteBM && logsBM.length > 0) {
         try {
-          let logSheet = remoteBM.getSheetByName("🗒 LOG_SURTIDO");
+          let logSheet = _hoja(remoteBM, "🗒 LOG_SURTIDO");
           if (!logSheet) {
             logSheet = remoteBM.insertSheet("🗒 LOG_SURTIDO");
             logSheet.getRange(1, 1, 1, 8).setValues([["Fecha", "Bodega", "Producto", "Categoría", "Cant.Pedida", "Cant.Recibida", "Estado", "EsAdición"]])

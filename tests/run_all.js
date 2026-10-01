@@ -17,6 +17,8 @@ const { runSmartSyncTests } = require('./suites/smartsync.test');
 const { runEstadoTests } = require('./suites/estado.test');
 const { runLimpiezaTests } = require('./suites/limpieza.test');
 const { runPasswordTests } = require('./suites/password.test');
+const { runNombresTests } = require('./suites/nombres.test');
+const { runCatalogoTests } = require('./suites/catalogo.test');
 const { runMetodosTests } = require('./suites/metodos.test');
 const { runTiendaUnicaTests } = require('./suites/tienda_unica.test');
 const { runBlindajeTests } = require('./suites/blindaje.test');
@@ -50,6 +52,8 @@ try {
   runEstadoTests();
   runLimpiezaTests();
   runPasswordTests();
+  runNombresTests();
+  runCatalogoTests();
   runMetodosTests();
   runTiendaUnicaTests();
   runBlindajeTests();

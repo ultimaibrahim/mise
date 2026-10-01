@@ -152,7 +152,7 @@ const MiseSmartSync = {
       const targetDayName = dayNames[dIdx];
 
       // Mapear factores de conversión de MAESTRO para normalización automática de unidades
-      const maestroSheet = ss.getSheetByName(SHEET_MAESTRO);
+      const maestroSheet = _hoja(ss, SHEET_MAESTRO);
       const factorMap = {};
       if (maestroSheet) {
         const mlr = maestroSheet.getLastRow();
@@ -177,7 +177,7 @@ const MiseSmartSync = {
 
       Object.keys(BODEGAS).forEach(key => {
         const bConfig = BODEGAS[key];
-        const kSheet = ss.getSheetByName(bConfig.kardex);
+        const kSheet = _hoja(ss, bConfig.kardex);
         if (!kSheet) return;
 
         // Mapear insumos oficiales en Kardex (Columna C = 3 es Producto)
@@ -230,7 +230,7 @@ const MiseSmartSync = {
             // Respaldo de Ground Truth: Leer directamente 🚚 SURTIDO RÁPIDO si está disponible
             const surtidoMap = {};
             try {
-              const surtidoSheet = remoteSs.getSheetByName("🚚 SURTIDO RÁPIDO");
+              const surtidoSheet = _hoja(remoteSs, "🚚 SURTIDO RÁPIDO");
               if (surtidoSheet && surtidoSheet.getLastRow() >= 4) {
                 const sCount = surtidoSheet.getLastRow() - 3;
                 const sData = surtidoSheet.getRange(4, 1, sCount, 8).getValues();
@@ -250,7 +250,7 @@ const MiseSmartSync = {
               }
             } catch(errSurtido) {}
 
-            const pedidoSheet = remoteSs.getSheetByName("📋 PEDIDO DIARIO");
+            const pedidoSheet = _hoja(remoteSs, "📋 PEDIDO DIARIO");
             if (pedidoSheet) {
               const plr = pedidoSheet.getLastRow();
               if (plr >= 4) {
@@ -320,7 +320,7 @@ const MiseSmartSync = {
 
                 // Registrar evidencias en 🗒 LOG_SURTIDO de la tienda remota
                 if (itemsAEvidenciarEnLog.length > 0) {
-                  let remLogSheet = remoteSs.getSheetByName("🗒 LOG_SURTIDO");
+                  let remLogSheet = _hoja(remoteSs, "🗒 LOG_SURTIDO");
                   if (!remLogSheet) {
                     remLogSheet = remoteSs.insertSheet("🗒 LOG_SURTIDO");
                     remLogSheet.getRange(1, 1, 1, 7).setValues([["Fecha", "Bodega", "Producto", "Categoría", "Cant.Pedida", "Cant.Recibida", "Estado"]])
@@ -347,7 +347,7 @@ const MiseSmartSync = {
                 pedidoSheet.getRange(4, 1, pCount, 10).setBackgrounds(bgs);
 
                 // Limpiar hoja 🚚 SURTIDO RÁPIDO remota
-                const surtidoRem = remoteSs.getSheetByName("🚚 SURTIDO RÁPIDO");
+                const surtidoRem = _hoja(remoteSs, "🚚 SURTIDO RÁPIDO");
                 if (surtidoRem) {
                   try {
                     remoteSs.deleteSheet(surtidoRem);
@@ -383,11 +383,11 @@ const MiseSmartSync = {
           return true;
         };
         if (remoteSs) {
-          const rLog = remoteSs.getSheetByName("🗒 LOG_SURTIDO");
+          const rLog = _hoja(remoteSs, "🗒 LOG_SURTIDO");
           if (rLog) _leerColaLog(rLog);
         }
         if (logRowsData.length === 0) {
-          const localLog = ss.getSheetByName(`_SYNC_LOG_${key}`) || ss.getSheetByName("🗒 LOG_SURTIDO");
+          const localLog = _hoja(ss, `_SYNC_LOG_${key}`) || _hoja(ss, "🗒 LOG_SURTIDO");
           if (localLog) _leerColaLog(localLog);
         }
 
@@ -603,7 +603,7 @@ const MiseMatchingEngine = {
   SHEET_ALIAS: "_DICCIONARIO_ALIAS",
 
   _asegurarHojaAlias(ss) {
-    let sheet = ss.getSheetByName(this.SHEET_ALIAS);
+    let sheet = _hoja(ss, this.SHEET_ALIAS);
     if (!sheet) {
       sheet = ss.insertSheet(this.SHEET_ALIAS);
       sheet.appendRow(["ALIAS_NORMALIZADO", "PRODUCTO_OFICIAL", "CONFIANZA", "FECHA_REGISTRO", "ORIGEN"]);
@@ -618,7 +618,7 @@ const MiseMatchingEngine = {
    * Carga el diccionario persistente de alias desde la hoja oculta en memoria RAM.
    */
   obtenerDiccionarioAlias(ss) {
-    const sheet = ss.getSheetByName(this.SHEET_ALIAS);
+    const sheet = _hoja(ss, this.SHEET_ALIAS);
     if (!sheet || sheet.getLastRow() < 2) return {};
     const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
     const dict = {};
@@ -793,14 +793,13 @@ const MiseMatchingEngine = {
 };
 
 // ── 5. MOTOR TRANSACCIONAL DE TRASPASOS INTER-TIENDAS (MISE TRASPASOS) ────────
-const SHEET_TRASPASOS = "🔄 TRASPASOS";
 
 const MiseTraspasos = {
   /**
    * Asegura la existencia y encabezados de la hoja 🔄 TRASPASOS en Bodega Central
    */
   _asegurarHojaTraspasos(ss) {
-    let sheet = ss.getSheetByName(SHEET_TRASPASOS);
+    let sheet = _hoja(ss, SHEET_TRASPASOS);
     if (!sheet) {
       sheet = ss.insertSheet(SHEET_TRASPASOS);
       const headers = [
@@ -862,7 +861,7 @@ const MiseTraspasos = {
 
       // 1. Mapear producto en Kardex y factores de conversión
       const normKey = String(prodName).toLowerCase().replace(/\s+/g, "").replace(/cdk/g, "").replace(/[()]/g, "").trim();
-      const maestroSheet = ss.getSheetByName(SHEET_MAESTRO);
+      const maestroSheet = _hoja(ss, SHEET_MAESTRO);
       let factorConversion = 1;
       if (maestroSheet) {
         const mlr = maestroSheet.getLastRow();
@@ -889,8 +888,8 @@ const MiseTraspasos = {
       const cantKardex = Math.round(cant * factorConversion * 1000) / 1000;
 
       // 2. Localizar filas en Kardex de Origen y Destino
-      const kSheetOrigen = ss.getSheetByName(BODEGAS[origenKey].kardex);
-      const kSheetDestino = ss.getSheetByName(BODEGAS[destinoKey].kardex);
+      const kSheetOrigen = _hoja(ss, BODEGAS[origenKey].kardex);
+      const kSheetDestino = _hoja(ss, BODEGAS[destinoKey].kardex);
       if (!kSheetOrigen || !kSheetDestino) {
         throw new Error("No se encontraron las hojas de Kardex de origen o destino.");
       }

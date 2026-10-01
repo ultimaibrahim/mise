@@ -23,6 +23,14 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6o Altair — Bodega Para Todos (Octubre 2026) [EN PRUEBAS]
+
+* 🏷️ **Pestañas que dicen qué hacen**: 📥 Registrar entradas · 📦 Inventario Andares · 📦 Inventario Mercado · 📋 Catálogo · 🔄 Traspasos · 🗄 Semanas pasadas · 🗒 Registro del sistema.
+* 📋 **Catálogo fácil desde la tableta**: cada columna dice qué es (por ejemplo "Andares · bodega · mín."), y solo se puede cambiar si un producto está activo y sus mínimos y máximos. Si se escribe algo que no va (letras, negativos, un máximo menor que el mínimo), la hoja lo rechaza y explica por qué.
+* ⚡ Lo demás (dar de alta, renombrar, borrar, ordenar) sigue en Mise Powerhouse.
+
+---
+
 ## Versión 1.7.6n Altair — Traspasos en un Solo Lugar (Septiembre 2026) [EN PRUEBAS]
 
 * 🔄 **Los traspasos entre Andares y Mercado se registran solo desde Bodega**: la opción de las tiendas se retiró porque no funcionaba bien con las cuentas de tienda ni en el celular.
