@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6r Altair (Monitor de progreso y Powerhouse al día) — 2026-10-01 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG)
+* Configurar con monitor en vivo (diálogo sin bloqueo); Powerhouse con unidad de pedido y factor; administradores en las protecciones; roadmap 1.7.7.
+
+---
+
 ## ⚡ v1.7.6q Altair (Factor sugerido desde la presentación) — 2026-10-01 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG)

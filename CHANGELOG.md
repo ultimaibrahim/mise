@@ -33,6 +33,13 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.6r Altair — Monitor de Progreso, Powerhouse al Día y Administradores (Octubre 2026) [EN PRUEBAS · DEV]
+* **⏳ Monitor de progreso en diálogo sin bloqueo** (`ProgresoDialog.html`, `showModelessDialog`): 🚀 Configurar ya no espera en silencio a un alert final; abre una ventana que lanza el proceso (`ejecutarConMonitor`) y consulta su avance cada ~0.7 s (`leerProgreso`, `CacheService` 10 min): cada paso con ⏳/✅/❌, tiempo y detalle, barra de avance y "Cerrar" al terminar. Solo corren procesos de la lista `PROCESOS_MONITOREADOS`. `configurarEsteLibroBDG` → `_configurarBDGCore(rep)`.
+* **⚡ Powerhouse**: edita unidad de pedido y factor (todos los campos habilitados, a pedido de Ibrahim); el servidor guarda el factor solo si es > 0 (si no, vacío = sin conversión); presentación y nombre en avisos escapados; textos con los nombres nuevos.
+* **👥 Administradores** (`ADMINISTRADORES`, menú Protección): correos que, además del dueño, editan todo lo protegido (`_agregarAdministradores` en todas las protecciones). Sin esto, el Powerhouse usado por otra cuenta choca con el blindaje.
+* **Roadmap 1.7.7** en `documentacion/plan_v1.7.7.md` ("Datos para decidir": reportes con tablas dinámicas, Mise Móvil, alertas).
+* **Testing**: `progreso.test.js` (11 pasos con estado y tiempo, lista permitida, script real del diálogo con DOM mínimo, Powerhouse con unidad/factor e inválido → vacío); limpieza incluye el diálogo nuevo.
+
 ### Version 1.7.6q Altair — Catálogo: Presentación Visible y Factor Sugerido (Octubre 2026) [EN PRUEBAS · DEV]
 * **Catálogo más limpio**: fila 3 (nombres técnicos) y CATEGORÍA ocultas (el código sigue leyendo la fila 3; la categoría la agrupa el Powerhouse); **PRESENTACIÓN visible** con etiqueta y ejemplo.
 * **Factor sugerido desde la presentación** (`_sugerirFactorDesdePresentacion`, `_aplicarFactoresSugeridos`): "Domo 454 g" con unidad de bodega kg → unidad de pedido `domo`, factor `0.454`; convierte g/kg, ml/lt y piezas (con sinónimos y coma decimal), nombres de varias palabras ("Bolsa de polvo 800 g"). **Nunca pisa** una unidad o factor ya puestos; unidades incompatibles (g contra pz) van a revisión en el `🗒 Registro`, sin inventar. Corre al escribir una presentación (onEdit, con aviso), en 🚀 Configurar y desde el menú "⚖️ Llenar factores desde la presentación".

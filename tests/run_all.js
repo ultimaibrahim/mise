@@ -20,6 +20,7 @@ const { runPasswordTests } = require('./suites/password.test');
 const { runNombresTests } = require('./suites/nombres.test');
 const { runCatalogoTests } = require('./suites/catalogo.test');
 const { runConversionTraspasoTests } = require('./suites/conversion_traspaso.test');
+const { runProgresoTests } = require('./suites/progreso.test');
 const { runMetodosTests } = require('./suites/metodos.test');
 const { runTiendaUnicaTests } = require('./suites/tienda_unica.test');
 const { runBlindajeTests } = require('./suites/blindaje.test');
@@ -56,6 +57,7 @@ try {
   runNombresTests();
   runCatalogoTests();
   runConversionTraspasoTests();
+  runProgresoTests();
   runMetodosTests();
   runTiendaUnicaTests();
   runBlindajeTests();

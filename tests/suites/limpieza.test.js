@@ -43,7 +43,7 @@ function revisarLibro(nombre, prod, devTools, htmls) {
 function runLimpiezaTests() {
   console.log("\n🧪 [TEST SUITE] 🧹 Limpieza: menús válidos, DevTools fuera de PROD, sin código muerto");
   const b = revisarLibro("Bodega", ["bdg/miseAuthBDG.js", "bdg/MiseKardexEngine.js", "bdg/MiseEstado.js"], "bdg/MiseDevTools.js",
-    ["bdg/PickingDialog.html", "bdg/TraspasoDialog.html", "bdg/EstadoSistema.html"]);
+    ["bdg/PickingDialog.html", "bdg/TraspasoDialog.html", "bdg/EstadoSistema.html", "bdg/ProgresoDialog.html"]);
   const t = revisarLibro("Tienda", ["tienda/miseTienda.js"], "tienda/MiseDevTools.js", []);
   console.log(`  ✓ Bodega: ${b.items} opciones de menú válidas · ${b.funciones} funciones con uso · ${b.dev} herramientas solo DEV`);
   console.log(`  ✓ Tienda: ${t.items} opciones de menú válidas · ${t.funciones} funciones con uso · ${t.dev} herramientas solo DEV`);
@@ -55,7 +55,7 @@ function runLimpiezaTests() {
   console.log("  ✓ MiseDevTools.js: se sube a DEV y queda excluido de PROD");
 
   // Diálogos HTML: todo nombre/categoría/unidad insertado como HTML pasa por esc() (en innerText no hace falta)
-  ["bdg/PickingDialog.html", "bdg/TraspasoDialog.html", "bdg/EstadoSistema.html"].forEach(f => {
+  ["bdg/PickingDialog.html", "bdg/TraspasoDialog.html", "bdg/EstadoSistema.html", "bdg/ProgresoDialog.html"].forEach(f => {
     const html = leer(f);
     assert.ok(/function esc\(/.test(html), `${f}: define esc()`);
     const crudos = html.split("\n").filter(l => !/innerText|textContent|title=|onchange=|oninput=/.test(l))

@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.6q Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.6r Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -262,6 +262,7 @@ function onOpen() {
         .addSubMenu(ui.createMenu("🔒 Protección y Seguridad Crítica")
           .addItem("🔒 Blindar todas las hojas",   "protegerTodasLasHojasSeguras")
           .addItem("🔐 Auditoría de permisos",   "auditarPermisos")
+          .addItem("👥 Administradores (Powerhouse y Catálogo completo)", "configurarAdministradores")
           .addSeparator()
           .addItem("🔐 Cambiar contraseña de administrador", "cambiarPasswordAdmin")
           .addItem("⚠️ Restablecer sistema desde cero (Destructivo)", "setupCompleto")))
@@ -2274,9 +2275,11 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.6q";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6r";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "⏳ 🚀 Configurar muestra cada paso en vivo, en una ventana que no bloquea la hoja",
+  "⚡ Powerhouse edita también la unidad de pedido y el factor",
   "⚖️ Escribe la presentación como \"Domo 454 g\" y Mise llena sola la unidad de pedido y el factor",
   "🔄 Traspasos desde el celular: en 📥 Registrar entradas elige el modo (Andares → Mercado o al revés)",
   "⚖️ Las tiendas piden en su unidad (domo, caja, paquete) y Bodega descuenta en la suya (kg, pz)",
@@ -3318,6 +3321,7 @@ function protegerMaestroSeguro() {
     const me = Session.getEffectiveUser();
     sheetProtection.removeEditors(sheetProtection.getEditors());
     sheetProtection.addEditor(me);
+    _agregarAdministradores(sheetProtection);
   } catch(e) {}
   
   // 3. Desproteger SOLO lo editable desde la hoja (1.7.6o): ACTIVO y los MÍN/MÁX de bodega y quiosco de cada tienda.
@@ -3374,6 +3378,7 @@ function protegerKardexSeguro(keyOrSheet) {
     const me = Session.getEffectiveUser();
     sheetProtection.removeEditors(sheetProtection.getEditors());
     sheetProtection.addEditor(me);
+    _agregarAdministradores(sheetProtection);
   } catch(e) {}
 
   // 3. DESPROTEGER RANGOS INTERACTIVOS OPERATIVOS:
@@ -3434,6 +3439,33 @@ function _organizarPestanasBDG() {
 }
 
 // Protege una hoja completa: solo el dueño edita; `libres` = rangos de captura para los usuarios
+// ── 👥 ADMINISTRADORES (1.7.6r) ─────────────────────────────────────────────────────────────────
+// Correos que, además del dueño, editan todo lo protegido (Powerhouse, Catálogo completo, unidades y factores).
+// Sin esto, el Powerhouse usado por otra cuenta choca con el blindaje: Google rechaza sus escrituras.
+function _administradores() {
+  return String(PropertiesService.getScriptProperties().getProperty("ADMINISTRADORES") || "")
+    .split(/[,;\s]+/).map(x => x.trim().toLowerCase()).filter(x => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+}
+
+function _agregarAdministradores(proteccion) {
+  _administradores().forEach(correo => { try { proteccion.addEditor(correo); } catch (e) {} });
+}
+
+function configurarAdministradores() {
+  const ui = SpreadsheetApp.getUi();
+  if (!_esDuenoDelLibro()) { ui.alert("👥 Solo el dueño del libro puede definir administradores."); return; }
+  const actuales = _administradores();
+  const r = ui.prompt("👥 Administradores",
+    `Correos (separados por coma) que podrán usar ⚡ Powerhouse y editar todo el Catálogo, además de ti.\n\nActuales: ${actuales.join(", ") || "(ninguno)"}\n\nDeja vacío para quitar a todos.`,
+    ui.ButtonSet.OK_CANCEL);
+  if (r.getSelectedButton() !== ui.Button.OK) return;
+  PropertiesService.getScriptProperties().setProperty("ADMINISTRADORES", r.getResponseText().trim());
+  protegerTodasLasHojasSeguras();
+  protegerMaestroSeguro();
+  MiseLogger.info("configurarAdministradores", `Administradores: ${_administradores().join(", ") || "(ninguno)"}`);
+  ui.alert("✅ Listo", `Administradores: ${_administradores().join(", ") || "(ninguno)"}.\nYa pueden editar las hojas protegidas de Bodega. Para el Powerhouse también necesitan acceso de edición a los libros de Andares y Mercado.`, ui.ButtonSet.OK);
+}
+
 function _blindarHoja(sheet, desc, libres) {
   if (!sheet) return;
   sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(p => { try { p.remove(); } catch (e) {} });
@@ -3441,6 +3473,7 @@ function _blindarHoja(sheet, desc, libres) {
   prot.setWarningOnly(false);
   prot.removeEditors(prot.getEditors());
   prot.addEditor(Session.getEffectiveUser());
+  _agregarAdministradores(prot);
   if (prot.canDomainEdit()) prot.setDomainEdit(false);
   if (libres && libres.length) prot.setUnprotectedRanges(libres);
 }
@@ -4130,6 +4163,8 @@ function obtenerDatosPowerhouse(key = "BA") {
       cat: cat,
       pres: pres,
       unit: unit,
+      unitTienda: map["UNIDAD_TIENDA"] ? String(r[map["UNIDAD_TIENDA"].index] || "").trim() : "",
+      factor: map["FACTOR_CONVERSION"] ? (parseFloat(String(r[map["FACTOR_CONVERSION"].index]).replace(",", ".")) || "") : "",
       activo: activo,
       minBa: minBa,
       maxBa: maxBa,
@@ -4325,6 +4360,11 @@ function _guardarCatalogoPowerhouse(key, payload) {
           if (ed.name !== undefined && map["PRODUCTO"])    mData[i][map["PRODUCTO"].index] = String(ed.name).trim();
           if (ed.pres !== undefined && map["PRESENTACION"]) mData[i][map["PRESENTACION"].index] = String(ed.pres).trim();
           if (ed.unit !== undefined && map["UNIDAD"])       mData[i][map["UNIDAD"].index] = String(ed.unit).trim().toLowerCase();
+          if (ed.unitTienda !== undefined && map["UNIDAD_TIENDA"]) mData[i][map["UNIDAD_TIENDA"].index] = String(ed.unitTienda).trim().toLowerCase();
+          if (ed.factor !== undefined && map["FACTOR_CONVERSION"]) {
+            const f = parseFloat(String(ed.factor).replace(",", "."));
+            mData[i][map["FACTOR_CONVERSION"].index] = f > 0 ? f : ""; // vacío o inválido → sin conversión
+          }
           if (ed.minBa !== undefined && map["MÍN_BA"])     mData[i][map["MÍN_BA"].index] = parseFloat(ed.minBa) || 0;
           if (ed.maxBa !== undefined && map["MÁX_BA"])     mData[i][map["MÁX_BA"].index] = parseFloat(ed.maxBa) || 0;
           if (ed.minBm !== undefined && map["MÍN_BM"])     mData[i][map["MÍN_BM"].index] = parseFloat(ed.minBm) || 0;
@@ -5742,12 +5782,17 @@ function _diagnosticarConexionesBDG() {
 }
 
 // ── 🚀 CONFIGURAR ESTE LIBRO (un clic: activadores, hojas, vistas, tiendas y diagnóstico) ────
+// Menú: abre el monitor de progreso (diálogo sin bloqueo) que ejecuta _configurarBDGCore y muestra cada paso en vivo
 function configurarEsteLibroBDG() {
-  const ui = SpreadsheetApp.getUi();
+  _abrirMonitor("configurar");
+}
+
+function _configurarBDGCore(rep) {
   const pasos = [];
   const paso = (nombre, fn) => {
-    try { const d = fn(); pasos.push(`✅ ${nombre}${d ? " — " + d : ""}`); }
-    catch (err) { pasos.push(`❌ ${nombre} — ${err.message}`); MiseLogger.error("configurarEsteLibroBDG", `${nombre}: ${err.message}`, err); }
+    rep.inicio(nombre);
+    try { const d = fn(); pasos.push(`✅ ${nombre}${d ? " — " + d : ""}`); rep.fin(nombre, true, d); }
+    catch (err) { pasos.push(`❌ ${nombre} — ${err.message}`); rep.fin(nombre, false, err.message); MiseLogger.error("configurarEsteLibroBDG", `${nombre}: ${err.message}`, err); }
   };
   paso("Nombres de pestañas", () => { const r = _renombrarHojasBDG(); return r.length ? `${r.length} renombradas` : "al día"; });
   paso("Activadores", () => { const r = _reiniciarActivadoresBDG(); return `${r.borrados.length} viejos borrados, ${r.creados.length} creados`; });
@@ -5772,6 +5817,6 @@ function configurarEsteLibroBDG() {
 
   const ok = pasos.every(p => p.startsWith("✅")) && conexiones.alertas.length === 0;
   MiseLogger.info("configurarEsteLibroBDG", pasos.join(" | "));
-  ui.alert(ok ? "🚀 Bodega lista" : "🚀 Bodega configurada con observaciones",
-    `${pasos.join("\n")}\n\n🔗 Conexiones:\n${conexiones.lineas.join("\n")}`, ui.ButtonSet.OK);
+  return rep.cerrar(ok, ok ? "🚀 Bodega lista" : "🚀 Bodega configurada con observaciones",
+    conexiones.lineas.length ? `🔗 ${conexiones.lineas.join(" · ")}` : "");
 }

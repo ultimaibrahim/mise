@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  :root { --bg: #F5EFE6; --card: #FFFFFF; --texto: #1A281F; --suave: #5E7266; --pino: #2D4836; --ok: #2E7D4F; --aviso: #C48A12; --falla: #B3261E; --borde: rgba(45,72,54,.12); }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 14px; background: var(--bg); color: var(--texto); font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .tarjeta { background: var(--card); border: 1px solid var(--borde); border-radius: 18px; padding: 12px 14px; }
+  .estado { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .estado strong { font-size: 15px; }
+  .estado small { display: block; color: var(--suave); font-size: 12px; }
+  .barra { height: 8px; border-radius: 5px; background: #E8E2D8; overflow: hidden; margin: 6px 0 12px; }
+  .barra i { display: block; height: 100%; width: 0; background: var(--pino); transition: width .3s; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { display: grid; grid-template-columns: 22px 1fr auto; gap: 6px; padding: 7px 0; border-top: 1px solid var(--borde); }
+  li:first-child { border-top: 0; }
+  li small { grid-column: 2 / 4; color: var(--suave); font-size: 12px; word-break: break-word; }
+  .ms { color: var(--suave); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .error { color: var(--falla); }
+  button { margin-top: 12px; width: 100%; font: inherit; font-weight: 600; color: #fff; background: var(--pino); border: 0; border-radius: 12px; padding: 10px; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  .girando { display: inline-block; animation: g 1s linear infinite; }
+  @keyframes g { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+  <div class="tarjeta">
+    <div class="estado"><span id="icono" class="girando">⏳</span><div><strong id="titulo">Trabajando…</strong><small id="sub">Puedes seguir usando la hoja; esta ventana se actualiza sola.</small></div></div>
+    <div class="barra"><i id="barra"></i></div>
+    <ul id="pasos"></ul>
+  </div>
+  <button id="cerrar" onclick="google.script.host.close()" disabled>Cerrar</button>
+<script>
+  const RUN_ID = <?!= JSON.stringify(runId) ?>;
+  const PROCESO = <?!= JSON.stringify(proceso) ?>;
+  const TOTAL = <?!= JSON.stringify(totalPasos) ?>;
+  const ICONO = { corriendo: "⏳", ok: "✅", falla: "❌" };
+  let terminado = false;
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function pintar(p) {
+    const pasos = p.pasos || [];
+    document.getElementById("pasos").innerHTML = pasos.map(x =>
+      `<li><span>${ICONO[x.estado] || "•"}</span><span>${esc(x.nombre)}</span><span class="ms">${x.ms != null ? (x.ms / 1000).toFixed(1) + " s" : ""}</span>` +
+      (x.detalle ? `<small class="${x.estado === "falla" ? "error" : ""}">${esc(x.detalle)}</small>` : "") + "</li>").join("");
+    const hechos = pasos.filter(x => x.estado !== "corriendo").length;
+    document.getElementById("barra").style.width = Math.min(100, Math.round(hechos / Math.max(TOTAL, 1) * 100)) + "%";
+    if (p.fin) terminar(p);
+  }
+
+  function terminar(p) {
+    if (terminado) return;
+    terminado = true;
+    const icono = document.getElementById("icono");
+    icono.classList.remove("girando");
+    icono.textContent = p.ok ? "✅" : "⚠️";
+    document.getElementById("titulo").textContent = p.titulo || (p.ok ? "Listo" : "Terminado con observaciones");
+    document.getElementById("sub").textContent = p.resumen || "";
+    document.getElementById("barra").style.width = "100%";
+    document.getElementById("cerrar").disabled = false;
+  }
+
+  function consultar() {
+    if (terminado) return;
+    google.script.run.withSuccessHandler(txt => { pintar(JSON.parse(txt || "{}")); if (!terminado) setTimeout(consultar, 700); })
+      .withFailureHandler(() => { if (!terminado) setTimeout(consultar, 1500); })
+      .leerProgreso(RUN_ID);
+  }
+
+  // Lanza el proceso (ejecución propia del servidor) y consulta su avance en paralelo
+  google.script.run
+    .withSuccessHandler(txt => pintar(JSON.parse(txt || "{}")))
+    .withFailureHandler(err => terminar({ ok: false, titulo: "❌ Error", resumen: err && err.message }))
+    .ejecutarConMonitor(PROCESO, RUN_ID);
+  setTimeout(consultar, 400);
+</script>
+</body>
+</html>

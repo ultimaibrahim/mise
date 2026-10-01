@@ -23,6 +23,14 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6r Altair — Ver lo que Pasa Mientras Pasa (Octubre 2026) [EN PRUEBAS]
+
+* ⏳ **Configurar muestra su avance en vivo**: una ventana lateral va marcando cada paso con ✅ o ❌ y cuánto tardó, sin bloquear la hoja.
+* ⚡ **Powerhouse más completo**: también se capturan ahí la unidad en que pide la tienda y su equivalencia en bodega.
+* 👥 El dueño puede nombrar **administradores** que también puedan usar Powerhouse y editar todo el Catálogo.
+
+---
+
 ## Versión 1.7.6q Altair — El Catálogo Calcula las Equivalencias (Octubre 2026) [EN PRUEBAS]
 
 * ⚖️ **Escribe cómo viene el producto y Mise hace la cuenta**: con la presentación "Domo 454 g", "Caja 100 pz" o "Paquete 50 pz", se llena sola la unidad en que pide la tienda y su equivalencia en bodega. Lo que ya estaba capturado no se toca.

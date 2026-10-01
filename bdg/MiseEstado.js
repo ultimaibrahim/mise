@@ -292,3 +292,46 @@ function abrirPaginaEstado() {
     .setWidth(320).setHeight(90);
   ui.showModalDialog(html, "🌐 Página de estado");
 }
+
+// ── ⏳ MONITOR DE PROGRESO (1.7.6r) ───────────────────────────────────────────────────────────
+// Un diálogo SIN bloqueo (ProgresoDialog.html) lanza el proceso con google.script.run y, en paralelo, consulta su avance
+// cada ~0.7 s. El proceso reporta cada paso en CacheService (10 min). Solo se ejecutan procesos de esta lista.
+const PROCESOS_MONITOREADOS = {
+  configurar: { titulo: "🚀 Configurar este libro", pasos: 11, fn: (rep) => _configurarBDGCore(rep) }
+};
+
+function _reporteProgreso(runId) {
+  let cache = null;
+  try { cache = runId ? CacheService.getScriptCache() : null; } catch (e) {}
+  const estado = { pasos: [] };
+  const guardar = () => { if (cache) { try { cache.put("prog_" + runId, JSON.stringify(estado), 600); } catch (e) {} } };
+  return {
+    estado,
+    inicio(nombre) { estado.pasos.push({ nombre, estado: "corriendo", t0: Date.now() }); guardar(); },
+    fin(nombre, ok, detalle) {
+      const p = estado.pasos.filter(x => x.nombre === nombre).pop();
+      if (p) { p.estado = ok ? "ok" : "falla"; p.detalle = detalle ? String(detalle) : ""; p.ms = Date.now() - p.t0; }
+      guardar();
+    },
+    cerrar(ok, titulo, resumen) { Object.assign(estado, { fin: true, ok, titulo, resumen }); guardar(); return JSON.stringify(estado); }
+  };
+}
+
+function leerProgreso(runId) {
+  try { return CacheService.getScriptCache().get("prog_" + runId) || "{}"; } catch (e) { return "{}"; }
+}
+
+function ejecutarConMonitor(proceso, runId) {
+  const def = PROCESOS_MONITOREADOS[proceso];
+  if (!def) throw new Error("Proceso no permitido: " + proceso);
+  return def.fn(_reporteProgreso(String(runId || "")));
+}
+
+function _abrirMonitor(proceso) {
+  const def = PROCESOS_MONITOREADOS[proceso];
+  const t = HtmlService.createTemplateFromFile("ProgresoDialog");
+  t.runId = Utilities.getUuid();
+  t.proceso = proceso;
+  t.totalPasos = def.pasos;
+  SpreadsheetApp.getUi().showModelessDialog(t.evaluate().setWidth(440).setHeight(520), def.titulo);
+}
