@@ -33,6 +33,13 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.6s Altair — Encabezado del Inventario Rediseñado (Octubre 2026) [EN PRUEBAS · DEV]
+* **Filas 2–5 del 📦 Inventario** (pendiente histórico de Ibrahim): desde la simplificación (1.7.6d) el título arrancaba en una columna oculta (se veía "ISE — KARDEX…"), las etiquetas SEMANA/FECHA/SUCURSAL quedaron desfasadas de sus valores y la fila 5 decía "DATOS DEL PRODUCTO" dos veces. Ahora (`_actualizarBadgeEstadoSemana`, `_limpiarEncabezadoInventario`): fila 2 = `📦 Inventario Andares` · `✅ Semana 40 · 28/09 al 04/10` (o `⏳ … falta avanzar`) · leyenda "ENT = entró · SAL = salió · SLD = lo que queda"; filas 3–4 limpias y ocultas; fila 5 "PRODUCTO". Sin el 🟢 que algunas fuentes dibujaban como un cuadro vacío.
+* **G4 como única fuente de la semana**: el número de semana y el domingo se calculan desde G4 (`_isoWeek`) en configurar/avanzar semana y en el auto-avance; E4/I4 (decorativas) ya no se leen ni se escriben.
+* **Retiradas las casillas de la fila 4** (Avanzar semana, Recrear vista, Nuevo producto, Anular producto) y sus funciones `agregarProducto`/`anularProducto`: el avance es automático, la vista la recrea 🚀 Configurar y altas/bajas van en el Powerhouse.
+* Se aplica en 🚀 Configurar (paso "Kardex simplificado"), en el mantenimiento semanal y al reconstruir un Inventario.
+* **Testing**: `kardex_vista.test.js` con el encabezado viejo real (combinaciones, casillas, E4) → limpio, filas ocultas, G4 intacta; `semana.test.js` al encabezado nuevo; emulador con `requireDate`.
+
 ### Version 1.7.6r Altair — Monitor de Progreso, Powerhouse al Día y Administradores (Octubre 2026) [EN PRUEBAS · DEV]
 * **⏳ Monitor de progreso en diálogo sin bloqueo** (`ProgresoDialog.html`, `showModelessDialog`): 🚀 Configurar ya no espera en silencio a un alert final; abre una ventana que lanza el proceso (`ejecutarConMonitor`) y consulta su avance cada ~0.7 s (`leerProgreso`, `CacheService` 10 min): cada paso con ⏳/✅/❌, tiempo y detalle, barra de avance y "Cerrar" al terminar. Solo corren procesos de la lista `PROCESOS_MONITOREADOS`. `configurarEsteLibroBDG` → `_configurarBDGCore(rep)`.
 * **⚡ Powerhouse**: edita unidad de pedido y factor (todos los campos habilitados, a pedido de Ibrahim); el servidor guarda el factor solo si es > 0 (si no, vacío = sin conversión); presentación y nombre en avisos escapados; textos con los nombres nuevos.

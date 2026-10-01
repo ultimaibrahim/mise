@@ -54,6 +54,7 @@ function crearContextoBDG(opts = {}) {
           requireValueInList(v) { rule.values = v; return b; },
           requireFormulaSatisfied(f) { rule.formula = f; return b; },
           requireNumberGreaterThanOrEqualTo(x) { rule.min = x; return b; },
+          requireDate() { rule.fecha = true; return b; },
           setAllowInvalid(v) { rule.allowInvalid = v; return b; },
           setHelpText(t) { rule.help = t; return b; },
           build() { return rule; }

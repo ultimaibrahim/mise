@@ -23,6 +23,13 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6s Altair — Inventario que se Explica Solo (Octubre 2026) [EN PRUEBAS]
+
+* 📦 **Encabezado del inventario más claro**: arriba dice de qué bodega es, en qué semana está (con sus fechas) y qué significa cada columna: ENT = entró, SAL = salió, SLD = lo que queda.
+* 🧹 Fuera las filas con botones y datos que confundían.
+
+---
+
 ## Versión 1.7.6r Altair — Ver lo que Pasa Mientras Pasa (Octubre 2026) [EN PRUEBAS]
 
 * ⏳ **Configurar muestra su avance en vivo**: una ventana lateral va marcando cada paso con ✅ o ❌ y cuánto tardó, sin bloquear la hoja.

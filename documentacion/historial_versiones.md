@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6s Altair (Encabezado del Inventario) — 2026-10-01 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG)
+* Fila 2 con título, semana y leyenda; filas 3–4 ocultas; semana calculada desde G4; fuera las casillas de acciones de la fila 4.
+
+---
+
 ## ⚡ v1.7.6r Altair (Monitor de progreso y Powerhouse al día) — 2026-10-01 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG)

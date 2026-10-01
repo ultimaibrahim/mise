@@ -44,6 +44,26 @@ function runKardexVistaTests() {
   assert.strictEqual(visibles.length, 3 + 21, "Más las 21 columnas de los 7 días");
   console.log("  ✓ Kardex: visibles solo PRODUCTO, UNIDAD, SALDO ANT y los 7 días");
 
+  // Encabezado viejo (1.7.6s): etiquetas combinadas desfasadas, casillas de acciones y E4/I4 → limpio; G4 intacta
+  {
+    const k = ss.getSheetByName("KARDEX_BM");
+    ["D3:E3", "F3:G3", "H3:I3", "J3:K3", "L4:M4", "O4:P4"].forEach(r => k.getRange(r).merge());
+    k.getRange("D3").setValue("SEMANA"); k.getRange("E4").setValue("=ISOWEEKNUM(G4)"); k.getRange("N4").setValue(false);
+    const g4Antes = k.getRange("G4").getValue();
+    const ocultasF = [];
+    const hideRowsPrevio = k.hideRows;
+    k.hideRows = (r, n = 1) => { ocultasF.push([r, n]); return k; };
+    sandbox._simplificarVistaKardex(k);
+    k.hideRows = hideRowsPrevio;
+    assert.strictEqual(k.getRange("G4").getValue(), g4Antes, "G4 (lunes de la semana) se conserva");
+    assert.ok(k.merges.every(m => m.r1 > 4 || m.r2 < 3), "Sin combinaciones en las filas 3–4");
+    assert.deepStrictEqual([k.getRange("D3").getValue(), k.getRange("E4").getValue(), k.getRange("N4").getValue()], ["", "", ""], "Etiquetas, E4 y casillas fuera");
+    assert.ok(ocultasF.some(([r, n]) => r === 3 && n === 2), "Filas 3 y 4 ocultas");
+    assert.strictEqual(k.getRange(5, 1).getValue(), "PRODUCTO", "Fila 5 sin 'DATOS DEL PRODUCTO' duplicado");
+    assert.ok(/📦 Inventario Mercado/.test(k.getRange(2, 3).getValue()) && /^(✅|⏳) Semana/.test(k.getRange(2, 4).getValue()), "Fila 2: título y estado de la semana");
+    console.log("  ✓ Encabezado: título, semana con fechas y leyenda; filas 3–4 limpias y ocultas; G4 intacta");
+  }
+
 
 }
 

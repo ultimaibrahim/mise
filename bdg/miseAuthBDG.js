@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.6r Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.6s Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -430,32 +430,6 @@ function _onEditBodega(e) {
   else if (name === BODEGAS.BM.kardex) bodegaKey = "BM";
   else return;
 
-  // 2. Manejo de Checkboxes Interactivos (Fila 4 en KARDEX)
-  if (row === 4) {
-    if (col === 14) { // N4 - Avanzar Semana
-      if (e.range.getValue() === true) {
-        e.range.setValue(false);
-        _avanzarSemana(bodegaKey);
-      }
-    } else if (col === 17) { // Q4 - Recrear Vista Móvil
-      if (e.range.getValue() === true) {
-        e.range.setValue(false);
-        _buildVista(bodegaKey);
-        SpreadsheetApp.getActive().toast(`VISTA_MOVIL_${bodegaKey} recreada`, "⚙️ Mise", 4);
-      }
-    } else if (col === 20) { // T4 - Agregar Producto
-      if (e.range.getValue() === true) {
-        e.range.setValue(false);
-        agregarProducto();
-      }
-    } else if (col === 23) { // W4 - Anular Producto
-      if (e.range.getValue() === true) {
-        e.range.setValue(false);
-        anularProducto();
-      }
-    }
-    return;
-  }
 
   if (row < KARDEX_START) return;
 
@@ -819,67 +793,9 @@ function _buildKardex(sheet, nombre) {
   sheet.setRowHeight(1, 18);
   */
 
-  // Fila 2: título
-  sheet.getRange(2, 1, 1, 3).setBackground(C.dark);
-  sheet.getRange(2, 4, 1, 27).merge()
-    .setValue(`MISE — KARDEX ${nombre}   |   La Crêpe Parisienne`)
-    .setBackground(C.dark).setFontColor("#FFFFFF").setFontWeight("bold")
-    .setFontSize(11).setFontFamily("Arial").setHorizontalAlignment("center");
-  sheet.setRowHeight(2, 30);
-
-  // Filas 3-4: semana
-  const headersSemana = [
-    { rangeHeader: "D3:E3", label: "SEMANA" },
-    { rangeHeader: "F3:G3", label: "FECHA INI" },
-    { rangeHeader: "H3:I3", label: "FECHA FIN" },
-    { rangeHeader: "J3:K3", label: "SUCURSAL" }
-  ];
-
-  headersSemana.forEach(h => {
-    sheet.getRange(h.rangeHeader).merge()
-      .setValue(h.label)
-      .setFontWeight("bold")
-      .setBackground(C.sage)
-      .setFontColor("#FFFFFF")
-      .setHorizontalAlignment("center")
-      .setVerticalAlignment("middle")
-      .setFontSize(9);
-  });
-
-  // Forzar que los datos de la fila 4 compartan alineación vertical intermedia simétrica
-  sheet.getRange("D4:K4")
-    .setFontFamily("Calibri")
-    .setFontSize(10)
-    .setVerticalAlignment("middle");
-
-  sheet.getRange('E4').setFormula('=IFERROR(ISOWEEKNUM(G4),"")')
-    .setBackground(C.yellow).setHorizontalAlignment("center");
-  sheet.getRange("G4").setBackground(C.yellow).setNumberFormat("DD/MMM/YYYY")
-    .setHorizontalAlignment("center");
-  sheet.getRange('I4').setFormula('=IFERROR(G4+6,"")')
-    .setBackground(C.yellow).setNumberFormat("DD/MMM/YYYY").setHorizontalAlignment("center");
-  sheet.getRange("K4").setValue(nombre).setBackground(C.yellow).setHorizontalAlignment("center");
-  
-  sheet.getRange("G4").setDataValidation(
-    SpreadsheetApp.newDataValidation().requireDate()
-      .setHelpText("LUNES de la semana. Usar ⚙️ Mise → Configurar semana.").build()
-  );
-
-  // Botones interactivos (casillas de verificación para UX móvil)
-  sheet.getRange("L4:M4").merge().setValue("⚙️ Avanzar Sem.").setHorizontalAlignment("center").setVerticalAlignment("middle").setFontWeight("bold").setFontSize(8).setFontColor("#FFFFFF").setBackground(C.dark);
-  sheet.getRange("N4").insertCheckboxes().setValue(false).setBackground(C.yellow).setHorizontalAlignment("center");
-
-  sheet.getRange("O4:P4").merge().setValue("🔄 Recrear Vista").setHorizontalAlignment("center").setVerticalAlignment("middle").setFontWeight("bold").setFontSize(8).setFontColor("#FFFFFF").setBackground(C.dark);
-  sheet.getRange("Q4").insertCheckboxes().setValue(false).setBackground(C.yellow).setHorizontalAlignment("center");
-
-  sheet.getRange("R4:S4").merge().setValue("🆕 Nuevo Prod.").setHorizontalAlignment("center").setVerticalAlignment("middle").setFontWeight("bold").setFontSize(8).setFontColor("#FFFFFF").setBackground(C.dark);
-  sheet.getRange("T4").insertCheckboxes().setValue(false).setBackground(C.yellow).setHorizontalAlignment("center");
-
-  sheet.getRange("U4:V4").merge().setValue("🚫 Anular Prod.").setHorizontalAlignment("center").setVerticalAlignment("middle").setFontWeight("bold").setFontSize(8).setFontColor("#FFFFFF").setBackground(C.dark);
-  sheet.getRange("W4").insertCheckboxes().setValue(false).setBackground(C.yellow).setHorizontalAlignment("center");
-
-  sheet.setRowHeight(3, 22);
-  sheet.setRowHeight(4, 22);
+  // Filas 2–4: G4 = lunes de la semana (fuente de verdad); título, estado y leyenda los dibuja
+  // _actualizarBadgeEstadoSemana y _limpiarEncabezadoInventario (vía _simplificarVistaKardex, al final)
+  sheet.getRange("G4").setNumberFormat("DD/MMM/YYYY");
 
   // Fila 5: sección datos + días
   sheet.getRange(5, 1, 1, 3).merge()
@@ -1520,8 +1436,8 @@ function _configurarSemana(key) {
   }
 
   sheet.getRange("G4").setValue(monday).setNumberFormat("DD/MMM/YYYY");
-  const sem = sheet.getRange("E4").getValue();
-  const sun = sheet.getRange("I4").getValue();
+  const sem = _isoWeek(monday);
+  const sun = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
   ui.alert(`✅ Semana ${sem} configurada\n${_fmt(monday)} → ${sun instanceof Date ? _fmt(sun) : sun}`);
   MiseLogger.info("configurarSemana", `${bodega.nombre} | Sem ${sem} | ${_fmt(monday)}`);
 }
@@ -1543,13 +1459,13 @@ function _avanzarSemana(key) {
     return;
   }
 
-  const sem = sheet.getRange("E4").getValue() || 0;
-  const sun = sheet.getRange("I4").getValue();
+  const sem = _isoWeek(d4);
+  const sun = new Date(d4.getFullYear(), d4.getMonth(), d4.getDate() + 6);
   const resp = ui.alert(
     `📅 Avanzar semana — ${bodega.nombre}`,
     `• Semana ${sem} (${_fmt(d4)} → ${sun instanceof Date ? _fmt(sun) : sun})\n` +
     `• Los saldos finales de domingo se pasarán como saldos iniciales.\n` +
-    `• Se guardará el histórico diario en HISTORIAL_${key} con fechas exactas.\n` +
+    `• Se guardará el histórico diario en ${bodega.historial} con fechas exactas.\n` +
     `• Se limpiará la semana en curso para iniciar de nuevo.\n\n` +
     `¿Confirmar?`,
     ui.ButtonSet.YES_NO
@@ -1772,205 +1688,6 @@ function _guardarHistHorizontal(key, sheet, numRows, monday, sem) {
   const sepColIdx = startCol + 15;
   hSheet.setColumnWidth(sepColIdx, 8);
   hSheet.getRange(2, sepColIdx, numRows + 3, 1).setBackground("#555555");
-}
-
-// ── AGREGAR PRODUCTO ──────────────────────────────────────────────────────────
-function agregarProducto() {
-  const ui      = SpreadsheetApp.getUi();
-  const ss      = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = _hoja(ss, SHEET_MAESTRO);
-  if (!maestro) { ui.alert("No existe MAESTRO."); return; }
-
-  const pResp = ui.prompt("🆕 Nuevo Producto", "Nombre del producto:", ui.ButtonSet.OK_CANCEL);
-  if (pResp.getSelectedButton() !== ui.Button.OK) return;
-  const prod = pResp.getResponseText().trim();
-  if (!prod) return;
-
-  const iResp = ui.prompt("🆕 Nuevo Producto", "ID de familia (ej: REF-019):", ui.ButtonSet.OK_CANCEL);
-  if (iResp.getSelectedButton() !== ui.Button.OK) return;
-  const idFam = iResp.getResponseText().trim();
-
-  // Inferir categoría del prefijo
-  const idFamPrefix = idFam.split('-')[0].toUpperCase();
-  const categoria = CATEGORIAS_MAP[idFamPrefix];
-  if (!categoria) {
-    ui.alert("⚠️ ID de Familia Inválido", `No se pudo determinar la categoría para el prefijo "${idFamPrefix}".\n\nPrefijos válidos:\n- REF (REFRIGERADOS)\n- FYV (FRUTAS Y VERDURAS)\n- LEC (LÁCTEOS)\n- ABR (ABARROTES)\n- BEB (BEBIDAS)\n- DES (DESECHABLES)\n- JAR (JARCERÍA)\n\nEl producto no fue agregado.`, ui.ButtonSet.OK);
-    return;
-  }
-
-  const uResp = ui.prompt("🆕 Nuevo Producto", "Unidad (kg / lt / pza / paq / g / ml / rol / fco / dom / bol / caj):", ui.ButtonSet.OK_CANCEL);
-  if (uResp.getSelectedButton() !== ui.Button.OK) return;
-  const unidad = uResp.getResponseText().trim().toLowerCase();
-  const unidadesValidas = ["kg", "lt", "pza", "paq", "g", "ml", "rol", "fco", "dom", "bol", "caj"];
-  if (!unidadesValidas.includes(unidad)) {
-    ui.alert("⚠️ Unidad Inválida", `La unidad "${unidad}" no es válida.\n\nValores válidos: ${unidadesValidas.join(", ")}`, ui.ButtonSet.OK);
-    return;
-  }
-
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(15000)) { ui.alert("El archivo está ocupado. Intenta de nuevo."); return; }
-
-  try {
-    SpreadsheetApp.getActive().toast("⏳ Agregando nuevo producto al catálogo...", "⚙️ Mise", 5);
-    const lr    = maestro.getLastRow();
-    const nos   = maestro.getRange(MAESTRO_START, 1, lr - MAESTRO_START + 1, 1).getValues();
-    const lastNo = nos.reduce((max, r) => Math.max(max, parseInt(r[0]) || 0), 0);
-    const newNo = lastNo + 1;
-    const newRow = lr + 1;
-
-    // 1. Insertar en MAESTRO
-    maestro.getRange(newRow, 1, 1, 14)
-      .setValues([[newNo, idFam, categoria, prod, "", unidad, "SÍ", 0, 0, "", 0, 0, "", false]]);
-    const rowColor = (newNo % 2 === 1) ? C.rowA : C.rowB;
-    maestro.getRange(newRow, 1, 1, 14).setBackground(rowColor);
-    
-    // Configurar dropdown nativo SÍ/NO
-    const validationRule = SpreadsheetApp.newDataValidation()
-      .requireValueInList(["SÍ", "NO"], true)
-      .setAllowInvalid(false)
-      .setHelpText("Selecciona SÍ o NO para activar/desactivar el producto.")
-      .build();
-    maestro.getRange(newRow, 7).setDataValidation(validationRule);
-
-    // Configurar dropdown CATEGORÍA
-    const catValidation = SpreadsheetApp.newDataValidation()
-      .requireValueInList(CATEGORIAS_LISTA, true)
-      .setAllowInvalid(true)
-      .setHelpText("Selecciona la categoría del producto.")
-      .build();
-    maestro.getRange(newRow, 3).setDataValidation(catValidation);
-
-    // Configurar checkbox de seleccion (columna 14 = N)
-    maestro.getRange(newRow, 14).insertCheckboxes().setValue(false);
-
-    // 2. Insertar en KARDEX_BA y KARDEX_BM
-    Object.values(BODEGAS).forEach(b => {
-      const kSheet = _hoja(ss, b.kardex);
-      if (kSheet) {
-        const lastRowK = kSheet.getLastRow();
-        const nextRowK = lastRowK + 1;
-        
-        kSheet.getRange(nextRowK, 1, 1, 5).setValues([[newNo, categoria, prod, "", unidad]]);
-        // kSheet.getRange(nextRowK, 6).setDataValidation(...) (Feature deshabilitada)
-        kSheet.getRange(nextRowK, 6).setNumberFormat("DD/MMM/YY");
-        
-        // kSheet.getRange(nextRowK, 8).setFormula(...) (Feature deshabilitada)
-        kSheet.getRange(nextRowK, 9).setValue(0);
-        
-        for (let d = 0; d < KARDEX_DAYS; d++) {
-          const sldCol  = 12 + d * 3;
-          const prevCol = 9  + d * 3;
-          const entCol  = 10 + d * 3;
-          const salCol  = 11 + d * 3;
-          
-          kSheet.getRange(nextRowK, entCol).setValue("");
-          kSheet.getRange(nextRowK, salCol).setValue("");
-          const fSld = '=' + _col(prevCol) + nextRowK + '+IFERROR(' + _col(entCol) + nextRowK + ',0)-IFERROR(' + _col(salCol) + nextRowK + ',0)';
-          kSheet.getRange(nextRowK, sldCol).setFormula(fSld);
-        }
-        
-        kSheet.getRange(nextRowK, 1, 1, 30).setBackgrounds([Array(30).fill(rowColor)]);
-        kSheet.getRange(nextRowK, 9).setBackground(C.iceBlue);
-        for (let d = 0; d < KARDEX_DAYS; d++) {
-          kSheet.getRange(nextRowK, 10 + d * 3).setBackground(C.entBg);
-          kSheet.getRange(nextRowK, 11 + d * 3).setBackground(C.salBg);
-          kSheet.getRange(nextRowK, 12 + d * 3).setBackground(C.iceBlue);
-        }
-      }
-    });
-
-    // 3. Insertar en HISTORIAL_BA y HISTORIAL_BM
-    Object.values(BODEGAS).forEach(b => {
-      const histName = BODEGAS[b.key].historial;
-      const hSheet = _hoja(ss, histName);
-      if (hSheet) {
-        const lastRowH = hSheet.getLastRow();
-        const nextRowH = lastRowH + 1;
-        hSheet.getRange(nextRowH, 1, 1, 3).setValues([[newNo, prod, unidad]]).setBackground(rowColor);
-        hSheet.getRange(nextRowH, 1, 1, 1).setHorizontalAlignment("center");
-        hSheet.getRange(nextRowH, 3, 1, 1).setHorizontalAlignment("center");
-      }
-    });
-
-    // 4. Re-ordenar y re-numerar todo, luego recrear vistas
-    _ordenarYRenumerarTodo();
-    _buildVista("BA");
-    _buildVista("BM");
-
-    // 5. Recrear Caducidades (Feature deshabilitada)
-    // crearCaducidades();
-
-    SpreadsheetApp.getActive().toast("✅ Producto agregado con éxito", "⚙️ Mise", 4);
-    ui.alert("✅ Producto agregado", `"${prod}" se ha agregado al catálogo, kardex y hojas de historial.`, ui.ButtonSet.OK);
-    MiseLogger.info("agregarProducto", `Producto: ${prod}`);
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function anularProducto() {
-  const ui = SpreadsheetApp.getUi();
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const maestro = _hoja(ss, SHEET_MAESTRO);
-  if (!maestro) { ui.alert("No existe MAESTRO."); return; }
-
-  const resp = ui.prompt(
-    "🚫 Anular Producto",
-    "Ingresa el número (No) o el nombre del producto a anular/desactivar:",
-    ui.ButtonSet.OK_CANCEL
-  );
-  if (resp.getSelectedButton() !== ui.Button.OK) return;
-  const input = resp.getResponseText().trim();
-  if (!input) return;
-
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(15000)) { ui.alert("El archivo está ocupado. Intenta de nuevo."); return; }
-
-  try {
-    SpreadsheetApp.getActive().toast("⏳ Desactivando y ocultando producto...", "⚙️ Mise", 5);
-    const lr = maestro.getLastRow();
-    const hmap = _getMaestroHeaderMap(maestro);
-    const iNo = hmap["NO"] ? hmap["NO"].index : 0;
-    const iProd = hmap["PRODUCTO"] ? hmap["PRODUCTO"].index : 2;
-    const data = maestro.getRange(MAESTRO_START, 1, lr - MAESTRO_START + 1, maestro.getLastColumn()).getValues();
-    let foundRow = -1;
-    let prodKey = "";
-    for (let i = 0; i < data.length; i++) {
-      if (String(data[i][iNo]) === input || String(data[i][iProd]).trim().toLowerCase() === input.toLowerCase()) {
-        foundRow = MAESTRO_START + i;
-        prodKey = String(data[i][iProd]).trim().toUpperCase();
-        break;
-      }
-    }
-
-    if (foundRow === -1) {
-      ui.alert("❌ Producto no encontrado. Verifica el número o nombre.");
-      return;
-    }
-
-    // Cambiar columna ACTIVO (por encabezado) a NO
-    maestro.getRange(foundRow, hmap["ACTIVO"] ? hmap["ACTIVO"].col : 6).setValue("NO");
-    
-    // Ocultar en Kardex la fila de ESE producto
-    Object.values(BODEGAS).forEach(b => {
-      const kSheet = _hoja(ss, b.kardex);
-      const kardexRow = _mapaFilasPorProducto(kSheet, KARDEX_START, 3)[prodKey];
-      if (kSheet && kardexRow) {
-        kSheet.hideRows(kardexRow);
-      }
-    });
-
-    // Recrear vistas
-    _buildVista("BA");
-    _buildVista("BM");
-    // crearCaducidades(); // Feature deshabilitada
-
-    SpreadsheetApp.getActive().toast("✅ Producto anulado con éxito", "⚙️ Mise", 4);
-    ui.alert("✅ Producto anulado", "El producto ha sido marcado como inactivo y ocultado de las hojas de operaciones.", ui.ButtonSet.OK);
-    MiseLogger.info("anularProducto", `Fila Maestro: ${foundRow}`);
-  } finally {
-    lock.releaseLock();
-  }
 }
 
 // ── MIGRACIÓN IN-SITU NO DESTRUCTIVA (13 COLUMNAS) ────────────────────────────
@@ -2275,9 +1992,10 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.6r";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6s";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "📦 Inventario con encabezado claro: semana con fechas y qué significa ENT, SAL y SLD",
   "⏳ 🚀 Configurar muestra cada paso en vivo, en una ventana que no bloquea la hoja",
   "⚡ Powerhouse edita también la unidad de pedido y el factor",
   "⚖️ Escribe la presentación como \"Domo 454 g\" y Mise llena sola la unidad de pedido y el factor",
@@ -3418,6 +3136,16 @@ function _simplificarVistaKardex(sheet) {
   if (!sheet) return;
   sheet.showColumns(1, Math.min(KARDEX_TOTAL_COLS, sheet.getMaxColumns()));
   KARDEX_COLS_OCULTAS.forEach(c => sheet.hideColumns(c));
+  try {
+    _limpiarEncabezadoInventario(sheet);
+    const key = Object.keys(BODEGAS).find(k => BODEGAS[k].kardex === _nombreCanonico(sheet.getName()));
+    if (key) {
+      const lunes = _lunesSemanaActivaKardex(SpreadsheetApp.getActiveSpreadsheet(), key);
+      _actualizarBadgeEstadoSemana(sheet, key, lunes.getTime() >= _obtenerLunesSemanaActual().getTime());
+    }
+  } catch (e) {
+    MiseLogger.warn("_simplificarVistaKardex", `Encabezado de ${sheet.getName()}: ${e.message}`);
+  }
 }
 
 // Orden y color de pestañas por uso: captura → consulta → sistema
@@ -4867,8 +4595,6 @@ function _autoVerificarYAvanzarSemanaSilencioso(silent = true, presupuestoMs = n
       if (!d4 || !(d4 instanceof Date) || isNaN(d4.getTime())) {
         const lunesActual = _obtenerLunesSemanaActual();
         sheet.getRange("G4").setValue(lunesActual).setNumberFormat("DD/MMM/YYYY");
-        sheet.getRange("E4").setFormula('=IFERROR(ISOWEEKNUM(G4),"")');
-        sheet.getRange("I4").setFormula('=IFERROR(G4+6,"")');
         _actualizarBadgeEstadoSemana(sheet, key, true);
         return;
       }
@@ -4883,7 +4609,7 @@ function _autoVerificarYAvanzarSemanaSilencioso(silent = true, presupuestoMs = n
           MiseLogger.warn("_autoVerificarYAvanzarSemanaSilencioso", `${bodega.nombre}: sin tiempo en esta corrida; se avanzará en la siguiente.`);
           break;
         }
-        const semAnterior = sheet.getRange("E4").getValue() || _isoWeek(d4);
+        const semAnterior = _isoWeek(d4);
         if (!_ejecutarAvanzarSemanaSilencioso(key, sheet, d4)) {
           MiseLogger.warn("_autoVerificarYAvanzarSemanaSilencioso", `${bodega.nombre}: no se obtuvo el candado; semana NO avanzada.`);
           break;
@@ -4926,31 +4652,56 @@ function _autoVerificarYAvanzarSemanaSilencioso(silent = true, presupuestoMs = n
   return bodegasAvanzadas;
 }
 
+// Fila 2 del Inventario (1.7.6s): título · estado de la semana con sus fechas · leyenda de columnas.
+// Sin emojis que algunas fuentes no dibujan (el 🟢 salía como un cuadro vacío). La semana sale de G4 (fuente única).
 function _actualizarBadgeEstadoSemana(sheet, key, actualizada) {
   try {
     const d4 = sheet.getRange("G4").getValue();
-    const sem = sheet.getRange("E4").getValue() || _isoWeek(d4 instanceof Date ? d4 : new Date());
-    const fechaStr = d4 instanceof Date ? _fmt(d4) : "";
-    const texto = actualizada ? `🟢 SEMANA ${sem} ACTUALIZADA (${fechaStr})` : `⏳ SEMANA ${sem} PENDIENTE DE AVANZAR`;
-
-    // Fila 2: separar exactamente las combinaciones que toquen D2:P2 (el título original puede llegar a AD2)
-    _separarCombinaciones(sheet.getRange(2, 4, 1, 13));
-    sheet.getRange(2, 4, 1, 8).merge()
-      .setValue(`MISE — KARDEX ${BODEGAS[key].nombre}   |   La Crêpe Parisienne`)
-      .setBackground(C.dark).setFontColor("#FFFFFF").setFontWeight("bold")
-      .setFontSize(11).setFontFamily("Arial").setHorizontalAlignment("center");
-    sheet.getRange(2, 12, 1, 5).merge()
-      .setValue(texto)
-      .setFontWeight("bold").setFontSize(9)
-      .setHorizontalAlignment("center").setVerticalAlignment("middle")
-      .setBackground(actualizada ? "#C8E6C9" : "#FFF9C4")
-      .setFontColor(actualizada ? "#1B5E20" : "#F57F17");
+    const lunes = d4 instanceof Date && !isNaN(d4.getTime()) ? d4 : _obtenerLunesSemanaActual();
+    const domingo = new Date(lunes.getFullYear(), lunes.getMonth(), lunes.getDate() + 6);
+    const dm = (d) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const sem = _isoWeek(lunes);
+    // Separar exactamente las combinaciones de D2:AD2 (títulos de versiones previas) antes de reescribir
+    _separarCombinaciones(sheet.getRange(2, 4, 1, 27));
+    SpreadsheetApp.flush();
+    sheet.getRange(2, 1, 1, 30).setBackground(C.dark);
+    sheet.getRange(2, 3).setValue(`📦 Inventario ${BODEGAS[key].nombre}`)
+      .setFontColor("#FFFFFF").setFontWeight("bold").setFontSize(11).setFontFamily("Arial").setHorizontalAlignment("left");
+    sheet.getRange(2, 4, 1, 6).merge()
+      .setValue(actualizada ? `✅ Semana ${sem} · ${dm(lunes)} al ${dm(domingo)}` : `⏳ Semana ${sem} · falta avanzar`)
+      .setFontWeight("bold").setFontSize(10).setHorizontalAlignment("center").setVerticalAlignment("middle")
+      .setBackground(actualizada ? "#C8E6C9" : "#FFF9C4").setFontColor(actualizada ? "#1B5E20" : "#F57F17");
+    sheet.getRange(2, 10, 1, 21).merge()
+      .setValue("ENT = entró   ·   SAL = salió   ·   SLD = lo que queda")
+      .setFontColor("#C8E6C9").setFontSize(10).setHorizontalAlignment("center").setVerticalAlignment("middle");
+    sheet.setRowHeight(2, 30);
     // Aplicar YA las escrituras: si algo falla, que falle aquí (atrapado) y no en la siguiente lectura
     SpreadsheetApp.flush();
   } catch(e) {
-    MiseLogger.warn("_actualizarBadgeEstadoSemana", `${BODEGAS[key].nombre}: no se pudo dibujar el badge (${e.message}); el avance de semana no se afecta.`);
+    MiseLogger.warn("_actualizarBadgeEstadoSemana", `${BODEGAS[key].nombre}: no se pudo dibujar el encabezado (${e.message}); el avance de semana no se afecta.`);
   }
 }
+
+// Filas 3–5 del Inventario (1.7.6s): fuera las etiquetas que la simplificación dejó desfasadas (SEMANA/FECHA/SUCURSAL),
+// las celdas decorativas E4/I4/K4 y las casillas de acciones (avanzar semana ya es automático; recrear vista lo hace
+// 🚀 Configurar; altas/bajas, el Powerhouse). G4 (lunes de la semana) se CONSERVA: es la fuente de verdad.
+function _limpiarEncabezadoInventario(sheet) {
+  const g4 = sheet.getRange("G4").getValue();
+  _separarCombinaciones(sheet.getRange(3, 4, 2, 27));
+  SpreadsheetApp.flush();
+  const zona = sheet.getRange(3, 4, 2, 27);
+  zona.clearDataValidations();
+  zona.clearContent();
+  zona.setBackground(null);
+  if (g4 instanceof Date && !isNaN(g4.getTime())) sheet.getRange("G4").setValue(g4);
+  sheet.getRange("G4").setNumberFormat("DD/MMM/YYYY").setDataValidation(SpreadsheetApp.newDataValidation().requireDate()
+    .setHelpText("LUNES de la semana. Lo maneja Mise (avance automático o ⚙️ Mise → Configurar semana).").build());
+  sheet.hideRows(3, 2);
+  // Fila 5: un solo "PRODUCTO" (antes "DATOS DEL PRODUCTO" dos veces)
+  sheet.getRange(5, 1).setValue("PRODUCTO");
+  sheet.getRange(5, 4).setValue("");
+}
+
 
 
 function _ejecutarAvanzarSemanaSilencioso(key, sheet, d4) {
@@ -4962,7 +4713,7 @@ function _ejecutarAvanzarSemanaSilencioso(key, sheet, d4) {
     const numRows = lr - KARDEX_START + 1;
     if (numRows < 1) return false;
 
-    const sem = sheet.getRange("E4").getValue() || _isoWeek(d4);
+    const sem = _isoWeek(d4 instanceof Date && !isNaN(d4.getTime()) ? d4 : _obtenerLunesSemanaActual());
 
     // 1. Leer saldos finales (col AD = 30)
     const saldosFin = sheet.getRange(KARDEX_START, KARDEX_SLD_FIN, numRows, 1).getValues();
@@ -4986,8 +4737,6 @@ function _ejecutarAvanzarSemanaSilencioso(key, sheet, d4) {
     nuevoLunes.setHours(0, 0, 0, 0);
 
     sheet.getRange("G4").setValue(nuevoLunes).setNumberFormat("DD/MMM/YYYY");
-    sheet.getRange("E4").setFormula('=IFERROR(ISOWEEKNUM(G4),"")');
-    sheet.getRange("I4").setFormula('=IFERROR(G4+6,"")');
 
     _actualizarBadgeEstadoSemana(sheet, key, true);
     MiseLogger.info("autoAvanzarSemanaSilencioso", `${BODEGAS[key].nombre} | Semana ${sem} avanzada automáticamente al ${_fmt(nuevoLunes)}.`);

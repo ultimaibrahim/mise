@@ -77,9 +77,9 @@ function runSemanaTests() {
     assert.strictEqual(g4("KARDEX_BA"), lunesPasado.getTime() + semana, "BA avanzó");
     assert.strictEqual(g4("KARDEX_BM"), lunesPasado.getTime(), "BM intacta, sin estado a medias");
     assert.ok(!ctx.ss.getSheetByName("HISTORIAL_BM"), "BM no debe archivar historial parcial");
-    assert.ok(/PENDIENTE DE AVANZAR/.test(ctx.ss.getSheetByName("KARDEX_BM").getRange(2, 12).getValue()),
-      "El badge de BM NO dice ACTUALIZADA si no avanzó");
-    assert.ok(/ACTUALIZADA/.test(ctx.ss.getSheetByName("KARDEX_BA").getRange(2, 12).getValue()), "BA sí dice ACTUALIZADA");
+    assert.ok(/⏳ Semana \d+ · falta avanzar/.test(ctx.ss.getSheetByName("KARDEX_BM").getRange(2, 4).getValue()),
+      "El encabezado de BM dice 'falta avanzar' si no avanzó");
+    assert.ok(/^✅ Semana \d+ · \d\d\/\d\d al \d\d\/\d\d$/.test(ctx.ss.getSheetByName("KARDEX_BA").getRange(2, 4).getValue()), "BA: ✅ Semana N · lunes al domingo");
     // Siguiente corrida sin límite: BM se pone al día
     assert.strictEqual(ctx.sandbox._autoVerificarYAvanzarSemanaSilencioso(true), 1, "BM avanza en la siguiente corrida");
     assert.strictEqual(g4("KARDEX_BM"), lunesPasado.getTime() + semana, "BM al día");
@@ -134,8 +134,9 @@ function runSemanaTests() {
     assert.strictEqual(g4("KARDEX_BM"), lunesPasado.getTime() + semana, "BM avanza aunque el título de BA esté combinado D2:AD2");
     assert.strictEqual(n, 2, "Ambas avanzan");
     const fila2 = ctx.ss.getSheetByName("KARDEX_BA").getRange(2, 1, 1, 30).getMergedRanges().map(m => [m.getColumn(), m.getLastColumn()]);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(fila2)), [[4, 11], [12, 16]], "Título D2:K2 y badge L2:P2");
-    assert.ok(/ACTUALIZADA/.test(ctx.ss.getSheetByName("KARDEX_BM").getRange(2, 12).getValue()), "Badge de BM dibujado");
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(fila2)), [[4, 9], [10, 30]], "Estado de semana D2:I2 y leyenda J2:AD2 (título en C2, sin combinar)");
+    assert.ok(/^✅ Semana/.test(ctx.ss.getSheetByName("KARDEX_BM").getRange(2, 4).getValue()), "Encabezado de BM dibujado");
+    assert.ok(/📦 Inventario Mercado/.test(ctx.ss.getSheetByName("KARDEX_BM").getRange(2, 3).getValue()), "Título con el nombre nuevo");
     console.log("  ✓ Título combinado D2:AD2: el badge ya no rompe el avance de Mercado (error diferido de Apps Script)");
   }
 
