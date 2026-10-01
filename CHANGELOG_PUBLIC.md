@@ -23,6 +23,15 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6w Altair — Todo a la Vista en el Celular (Octubre 2026) [EN PRUEBAS]
+
+* 🚚 **Surtido Rápido**: el nombre del producto y lo que se pidió siempre se ven, aun en pantallas chicas (los nombres largos se recortan con "…"). Las instrucciones de arriba se leen completas.
+* 🔄 **Traspasos como se pide en tienda**: se escriben en domos, cajas o paquetes y Mise los convierte a lo que cuenta la bodega.
+* 🎨 Las pestañas de las tiendas tienen colores, como en Bodega.
+* 🎓 Nueva **práctica guiada** para comprobar paso a paso que el sistema funciona y que se entiende cómo fluye la información.
+
+---
+
 ## Versión 1.7.6v Altair — Pensado para el Celular (Octubre 2026) [EN PRUEBAS]
 
 * 🚚 **Surtido Rápido**: casillas ✅/❌ y letras más grandes, y la hoja ya no se desplaza a zonas vacías.

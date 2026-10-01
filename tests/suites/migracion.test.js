@@ -123,7 +123,7 @@ function runMigracionTests() {
     assert.ok(ss.getSheetByName("_RESPALDO_SURTIDO_v3"), `${tag}: respaldo nativo de SURTIDO`);
     assert.strictEqual(ss.getSheetByName("_RESPALDO_PEDIDO_v3").getRange(7, 3).getValue(), "Descontinuado", `${tag}: el respaldo conserva todo`);
     const surtido = ss.getSheetByName("🚚 SURTIDO RÁPIDO");
-    assert.strictEqual(surtido.getRange(3, 8).getValue(), "CANT. FINAL", `${tag}: Surtido regenerado con estructura nueva`);
+    assert.strictEqual(surtido.getRange(3, 8).getValue(), "FINAL", `${tag}: Surtido regenerado con estructura nueva`);
     console.log(`  ✓ ${tag}: activador nocturno migra, respalda (copia nativa + RAM) y restaura F/H/I y quita la J reservada (esquema 3)`);
     console.log(`  ✓ ${tag}: reconstrucción respeta el picking custom; inactivo/semáforo pintan al producto correcto`);
 

@@ -1274,6 +1274,7 @@ function _estiloTactilPedido(sheet, count) {
     sheet.getRange("F2").setFontSize(20).setHorizontalAlignment("center").setVerticalAlignment("middle");
     sheet.setRowHeight(2, 40);
     _ocultarColumnasSobrantes(sheet, _layoutPedido(sheet).colAux + 3);
+    _colorearPestanasTienda(SpreadsheetApp.getActiveSpreadsheet());
   } catch (e) {}
 }
 
@@ -1282,18 +1283,27 @@ function _estiloTactilSurtido(sheet, n) {
   try {
     if (n > 0) {
       sheet.setRowHeights(4, n, 38);
-      sheet.getRange(4, 3, n, 1).setFontSize(12).setVerticalAlignment("middle");
-      sheet.getRange(4, 4, n, 1).setFontSize(12).setHorizontalAlignment("center").setVerticalAlignment("middle");
+      sheet.getRange(4, 2, n, 1).setFontSize(11).setWrap(true).setHorizontalAlignment("left").setVerticalAlignment("middle");
       sheet.getRange(4, 5, n, 1).setFontSize(14).setFontWeight("bold").setHorizontalAlignment("center").setVerticalAlignment("middle");
       sheet.getRange(4, 6, n, 2).setFontSize(18).setHorizontalAlignment("center").setVerticalAlignment("middle");
       sheet.getRange(4, 8, n, 1).setFontSize(12).setFontWeight("bold").setHorizontalAlignment("center").setVerticalAlignment("middle");
     }
     _ocultarColumnasSobrantes(sheet, 11);                       // hasta K (resumen)
+    _colorearPestanasTienda(sheet.getParent ? sheet.getParent() : SpreadsheetApp.getActiveSpreadsheet());
     const ultima = Math.max(3 + n, 8);                         // datos o resumen (J3:K8), lo que llegue más abajo
     const maxR = sheet.getMaxRows();
     sheet.showRows(1, maxR);
     if (maxR > ultima + 1) sheet.hideRows(ultima + 2, maxR - ultima - 1); // deja 1 fila de aire
   } catch (e) {}
+}
+
+// Pestañas con color por uso, como en Bodega (1.7.6w): capturar = amarillo/verde, consulta y técnicas = gris
+function _colorearPestanasTienda(ss) {
+  const colores = { [SHEET_PEDIDO]: "#4A6E58", [SHEET_SURTIDO]: "#F9A825", "🗒 LOG_SURTIDO": "#B0BEC5" };
+  ss.getSheets().forEach(h => {
+    const n = h.getName();
+    try { h.setTabColor(colores[n] || (n.startsWith("_") ? "#CFD8DC" : null)); } catch (e) {}
+  });
 }
 
 function _ocultarColumnasSobrantes(sheet, ultimaUtil) {
@@ -1372,9 +1382,10 @@ function _aplicarFormatosCondicionales(sheet) {
   _estiloTactilPedido(sheet, count);
 }
 
-const MISE_VERSION = "1.7.6v";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6w";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "🚚 Surtido: el producto y lo pedido siempre a la vista, incluso en pantallas chicas",
   "Pedido y Surtido Rápido más cómodos en el celular: filas altas, letra y casillas grandes, sin desplazarse de más",
   "Menú más simple: ⚙️ Mise para el día a día y 🛠 Técnico para mantenimiento",
   "Pides en tu unidad (domo, caja, paquete) y el saldo y los colores ya se ven en esa misma unidad",
@@ -1481,6 +1492,12 @@ function _formulaCantFinal(r) {
   return `=IF($G${r}=TRUE,0,IF($E${r}<>"",$E${r},IF($F${r}=TRUE,$D${r},"")))`;
 }
 
+// Vista del Surtido (columna B): "Queso mozzarella fresc…" ⏎ "pidió 5". Lee C (nombre) y D (pedido), que siguen siendo
+// la fuente de verdad (el nombre identifica al producto en el descuento y en la sincronización con el Pedido).
+function _formulaVistaSurtido(r) {
+  return `=IF(C${r}="","",IF(LEN(C${r})>24,LEFT(C${r},23)&"…",C${r})&CHAR(10)&"pidió "&D${r})`;
+}
+
 function _generarSurtidoRapidoInternal(activateSheet) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const pSheet = ss.getSheetByName(SHEET_PEDIDO);
@@ -1544,28 +1561,30 @@ function _generarSurtidoRapidoInternal(activateSheet) {
     sSheet = ss.insertSheet(sheetName);
   }
 
-  // Encabezado partido EXACTAMENTE en la frontera congelada (A:D | E:H): Google no permite congelar
+  // Encabezado partido EXACTAMENTE en la frontera congelada (A:B | C:H, 1.7.6w): Google no permite congelar
   // columnas que corten una celda combinada. Primero se deshacen las combinaciones de versiones previas.
+  // Solo se congela B = vista "producto + lo pedido" (cabe en un iPhone); C/D (nombre y pedido reales) se ocultan
+  // pero el código las sigue leyendo (el nombre identifica al producto).
   sSheet.setFrozenColumns(0);
   sSheet.setFrozenRows(0);
   sSheet.getRange(1, 1, sSheet.getMaxRows(), sSheet.getMaxColumns()).breakApart();
 
-  sSheet.getRange("A1:D1").merge()
-    .setValue(`🚚 SURTIDO RÁPIDO · ${BODEGA_NOMBRE}`)
+  sSheet.getRange("A1:B1").merge()
+    .setValue(`🚚 SURTIDO · ${BODEGA_NOMBRE}`)
     .setBackground("#3D5A47").setFontColor("#FFFFFF").setFontWeight("bold")
     .setFontSize(11).setFontFamily("Arial").setHorizontalAlignment("left").setVerticalAlignment("middle");
-  sSheet.getRange("E1:H1").merge().setBackground("#3D5A47");
+  sSheet.getRange("C1:H1").merge().setBackground("#3D5A47");
   sSheet.setRowHeight(1, 30);
 
-  sSheet.getRange("A2:D2").merge()
-    .setValue("Escribe lo que llegó, o marca ✅ completo / ❌ no llegó ➜")
-    .setBackground("#F5EFE6").setFontColor("#333333").setFontSize(8).setWrap(true)
+  sSheet.getRange("A2:B2").merge()
+    .setValue("Escribe lo que llegó en RECIBIDA, o marca ✅ si llegó completo / ❌ si no llegó.")
+    .setBackground("#F5EFE6").setFontColor("#333333").setFontSize(9).setWrap(true)
     .setHorizontalAlignment("left").setVerticalAlignment("middle");
-  sSheet.getRange("E2:H2").merge().setBackground("#F5EFE6");
-  sSheet.setRowHeight(2, 30);
+  sSheet.getRange("C2:H2").merge().setBackground("#F5EFE6");
+  sSheet.setRowHeight(2, 52);
 
   // Headers de columnas (Fila 3)
-  const headers = ["No", "CATEGORÍA", "PRODUCTO", "CANT. PEDIDA", "CANT. RECIBIDA", "✅ COMPLETO", "❌ INEXISTENTE", "CANT. FINAL"];
+  const headers = ["No", "PRODUCTO · PEDIDO", "PRODUCTO", "CANT. PEDIDA", "RECIBIDA", "✅ COMPLETO", "❌ NO LLEGÓ", "FINAL"];
   sSheet.getRange(3, 1, 1, 8)
     .setValues([headers])
     .setBackground("#3D5A47").setFontColor("#FFFFFF").setFontWeight("bold").setFontSize(9)
@@ -1573,28 +1592,29 @@ function _generarSurtidoRapidoInternal(activateSheet) {
   sSheet.setRowHeight(3, 28);
   
   // Inmovilización de columnas y filas
-  // Congeladas hasta CANT. PEDIDA: producto y cantidad pedida siempre visibles al desplazarse
+  // Congelada solo la vista B: producto + lo pedido siempre visibles, incluso en pantallas chicas (iPhone)
   sSheet.setFrozenRows(3);
-  sSheet.setFrozenColumns(4);
+  sSheet.setFrozenColumns(2);
 
   sSheet.setColumnWidth(1, 40);   // No (oculta)
-  sSheet.setColumnWidth(2, 125);  // CATEGORÍA (oculta)
-  sSheet.setColumnWidth(3, 170);  // PRODUCTO (angosta: A:D congeladas deben dejar espacio en móvil)
-  sSheet.setColumnWidth(4, 70);   // CANT. PEDIDA
-  sSheet.setColumnWidth(5, 100);  // CANT. RECIBIDA (Editable)
-  sSheet.setColumnWidth(6, 90);   // ✅ COMPLETO
-  sSheet.setColumnWidth(7, 90);   // ❌ INEXISTENTE
-  sSheet.setColumnWidth(8, 90);   // CANT. FINAL (fórmula)
+  sSheet.setColumnWidth(2, 165);  // PRODUCTO · PEDIDO (vista, congelada)
+  sSheet.setColumnWidth(3, 170);  // PRODUCTO (oculta: identifica al producto)
+  sSheet.setColumnWidth(4, 70);   // CANT. PEDIDA (oculta: se ve en la vista)
+  sSheet.setColumnWidth(5, 82);   // RECIBIDA (editable)
+  sSheet.setColumnWidth(6, 62);   // ✅ COMPLETO
+  sSheet.setColumnWidth(7, 62);   // ❌ NO LLEGÓ
+  sSheet.setColumnWidth(8, 66);   // FINAL (fórmula)
 
-  sSheet.hideColumns(1, 2); // Ocultar No y Categoría
+  sSheet.hideColumns(1);    // No
+  sSheet.hideColumns(3, 2); // PRODUCTO y CANT. PEDIDA (los muestra la vista B)
 
   const rows = Math.max(filtered.length, 1);
 
   if (filtered.length === 0) {
     sSheet.clearConditionalFormatRules();
     sSheet.getRange("A4:J50").setBackground("#FFFFFF");
-    sSheet.getRange("C4")
-      .setValue("No hay productos ordenados para surtir hoy (CANT. A PEDIR = 0).")
+    sSheet.getRange("B4")
+      .setValue("No hay productos pedidos hoy (CANT. A PEDIR = 0).").setWrap(true)
       .setFontStyle("italic").setFontColor("#C62828").setHorizontalAlignment("left").setVerticalAlignment("middle");
     sSheet.setRowHeight(4, 30);
     sSheet.getRange("D4:H4").setValue("");
@@ -1641,6 +1661,8 @@ function _generarSurtidoRapidoInternal(activateSheet) {
 
     // Escribir datos básicos Cols 1-4 (No, Cat, Prod, CantPedir)
     sSheet.getRange(4, 1, rows, 4).setValues(values);
+    // Columna B = vista (1.7.6w): nombre (recortado con "…" si es largo) y debajo lo pedido
+    sSheet.getRange(4, 2, rows, 1).setFormulas(Array.from({ length: rows }, (_, i) => [_formulaVistaSurtido(4 + i)]));
     
     // Inyectar valores numéricos puros en Col E (Cero fórmulas, cero congelamiento)
     sSheet.getRange(4, 5, rows, 1).setValues(valuesE);

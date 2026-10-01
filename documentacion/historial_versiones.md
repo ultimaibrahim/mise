@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6w Altair (Surtido en pantallas chicas y traspasos en unidad de pedido) — 2026-10-01 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* Vista congelada "producto + pedido" en el Surtido; traspasos con factor; pestañas con color en tiendas; práctica guiada.
+
+---
+
 ## ⚡ v1.7.6v Altair (Celular primero) — 2026-10-01 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)

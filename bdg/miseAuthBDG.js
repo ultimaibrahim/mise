@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.6v Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.6w Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -417,7 +417,14 @@ function _onEditBodega(e) {
 
   // 1.7 Hoja de Entradas móvil (Checkbox Enviar en D2)
   if (name === SHEET_ENTRADAS) {
-    if (row === 2 && col === 1) { _aplicarModoEntradas(sheet, true); return; }
+    if (row === 2 && col === 1) {
+      const n = sheet.getLastRow() - ENTRADAS_START + 1;
+      const capt = n > 0 ? sheet.getRange(ENTRADAS_START, 3, n, 2).getValues().some(r => r[0] !== "" || r[1] !== "") : false;
+      if (n > 0) sheet.getRange(ENTRADAS_START, 3, n, 2).clearContent();
+      _aplicarModoEntradas(sheet, true);
+      if (capt) SpreadsheetApp.getActive().toast("Al cambiar de modo se borraron las cantidades escritas (cambian de unidad).", "📥 Registrar entradas", 6);
+      return;
+    }
     if (row === 2 && col === 4 && e.range.getValue() === true) {
       e.range.setValue(false); // Reset inmediato preventivo contra dobles ejecuciones
       procesarEntradasKardex();
@@ -1992,9 +1999,10 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.6v";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6w";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "🔄 Traspasos en la unidad de pedido (domo, caja…): Mise convierte a la unidad de bodega",
   "📦 Inventario: hoy con sus colores y en negritas; los demás días atenuados",
   "📥 Registrar entradas cabe completa en el celular y la casilla Enviar es más grande",
   "Menú más simple: ⚙️ Mise para el día a día y 🛠 Técnico para mantenimiento",
@@ -4918,6 +4926,25 @@ function _modoEntradas(sheet) {
   return ENTRADAS_MODOS.indexOf(v) !== -1 ? v : ENTRADAS_MODOS[0];
 }
 
+// Unidades por producto desde el Catálogo (1.7.6w): de bodega (Kardex) y de pedido con su factor. El factor solo
+// aplica si hay unidad de pedido (misma regla que el descuento y la vista de tiendas).
+function _unidadesCatalogo(ss) {
+  const maestro = _hoja(ss, SHEET_MAESTRO);
+  const mapa = {};
+  if (!maestro || maestro.getLastRow() < MAESTRO_START) return mapa;
+  const map = _getMaestroHeaderMap(maestro);
+  if (!map["PRODUCTO"]) return mapa;
+  maestro.getRange(MAESTRO_START, 1, maestro.getLastRow() - MAESTRO_START + 1, maestro.getLastColumn()).getValues().forEach(r => {
+    const nombre = String(r[map["PRODUCTO"].index] || "").trim().toUpperCase();
+    if (!nombre) return;
+    const pedido = map["UNIDAD_TIENDA"] ? String(r[map["UNIDAD_TIENDA"].index] || "").trim() : "";
+    const f = map["FACTOR_CONVERSION"] ? parseFloat(String(r[map["FACTOR_CONVERSION"].index]).replace(",", ".")) : NaN;
+    mapa[nombre] = { kardex: map["UNIDAD"] ? String(r[map["UNIDAD"].index] || "").trim() : "",
+      pedido, factor: pedido && f > 0 ? f : 1 };
+  });
+  return mapa;
+}
+
 // Encabezados, colores e instrucción según el modo elegido en A2
 function _aplicarModoEntradas(sheet, conMensaje) {
   const modo = _modoEntradas(sheet);
@@ -4927,6 +4954,16 @@ function _aplicarModoEntradas(sheet, conMensaje) {
   a2.setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(ENTRADAS_MODOS, true).setAllowInvalid(false).build());
   if (String(a2.getValue()) !== modo) a2.setValue(modo);
   a2.setBackground(C.yellow).setFontWeight("bold").setHorizontalAlignment("center");
+  // Unidad: en traspaso, la de pedido (domo, caja… como en las tiendas); en entrada, la de bodega
+  if (n) {
+    const uni = _unidadesCatalogo(sheet.getParent ? sheet.getParent() : SpreadsheetApp.getActiveSpreadsheet());
+    const nombres = sheet.getRange(ENTRADAS_START, 1, n, 2).getValues();
+    sheet.getRange(ENTRADAS_START, 2, n, 1).setValues(nombres.map(([p, uActual]) => {
+      const u = uni[String(p).trim().toUpperCase()];
+      if (!u) return [uActual];
+      return [tr && u.pedido ? u.pedido : (u.kardex || uActual)];
+    }));
+  }
   if (tr) {
     sheet.getRange(4, 3, 1, 2).setValues([["CANTIDAD", "—"]]).setWrap(true);
     if (n) { sheet.getRange(ENTRADAS_START, 3, n, 1).setBackground("#E3F2FD"); sheet.getRange(ENTRADAS_START, 4, n, 1).setBackground("#EEEEEE"); }
@@ -4937,7 +4974,7 @@ function _aplicarModoEntradas(sheet, conMensaje) {
   sheet.setRowHeight(4, 30);
   if (conMensaje) {
     _estadoEntradas(sheet, tr
-      ? `🔄 Traspaso ${BODEGAS[tr.origen].nombre} → ${BODEGAS[tr.destino].nombre}: escribe la CANTIDAD (unidad de bodega) y marca Enviar ⬇.`
+      ? `🔄 Traspaso ${BODEGAS[tr.origen].nombre} → ${BODEGAS[tr.destino].nombre}: escribe la CANTIDAD como se pide en tienda (domo, caja… ver UNIDAD) y marca Enviar ⬇.`
       : "ℹ️ Escribe lo que entró a cada bodega (en su unidad: kg, lt, pza) y marca Enviar ⬇. Aquí verás el resultado.", "info");
   }
 }
@@ -5273,12 +5310,18 @@ function _procesarTraspasoEntradas(ss, sheet, rows, seleccionDia, tr) {
     return;
   }
 
+  // Cantidades capturadas en unidad de pedido → unidad de bodega (× factor)
+  const uni = _unidadesCatalogo(ss);
+  const factor = (n) => (uni[n] && uni[n].factor) || 1;
+  const enKardex = {};
+  nombres.forEach(n => { enKardex[n] = Math.round(items[n] * factor(n) * 10000) / 10000; });
+
   // Origen: SAL del día · Destino: ENT del día (1 lectura + 1 escritura por columna)
   [[tr.origen, 1], [tr.destino, 0]].forEach(([key, desfase]) => {
     const { kSheet, count, idxMap } = planes[key];
     const rng = kSheet.getRange(KARDEX_START, 10 + dia[key] * 3 + desfase, count, 1);
     const vals = rng.getValues();
-    nombres.forEach(n => { const i = idxMap[n]; vals[i][0] = Math.round(((parseFloat(vals[i][0]) || 0) + items[n]) * 10000) / 10000; });
+    nombres.forEach(n => { const i = idxMap[n]; vals[i][0] = Math.round(((parseFloat(vals[i][0]) || 0) + enKardex[n]) * 10000) / 10000; });
     rng.setValues(vals);
   });
 
@@ -5287,11 +5330,11 @@ function _procesarTraspasoEntradas(ss, sheet, rows, seleccionDia, tr) {
   let usuario = "";
   try { usuario = Session.getActiveUser().getEmail(); } catch (e) {}
   const filas = nombres.map((n, k) => [`${base}-${k + 1}`, ahora, BODEGAS[tr.origen].nombre, BODEGAS[tr.destino].nombre, visibles[n], items[n],
-    unidades[n], 1, items[n], "📥 Registrar entradas", usuario || "—"]);
+    unidades[n], factor(n), enKardex[n], "📥 Registrar entradas", usuario || "—"]);
   const hojaT = MiseTraspasos._asegurarHojaTraspasos(ss);
   hojaT.getRange(Math.max(hojaT.getLastRow() + 1, 2), 1, filas.length, 11).setValues(filas);
   MiseLogger.info("_procesarTraspasoEntradas", `${base}: ${BODEGAS[tr.origen].nombre} → ${BODEGAS[tr.destino].nombre} ` +
-    nombres.map(n => `${n} ${items[n]}`).join(", "));
+    nombres.map(n => `${n} ${items[n]} ${unidades[n]}${factor(n) !== 1 ? ` (= ${enKardex[n]} en bodega)` : ""}`).join(", "));
 
   _prepararHojaEntradas(false);
   const hora = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm");

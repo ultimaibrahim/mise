@@ -33,6 +33,14 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.6w Altair — Surtido en Pantallas Chicas, Traspasos en Unidad de Pedido y Práctica Guiada (Octubre 2026) [EN PRUEBAS · DEV]
+* **🚚 Surtido en iPhone** (no se veía la cantidad pedida): la columna B pasa a ser una **vista** `=IF(C="","",IF(LEN(C)>24,LEFT(C,23)&"…",C)&CHAR(10)&"pidió "&D)` (`_formulaVistaSurtido`) y es la **única columna congelada**; C (nombre, identifica al producto) y D (pedido) se ocultan pero siguen siendo la fuente que leen el descuento y la sincronización. Encabezados/combinaciones partidos en la frontera A:B | C:H (Google no permite congelar cortando una combinación). **Fila 2** con las indicaciones completas en la columna congelada (ajuste de línea, 52 px). Encabezados cortos (RECIBIDA, ✅ COMPLETO, ❌ NO LLEGÓ, FINAL).
+* **🔄 Traspasos en unidad de pedido**: en modo traspaso, la columna UNIDAD de `📥 Registrar entradas` muestra la unidad de pedido (domo, caja… como en las tiendas) y el envío multiplica por el factor (`_unidadesCatalogo`); el folio registra unidad, factor y cantidad en bodega. Cambiar de modo borra las cantidades escritas (cambian de unidad) y avisa.
+* **🎨 Pestañas con color en las tiendas** (`_colorearPestanasTienda`): Pedido verde, Surtido amarillo, LOG_SURTIDO gris, técnicas gris claro.
+* **Confirmado** (consulta de Ibrahim): el descuento usa la **CANT. FINAL** del Surtido (✅ → lo pedido aunque RECIBIDA quede vacía; ❌ → 0).
+* **🎓 `documentacion/practica_guiada.md`**: 7 ejercicios en DEV con el resultado esperado (pedido → surtido → descuento con factor, de menos/no llegó, sin registro, repetir sin duplicar, entradas y traspasos, Catálogo, permisos).
+* **Testing**: vista B y congelado del Surtido; traspaso 2 domos → 0.908 kg con folio (unidad, factor, cantidad en bodega) y regreso a la unidad de bodega en modo entrada.
+
 ### Version 1.7.6v Altair — Celular Primero: Surtido, Pedido, Entradas y el Día de Hoy (Octubre 2026) [EN PRUEBAS · DEV]
 * **🚚 Surtido Rápido táctil** (`_estiloTactilSurtido`): filas de 38 px, producto y cantidades más grandes, **casillas ✅/❌ grandes** (una casilla crece con el tamaño de letra) y **sin filas ni columnas sobrantes** (oculta después de K y después de los datos): ya no hay a dónde desplazarse "muy lejos".
 * **📋 Pedido Diario**: la casilla de 🚚 Surtido Rápido (F2) más grande (fila 2 de 40 px) y columnas sobrantes ocultas después de las auxiliares (`_ocultarColumnasSobrantes`).

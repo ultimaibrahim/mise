@@ -18,8 +18,8 @@ function runConversionTraspasoTests() {
     const dow = (hoy.getDay() || 7) - 1;
     const monday = new VMDate(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - dow);
     const m = ss.insertSheet("MAESTRO");
-    m.getRange(3, 1, 1, 6).setValues([["No", "CATEGORÍA", "PRODUCTO", "PRESENTACION", "UNIDAD", "ACTIVO"]]);
-    m.getRange(4, 1, 2, 6).setValues([[1, "REF", "Fresa", "DOMO", "kg", "SÍ"], [2, "LAC", "Leche", "LT", "lt", "SÍ"]]);
+    m.getRange(3, 1, 1, 8).setValues([["No", "CATEGORÍA", "PRODUCTO", "PRESENTACION", "UNIDAD", "ACTIVO", "UNIDAD_TIENDA", "FACTOR_CONVERSION"]]);
+    m.getRange(4, 1, 2, 8).setValues([[1, "REF", "Fresa", "DOM 454 g", "kg", "SÍ", "domo", 0.454], [2, "LAC", "Leche", "LT", "lt", "SÍ", "", ""]]);
     ["KARDEX_BA", "KARDEX_BM"].forEach(k => {
       const s = ss.insertSheet(k);
       s.getRange("G4").setValue(monday);
@@ -39,6 +39,8 @@ function runConversionTraspasoTests() {
     sh.getRange("A2").setValue("🔄 Andares → Mercado");
     sandbox._aplicarModoEntradas(sh, true);             // lo que hace onEdit al cambiar A2
     assert.strictEqual(sh.getRange(4, 3).getValue(), "CANTIDAD", "Encabezado del modo traspaso");
+    assert.deepStrictEqual([sh.getRange(K.ENTRADAS_START, 2).getValue(), sh.getRange(K.ENTRADAS_START + 1, 2).getValue()], ["domo", "lt"],
+      "En traspaso la UNIDAD es la de pedido (domo) o la de bodega si no tiene");
     assert.ok(/Traspaso Andares → Mercado/.test(sh.getRange("A3").getValue()), "La fila 3 dice la dirección del traspaso");
 
     sh.getRange(K.ENTRADAS_START, 3, 2, 2).setValues([[2, ""], ["", 1]]);
@@ -49,15 +51,20 @@ function runConversionTraspasoTests() {
 
     sh.getRange(K.ENTRADAS_START + 1, 4).setValue("");
     sandbox.procesarEntradasKardex();
-    assert.strictEqual(sandbox._hoja(ss, "📦 Inventario Andares").getRange(7, sal).getValue(), 2, "Origen: SAL de Andares +2");
-    assert.strictEqual(sandbox._hoja(ss, "📦 Inventario Mercado").getRange(7, ent).getValue(), 2, "Destino: ENT de Mercado +2");
+    assert.strictEqual(sandbox._hoja(ss, "📦 Inventario Andares").getRange(7, sal).getValue(), 0.908, "Origen: SAL de Andares + 2 domos = 0.908 kg");
+    assert.strictEqual(sandbox._hoja(ss, "📦 Inventario Mercado").getRange(7, ent).getValue(), 0.908, "Destino: ENT de Mercado + 0.908 kg");
     const t = sandbox._hoja(ss, "🔄 Traspasos");
     const fila = t.getRange(2, 1, 1, 11).getValues()[0];
     assert.ok(/^TRP-.+-1$/.test(fila[0]) && fila[2] === "Andares" && fila[3] === "Mercado" && fila[4] === "Fresa" && fila[5] === 2,
       "Folio en 🔄 Traspasos con origen, destino, producto y cantidad");
+    assert.deepStrictEqual([fila[6], fila[7], fila[8]], ["domo", 0.454, 0.908], "Folio: unidad de pedido, factor y cantidad en bodega");
     assert.ok(/^✅ 1 traspaso\(s\) Andares → Mercado/.test(sh.getRange("A3").getValue()), "Resultado claro en la fila 3");
     assert.strictEqual(sh.getRange("A2").getValue(), "🔄 Andares → Mercado", "El modo se conserva tras enviar");
-    console.log("  ✓ Modo traspaso: una sola columna, resta en origen (SAL) y suma en destino (ENT), folio en 🔄 Traspasos");
+    // Volver a Entrada: la unidad regresa a la de bodega
+    sh.getRange("A2").setValue("📥 Entrada");
+    sandbox._aplicarModoEntradas(sh, true);
+    assert.strictEqual(sh.getRange(K.ENTRADAS_START, 2).getValue(), "kg", "En entrada la UNIDAD vuelve a la de bodega");
+    console.log("  ✓ Modo traspaso en unidad de pedido (2 domos → 0.908 kg): resta en origen, suma en destino, folio con factor");
   }
 
   // ── 2. Conversión: la tienda pide en su unidad, Bodega descuenta en la suya ─────────────

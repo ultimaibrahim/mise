@@ -36,16 +36,21 @@ function runSurtidoTests() {
     sandbox._generarSurtidoRapidoInternal(false);
     const s = ss.getSheetByName("🚚 SURTIDO RÁPIDO");
 
-    // 1. Estructura: 8 columnas, CANT. FINAL al final, congeladas hasta CANT. PEDIDA
+    // 1. Estructura: 8 columnas (C = nombre y D = pedido siguen en su lugar: el código los lee), CANT. FINAL al final;
+    //    congelada solo la vista B "producto + lo pedido" (1.7.6w: cabe en un iPhone)
     eq(s.getRange(3, 1, 1, 8).getValues()[0],
-      ["No", "CATEGORÍA", "PRODUCTO", "CANT. PEDIDA", "CANT. RECIBIDA", "✅ COMPLETO", "❌ INEXISTENTE", "CANT. FINAL"], `${tag}: encabezados`);
-    assert.strictEqual(s.frozenCols, 4, `${tag}: congeladas A:D`);
+      ["No", "PRODUCTO · PEDIDO", "PRODUCTO", "CANT. PEDIDA", "RECIBIDA", "✅ COMPLETO", "❌ NO LLEGÓ", "FINAL"], `${tag}: encabezados`);
+    assert.strictEqual(s.frozenCols, 2, `${tag}: congelada solo la vista (A:B)`);
+    for (let r = 4; r <= 6; r++) {
+      assert.strictEqual(_formulas[`🚚 SURTIDO RÁPIDO!${r},2`],
+        `=IF(C${r}="","",IF(LEN(C${r})>24,LEFT(C${r},23)&"…",C${r})&CHAR(10)&"pidió "&D${r})`, `${tag}: vista B fila ${r} (nombre recortado + pedido)`);
+    }
     assert.strictEqual(s.getRange(7, 3).getValue(), "", `${tag}: solo productos con pedido > 0`);
     for (let r = 4; r <= 6; r++) {
       assert.strictEqual(_formulas[`🚚 SURTIDO RÁPIDO!${r},8`],
         `=IF($G${r}=TRUE,0,IF($E${r}<>"",$E${r},IF($F${r}=TRUE,$D${r},"")))`, `${tag}: fórmula CANT. FINAL fila ${r}`);
     }
-    console.log(`  ✓ ${tag}: 8 columnas, CANT. FINAL por fórmula y columnas congeladas hasta CANT. PEDIDA`);
+    console.log(`  ✓ ${tag}: 8 columnas, CANT. FINAL por fórmula y vista congelada «producto + pedido»`);
 
     // 2. Estado inicial desde el pedido: una sola fuente por fila
     eq(s.getRange(4, 5, 3, 3).getValues(),
