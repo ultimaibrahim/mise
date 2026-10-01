@@ -153,11 +153,25 @@ function runEstadoTests() {
     ped.setRowHeights = (r, n, h) => { alturas.push([r, n, h]); return ped; };
     const rpT = Object.getPrototypeOf(ped.getRange(1, 1));
     const setFontSizePrevio = rpT.setFontSize;
-    rpT.setFontSize = function(t) { tamanos[this.col] = t; return this; };
+    rpT.setFontSize = function(t) { tamanos[`${this.row},${this.col}`] = t; return this; };
     try { t2.sandbox._estiloTactilPedido(ped, 5); } finally { rpT.setFontSize = setFontSizePrevio; }
     assert.deepStrictEqual(JSON.parse(JSON.stringify(alturas)), [[4, 5, 34]], "Filas de 34 px");
-    assert.ok(tamanos[3] === 12 && tamanos[6] === 13, "PRODUCTO 12 y CANT. A PEDIR 13");
-    console.log("  ✓ Pedido Diario: filas más altas y letra más grande en producto y cantidad (táctil)");
+    assert.ok(tamanos["4,3"] === 12 && tamanos["4,6"] === 13, "PRODUCTO 12 y CANT. A PEDIR 13");
+    assert.strictEqual(tamanos["2,6"], 20, "Casilla de 🚚 Surtido Rápido (F2) más grande");
+    // Surtido Rápido táctil: sin columnas después de K ni filas sobrantes; casillas grandes
+    const sur = t2.ss.insertSheet("🚚 SURTIDO RÁPIDO");
+    const colsOcultas = [], filasOcultas = [];
+    sur.getMaxColumns = () => 26; sur.getMaxRows = () => 1000;
+    sur.hideColumns = (c, n) => { colsOcultas.push([c, n]); return sur; };
+    sur.hideRows = (r, n) => { filasOcultas.push([r, n]); return sur; };
+    sur.showRows = () => sur; sur.setRowHeights = () => sur;
+    const tam2 = {};
+    rpT.setFontSize = function(t) { tam2[`${this.row},${this.col}`] = t; return this; };
+    try { t2.sandbox._estiloTactilSurtido(sur, 12); } finally { rpT.setFontSize = setFontSizePrevio; }
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(colsOcultas)), [[12, 15]], "Oculta L:Z (nada a la derecha del resumen)");
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(filasOcultas)), [[17, 984]], "Oculta las filas después de los datos (deja 1 de aire)");
+    assert.strictEqual(tam2["4,6"], 18, "Casillas ✅/❌ grandes");
+    console.log("  ✓ Pedido Diario: filas altas, letra grande, casilla 🚚 grande · Surtido sin desplazarse lejos y casillas grandes");
 
     const catalogo = (huellaTienda) => sandbox._evaluarComponentes({ bodega: { activadores: [], cierres: [], kardex: {}, version: "x", huellas: { BA: "2-abc" } },
       tiendas: { BA: { nombre: "Andares", accesible: true, conLatido: true, estado: { ULTIMO_LATIDO: new Date().toISOString(), VERSION: "x",

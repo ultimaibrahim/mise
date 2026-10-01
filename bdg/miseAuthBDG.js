@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.6u Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.6v Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -1992,10 +1992,11 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.6u";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6v";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
-  "📦 Inventario: la columna de hoy resaltada, saldos negativos en rojo y ceros atenuados",
+  "📦 Inventario: hoy con sus colores y en negritas; los demás días atenuados",
+  "📥 Registrar entradas cabe completa en el celular y la casilla Enviar es más grande",
   "Menú más simple: ⚙️ Mise para el día a día y 🛠 Técnico para mantenimiento",
   "📦 Inventario con encabezado claro: semana con fechas y qué significa ENT, SAL y SLD",
   "⏳ 🚀 Configurar muestra cada paso en vivo, en una ventana que no bloquea la hoja",
@@ -3134,31 +3135,51 @@ function protegerKardexSeguro(keyOrSheet) {
 // Ocultas: A No · B CATEGORÍA · D PRESENTACIÓN · F CADUCIDAD · G LOTE (+ fecha G4) · H 🚦 (siguen existiendo:
 // el código las usa por posición). La semana se lee en el badge (L2) y en E4/I4.
 const KARDEX_COLS_OCULTAS = [1, 2, 4, 6, 7, 8];
-// Ayudas visuales del Inventario (1.7.6u): la columna de HOY resaltada (solo si la semana activa incluye hoy), los
-// saldos en cero atenuados y los saldos negativos en rojo. Se conservan las reglas previas que no son de los días.
+// Ayudas visuales del Inventario (1.7.6u–v): HOY conserva sus colores (un poco más intensos) y va en negritas; los
+// demás días se atenúan (encabezados más claros, números en gris). Solo si la semana activa (G4) incluye hoy. Saldo
+// negativo en rojo y ceros atenuados (primero en la lista: en Sheets gana la primera regla que aplica).
+function _mezclarConBlanco(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v + (255 - v) * f));
+  return "#" + c.map(v => v.toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+
 function _reglasVisualesInventario(sheet) {
   const lr = Math.max(sheet.getLastRow(), KARDEX_START);
   const n = lr - KARDEX_START + 1;
   const previas = (sheet.getConditionalFormatRules() || []).filter(r => {
     try { return r.getRanges().every(rg => rg.getColumn() < 10); } catch (e) { return true; }
   });
-  const dias = sheet.getRange(KARDEX_START, 10, n, 21);
-  const encDias = sheet.getRange(5, 10, 2, 21);
-  const sld = [];
-  for (let d = 0; d < KARDEX_DAYS; d++) sld.push(sheet.getRange(KARDEX_START, 12 + d * 3, n, 1));
-  const hoy = '=AND($G$4<=TODAY(), TODAY()<$G$4+7, INT((COLUMN()-10)/3)=WEEKDAY(TODAY(),2)-1)';
+  const semana = "$G$4<=TODAY(), TODAY()<$G$4+7";
+  const dia = "INT((COLUMN()-10)/3)";
+  const fHoy = `=AND(${semana}, ${dia}=WEEKDAY(TODAY(),2)-1)`;
+  const fOtro = `=AND(${semana}, ${dia}<>WEEKDAY(TODAY(),2)-1)`;
+  const cols = (desfase) => Array.from({ length: KARDEX_DAYS }, (_, d) => 10 + d * 3 + desfase);
+  const rangos = (fila, nFilas, desfase) => cols(desfase).map(c => sheet.getRange(fila, c, nFilas, 1));
+  const R = (f) => SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(f);
+  const datos = sheet.getRange(KARDEX_START, 10, n, 21);
   const reglas = [
     SpreadsheetApp.newConditionalFormatRule().whenNumberLessThan(0)
-      .setBackground("#FFCDD2").setFontColor("#B71C1C").setBold(true).setRanges(sld).build(),
+      .setBackground("#FFCDD2").setFontColor("#B71C1C").setBold(true).setRanges(rangos(KARDEX_START, n, 2)).build(),
     SpreadsheetApp.newConditionalFormatRule().whenNumberEqualTo(0)
-      .setFontColor("#C9C9C9").setRanges(sld).build(),
-    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(hoy)
-      .setBackground("#FFF4C2").setRanges([dias]).build(),
-    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(hoy)
-      .setBackground("#F9A825").setFontColor("#1A281F").setBold(true).setRanges([encDias]).build()
+      .setFontColor("#C9C9C9").setRanges(rangos(KARDEX_START, n, 2)).build(),
+    // Datos: hoy en negritas y oscuro; los demás días en gris
+    R(fHoy).setFontColor("#1A281F").setBold(true).setRanges([datos]).build(),
+    R(fOtro).setFontColor("#9E9E9E").setRanges([datos]).build(),
+    // Fila 5 (nombre del día): hoy más intenso; los demás, claros
+    R(fHoy).setBackground(C.dkGreen).setFontColor("#FFFFFF").setBold(true).setRanges([sheet.getRange(5, 10, 1, 21)]).build(),
+    R(fOtro).setBackground(_mezclarConBlanco(C.mdGreen, 0.55)).setFontColor("#FFFFFF").setRanges([sheet.getRange(5, 10, 1, 21)]).build(),
+    // Fila 6 (ENT / SAL / SLD): hoy un poco más saturado y en negritas; los demás, atenuados
+    R(fHoy).setBackground("#C8E6C9").setBold(true).setRanges(rangos(6, 1, 0)).build(),
+    R(fHoy).setBackground("#FFCDD2").setBold(true).setRanges(rangos(6, 1, 1)).build(),
+    R(fHoy).setBackground("#1B4332").setBold(true).setRanges(rangos(6, 1, 2)).build(),
+    R(fOtro).setBackground(_mezclarConBlanco(C.entBg, 0.5)).setFontColor("#9E9E9E").setRanges(rangos(6, 1, 0)).build(),
+    R(fOtro).setBackground(_mezclarConBlanco(C.salBg, 0.5)).setFontColor("#BDBDBD").setRanges(rangos(6, 1, 1)).build(),
+    R(fOtro).setBackground(_mezclarConBlanco(C.dkGreen, 0.55)).setFontColor("#FFFFFF").setRanges(rangos(6, 1, 2)).build()
   ];
   sheet.setConditionalFormatRules(previas.concat(reglas));
 }
+
 
 function _simplificarVistaKardex(sheet) {
   if (!sheet) return;
@@ -3249,7 +3270,7 @@ function _blindarHojasTecnicasBDG() {
   const ent = _hoja(ss, SHEET_ENTRADAS);
   if (ent) {
     const filas = Math.max(ent.getMaxRows() - ENTRADAS_START + 1, 1);
-    _blindarHoja(ent, "Blindaje — 📥 ENTRADAS", [ent.getRange(ENTRADAS_START, 3, filas, 2), ent.getRange("A2"), ent.getRange("B2"), ent.getRange("D2")]);
+    _blindarHoja(ent, "Blindaje — 📥 ENTRADAS", [ent.getRange(ENTRADAS_START, 3, filas, 2), ent.getRange("A2"), ent.getRange("B2:C2"), ent.getRange("D2")]);
   }
 }
 
@@ -4864,6 +4885,34 @@ const ENTRADAS_HOY     = "HOY (automático)";
 const ENTRADAS_MODOS   = ["📥 Entrada", "🔄 Andares → Mercado", "🔄 Mercado → Andares"];
 const ENTRADAS_TRASPASO = { "🔄 Andares → Mercado": { origen: "BA", destino: "BM" }, "🔄 Mercado → Andares": { origen: "BM", destino: "BA" } };
 
+// Distribución para celular (1.7.6v): producto 190 · unidad 56 · cantidades 72 + 72 (≈ 390 px). Fila 1: título A1:C1 y
+// "Enviar ⬇" en D1; fila 2: modo (A2) · día (B2:C2, ahora cabe "HOY (automático)") · casilla Enviar grande (D2).
+function _layoutEntradas(sheet) {
+  [[1, 190], [2, 56], [3, 72], [4, 72]].forEach(([c, w]) => sheet.setColumnWidth(c, w));
+  try {
+    _separarCombinaciones(sheet.getRange("A1:D2"));
+    SpreadsheetApp.flush();
+    sheet.getRange("A1:C1").merge().setValue("📥 ENTRADAS Y TRASPASOS")
+      .setBackground(C.dark).setFontColor("#FFFFFF").setFontWeight("bold").setFontSize(11)
+      .setHorizontalAlignment("center").setVerticalAlignment("middle");
+    sheet.getRange("D1").setValue("Enviar ⬇").setBackground(C.dark).setFontColor("#FFFFFF").setFontWeight("bold")
+      .setFontSize(9).setHorizontalAlignment("center").setVerticalAlignment("middle");
+    const dia = sheet.getRange("B2").getValue();
+    sheet.getRange("C2").clearContent();
+    sheet.getRange("B2:C2").merge().setBackground(C.yellow).setFontWeight("bold")
+      .setHorizontalAlignment("center").setVerticalAlignment("middle");
+    if (dia !== "") sheet.getRange("B2").setValue(dia);
+    sheet.getRange("D2").setFontSize(22).setBackground(C.yellow).setHorizontalAlignment("center").setVerticalAlignment("middle");
+    sheet.setRowHeight(2, 40);
+    sheet.setRowHeight(3, 34);
+    sheet.getRange(4, 1, 1, 4).setFontSize(9).setWrap(true);
+    sheet.getRange("B4").setValue("UNIDAD").setFontSize(8);
+    SpreadsheetApp.flush();
+  } catch (e) {
+    MiseLogger.warn("_layoutEntradas", e.message);
+  }
+}
+
 function _modoEntradas(sheet) {
   const v = String(sheet.getRange("A2").getValue() || "");
   return ENTRADAS_MODOS.indexOf(v) !== -1 ? v : ENTRADAS_MODOS[0];
@@ -4879,17 +4928,17 @@ function _aplicarModoEntradas(sheet, conMensaje) {
   if (String(a2.getValue()) !== modo) a2.setValue(modo);
   a2.setBackground(C.yellow).setFontWeight("bold").setHorizontalAlignment("center");
   if (tr) {
-    sheet.getRange(4, 3, 1, 2).setValues([[`TRASPASAR\n${BODEGAS[tr.origen].nombre} → ${BODEGAS[tr.destino].nombre}`, "—"]]).setWrap(true);
+    sheet.getRange(4, 3, 1, 2).setValues([["CANTIDAD", "—"]]).setWrap(true);
     if (n) { sheet.getRange(ENTRADAS_START, 3, n, 1).setBackground("#E3F2FD"); sheet.getRange(ENTRADAS_START, 4, n, 1).setBackground("#EEEEEE"); }
   } else {
-    sheet.getRange(4, 3, 1, 2).setValues([["ENT ANDARES", "ENT MERCADO"]]).setWrap(true);
+    sheet.getRange(4, 3, 1, 2).setValues([["ANDARES", "MERCADO"]]).setWrap(true);
     if (n) sheet.getRange(ENTRADAS_START, 3, n, 2).setBackground(C.entBg);
   }
-  sheet.setRowHeight(4, tr ? 40 : 24);
+  sheet.setRowHeight(4, 30);
   if (conMensaje) {
     _estadoEntradas(sheet, tr
-      ? `🔄 Traspaso: escribe en TRASPASAR (unidad de bodega) lo que sale de ${BODEGAS[tr.origen].nombre} hacia ${BODEGAS[tr.destino].nombre} y marca Enviar ➜.`
-      : "ℹ️ Captura en la unidad del Kardex (kg, lt, pza) y marca Enviar ➜. Aquí verás el resultado.", "info");
+      ? `🔄 Traspaso ${BODEGAS[tr.origen].nombre} → ${BODEGAS[tr.destino].nombre}: escribe la CANTIDAD (unidad de bodega) y marca Enviar ⬇.`
+      : "ℹ️ Escribe lo que entró a cada bodega (en su unidad: kg, lt, pza) y marca Enviar ⬇. Aquí verás el resultado.", "info");
   }
 }
 
@@ -4979,13 +5028,12 @@ function _prepararHojaEntradas(keepQty = false) {
     sheet.setFrozenRows(0);
     sheet.setFrozenColumns(0);
     sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
-    sheet.getRange("A1:D1").merge().setValue("📥 ENTRADAS Y TRASPASOS · Andares & Mercado")
+    sheet.getRange("A1:C1").merge().setValue("📥 ENTRADAS Y TRASPASOS")
       .setBackground(C.dark).setFontColor("#FFFFFF").setFontWeight("bold").setFontSize(11)
       .setHorizontalAlignment("center").setVerticalAlignment("middle");
     sheet.setRowHeight(1, 32);
 
     sheet.getRange("A2").setValue(ENTRADAS_MODOS[0]);
-    sheet.getRange("C2").setValue("Enviar ➜").setFontWeight("bold").setHorizontalAlignment("right");
     sheet.getRange("D2").insertCheckboxes().setValue(false);
     sheet.getRange("A2:D2").setBackground(C.cream).setVerticalAlignment("middle");
     sheet.getRange("B2").setBackground(C.yellow);
@@ -4996,7 +5044,7 @@ function _prepararHojaEntradas(keepQty = false) {
       .setHorizontalAlignment("center").setVerticalAlignment("middle").setWrap(true);
     sheet.setRowHeight(3, 30);
 
-    sheet.getRange(4, 1, 1, 4).setValues([["PRODUCTO", "UNIDAD", "ENT ANDARES", "ENT MERCADO"]])
+    sheet.getRange(4, 1, 1, 4).setValues([["PRODUCTO", "UNIDAD", "ANDARES", "MERCADO"]])
       .setBackground(C.sage).setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center");
 
     // Solo filas congeladas: los títulos combinados A:D impiden congelar columnas, y las 4 columnas
@@ -5008,8 +5056,8 @@ function _prepararHojaEntradas(keepQty = false) {
     sheet.setColumnWidth(4, 72);
   }
 
-  // Anchos al día también en hojas creadas por versiones previas
-  [[1, 205], [2, 40], [3, 72], [4, 72]].forEach(([c, w]) => sheet.setColumnWidth(c, w));
+  // Anchos y fila 1–2 al día también en hojas creadas por versiones previas (cabe en ≈ 390 px de celular)
+  _layoutEntradas(sheet);
 
   // Selector de día (se refresca siempre para reflejar las fechas de la semana activa)
   const opts = _opcionesDiaEntradas(_lunesSemanaActivaKardex(ss));
@@ -5197,7 +5245,7 @@ function _procesarTraspasoEntradas(ss, sheet, rows, seleccionDia, tr) {
     visibles[nombre] = String(r[0]).trim();
   });
   if (enD > 0) {
-    _estadoEntradas(sheet, "❌ En traspaso solo se usa la columna TRASPASAR. Borra lo escrito en la última columna. No se envió nada.", "error");
+    _estadoEntradas(sheet, "❌ En traspaso solo se usa la columna CANTIDAD. Borra lo escrito en la última columna. No se envió nada.", "error");
     return;
   }
   if (invalidas.length > 0) {

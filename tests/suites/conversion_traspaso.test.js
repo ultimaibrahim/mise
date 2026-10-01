@@ -28,14 +28,22 @@ function runConversionTraspasoTests() {
     sandbox._prepararHojaEntradas();
     const sh = sandbox._hoja(ss, K.SHEET_ENTRADAS);
     assert.strictEqual(sh.getRange("A2").getValue(), "📥 Entrada", "Modo por default: Entrada");
+    // Distribución para celular (1.7.6v)
+    const rango = (m) => [m.r1, m.c1, m.r2, m.c2].join(",");
+    const merges = sh.merges.map(rango);
+    assert.ok(merges.includes("1,1,1,3") && merges.includes("2,2,2,3"), "Título A1:C1 y día en B2:C2 (ya cabe)");
+    assert.strictEqual(sh.getRange("D1").getValue(), "Enviar ⬇", "Etiqueta de la casilla Enviar arriba (D1)");
+    assert.strictEqual(sh.getRange("B2").getValue(), K.ENTRADAS_HOY, "El día seleccionado se conserva al combinar");
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(sh.getRange(4, 3, 1, 2).getValues()[0])), ["ANDARES", "MERCADO"], "Encabezados cortos");
 
     sh.getRange("A2").setValue("🔄 Andares → Mercado");
     sandbox._aplicarModoEntradas(sh, true);             // lo que hace onEdit al cambiar A2
-    assert.ok(/^TRASPASAR\nAndares → Mercado/.test(sh.getRange(4, 3).getValue()), "Encabezado del modo traspaso");
+    assert.strictEqual(sh.getRange(4, 3).getValue(), "CANTIDAD", "Encabezado del modo traspaso");
+    assert.ok(/Traspaso Andares → Mercado/.test(sh.getRange("A3").getValue()), "La fila 3 dice la dirección del traspaso");
 
     sh.getRange(K.ENTRADAS_START, 3, 2, 2).setValues([[2, ""], ["", 1]]);
     sandbox.procesarEntradasKardex();
-    assert.ok(/solo se usa la columna TRASPASAR/.test(sh.getRange("A3").getValue()), "Usar la otra columna en traspaso: rechazo");
+    assert.ok(/solo se usa la columna CANTIDAD/.test(sh.getRange("A3").getValue()), "Usar la otra columna en traspaso: rechazo");
     const sal = 10 + dow * 3 + 1, ent = 10 + dow * 3;
     assert.strictEqual(sandbox._hoja(ss, "📦 Inventario Andares").getRange(7, sal).getValue(), "", "…y nada escrito");
 

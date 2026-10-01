@@ -23,6 +23,15 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6v Altair — Pensado para el Celular (Octubre 2026) [EN PRUEBAS]
+
+* 🚚 **Surtido Rápido**: casillas ✅/❌ y letras más grandes, y la hoja ya no se desplaza a zonas vacías.
+* 📋 **Pedido Diario**: la casilla para abrir el Surtido Rápido es más grande.
+* 📦 **Inventario**: el día de hoy mantiene sus colores y va en negritas; los demás días se ven más tenues.
+* 📥 **Registrar entradas** cabe completa en la pantalla del celular: el día se lee bien y la casilla Enviar es más grande.
+
+---
+
 ## Versión 1.7.6u Altair — Más Fácil de Leer (Octubre 2026) [EN PRUEBAS]
 
 * 📦 **Inventario**: la columna del día de hoy se resalta sola, los saldos negativos se pintan de rojo (avisan de un error de captura) y los ceros se ven tenues para que destaque lo importante.

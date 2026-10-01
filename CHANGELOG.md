@@ -33,6 +33,13 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.6v Altair — Celular Primero: Surtido, Pedido, Entradas y el Día de Hoy (Octubre 2026) [EN PRUEBAS · DEV]
+* **🚚 Surtido Rápido táctil** (`_estiloTactilSurtido`): filas de 38 px, producto y cantidades más grandes, **casillas ✅/❌ grandes** (una casilla crece con el tamaño de letra) y **sin filas ni columnas sobrantes** (oculta después de K y después de los datos): ya no hay a dónde desplazarse "muy lejos".
+* **📋 Pedido Diario**: la casilla de 🚚 Surtido Rápido (F2) más grande (fila 2 de 40 px) y columnas sobrantes ocultas después de las auxiliares (`_ocultarColumnasSobrantes`).
+* **📦 Resaltado de hoy, con los colores de siempre** (pedido de Ibrahim): en lugar del amarillo, **hoy conserva sus colores, un poco más intensos y en negritas**, y **los demás días se atenúan** (encabezados mezclados con blanco, números en gris; `_mezclarConBlanco`). Solo si la semana activa incluye hoy. El saldo negativo en rojo va primero (en Sheets gana la primera regla que aplica).
+* **📥 Registrar entradas para 390 px** (`_layoutEntradas`): producto 190 · unidad 56 · cantidades 72 + 72; título A1:C1 y "Enviar ⬇" en D1; fila 2 = modo · **día en B2:C2** (antes se veía "HC") · **casilla Enviar grande** (D2); encabezados cortos (`ANDARES`/`MERCADO`, `CANTIDAD` en traspaso; la dirección la dicen el modo y la fila 3). Blindaje con B2:C2.
+* **Testing**: Surtido (columnas/filas ocultas, casillas grandes), casilla F2 del Pedido, reglas de hoy/otros días (5 + 5, sin amarillo, negativo primero) y distribución de Entradas (combinaciones, D1, día conservado, encabezados).
+
 ### Version 1.7.6u Altair — UX del Inventario y del Pedido Diario (Octubre 2026) [EN PRUEBAS · DEV]
 * **📦 Inventario** (`_reglasVisualesInventario`, vía `_simplificarVistaKardex`): la **columna de HOY** (ENT/SAL/SLD y su encabezado) se resalta sola, solo si la semana activa (G4) incluye hoy; **SLD negativo en rojo**; **SLD en cero atenuado** (formato condicional, sin cambiar el formato numérico para no dejar "5." en cantidades decimales). Conserva las reglas previas de columnas < J.
 * **📋 Pedido Diario** (`_estiloTactilPedido`, vía `_aplicarFormatosCondicionales`): filas de 34 px, PRODUCTO a 12 pt y CANT. A PEDIR a 13 pt en negritas, centrada. (La "cantidad sugerida" propuesta se descartó por decisión de Ibrahim.)

@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6v Altair (Celular primero) — 2026-10-01 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* Surtido táctil sin desplazamiento sobrante; casilla de Surtido más grande; hoy con colores originales y demás días atenuados; Entradas acomodada a 390 px.
+
+---
+
 ## ⚡ v1.7.6u Altair (UX de Inventario y Pedido) — 2026-10-01 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)

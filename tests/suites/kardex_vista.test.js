@@ -68,8 +68,13 @@ function runKardexVistaTests() {
     k.getConditionalFormatRules = () => [];
     k.setConditionalFormatRules = (r) => { reglas = r; return k; };
     sandbox._simplificarVistaKardex(k);
-    const hoy = reglas.filter(r => /WEEKDAY\(TODAY\(\),2\)-1/.test(r.formula || ""));
-    assert.ok(hoy.length === 2 && hoy.every(r => /\$G\$4<=TODAY\(\), TODAY\(\)<\$G\$4\+7/.test(r.formula)), "Columna de HOY resaltada (datos y encabezado), solo si la semana activa incluye hoy");
+    const conSemana = (r) => /\$G\$4<=TODAY\(\), TODAY\(\)<\$G\$4\+7/.test(r.formula || "");
+    const hoy = reglas.filter(r => /\)=WEEKDAY\(TODAY\(\),2\)-1/.test(r.formula || ""));
+    const otros = reglas.filter(r => /<>WEEKDAY\(TODAY\(\),2\)-1/.test(r.formula || ""));
+    assert.ok(hoy.length === 5 && otros.length === 5 && hoy.concat(otros).every(conSemana), "Hoy (5 reglas) y los demás días (5), solo si la semana activa incluye hoy");
+    assert.ok(hoy.some(r => r.letra === "#1A281F") && otros.some(r => r.letra === "#9E9E9E"), "Datos: hoy oscuro y en negritas; otros días en gris");
+    assert.ok(hoy.some(r => r.color === "#2E5D4B") && otros.every(r => !r.color || r.color !== "#FFF4C2"), "Encabezado de hoy más intenso, sin el amarillo anterior");
+    assert.ok(reglas.indexOf(reglas.find(r => r.menorQue === 0)) === 0, "El saldo negativo va primero (gana sobre el atenuado)");
     const neg = reglas.find(r => r.menorQue === 0), cero = reglas.find(r => r.igualA === 0);
     assert.ok(neg && neg.color === "#FFCDD2" && neg.ranges.length === 7 && neg.ranges.every(rg => (rg.col - 12) % 3 === 0), "Saldo negativo en rojo en las 7 columnas SLD");
     assert.ok(cero && cero.letra === "#C9C9C9", "Saldos en cero atenuados");

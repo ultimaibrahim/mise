@@ -1260,7 +1260,9 @@ function _asegurarColumnasAuxiliaresPedido(sheet) {
   sheet.hideColumns(COL_AUX, 4);
 }
 
-// Pedido cómodo en el celular (1.7.6u): filas más altas y PRODUCTO / CANT. A PEDIR más grandes
+// Pedido cómodo en el celular (1.7.6u–v): filas más altas, PRODUCTO / CANT. A PEDIR más grandes, la casilla de
+// 🚚 Surtido Rápido (F2) más grande (una casilla crece con el tamaño de letra) y sin columnas vacías a la derecha
+// (en el celular no hay a dónde desplazarse "muy lejos").
 function _estiloTactilPedido(sheet, count) {
   if (!count || count < 1) return;
   try {
@@ -1268,7 +1270,35 @@ function _estiloTactilPedido(sheet, count) {
     sheet.getRange(DATA_START_ROW, 3, count, 1).setFontSize(12).setVerticalAlignment("middle");
     sheet.getRange(DATA_START_ROW, COL_CANT_PEDIR, count, 1).setFontSize(13).setFontWeight("bold")
       .setHorizontalAlignment("center").setVerticalAlignment("middle");
+    sheet.getRange("C2").setFontSize(11);
+    sheet.getRange("F2").setFontSize(20).setHorizontalAlignment("center").setVerticalAlignment("middle");
+    sheet.setRowHeight(2, 40);
+    _ocultarColumnasSobrantes(sheet, _layoutPedido(sheet).colAux + 3);
   } catch (e) {}
+}
+
+// Surtido Rápido táctil (1.7.6v): filas altas, letra grande, casillas ✅/❌ grandes y sin filas/columnas sobrantes
+function _estiloTactilSurtido(sheet, n) {
+  try {
+    if (n > 0) {
+      sheet.setRowHeights(4, n, 38);
+      sheet.getRange(4, 3, n, 1).setFontSize(12).setVerticalAlignment("middle");
+      sheet.getRange(4, 4, n, 1).setFontSize(12).setHorizontalAlignment("center").setVerticalAlignment("middle");
+      sheet.getRange(4, 5, n, 1).setFontSize(14).setFontWeight("bold").setHorizontalAlignment("center").setVerticalAlignment("middle");
+      sheet.getRange(4, 6, n, 2).setFontSize(18).setHorizontalAlignment("center").setVerticalAlignment("middle");
+      sheet.getRange(4, 8, n, 1).setFontSize(12).setFontWeight("bold").setHorizontalAlignment("center").setVerticalAlignment("middle");
+    }
+    _ocultarColumnasSobrantes(sheet, 11);                       // hasta K (resumen)
+    const ultima = Math.max(3 + n, 8);                         // datos o resumen (J3:K8), lo que llegue más abajo
+    const maxR = sheet.getMaxRows();
+    sheet.showRows(1, maxR);
+    if (maxR > ultima + 1) sheet.hideRows(ultima + 2, maxR - ultima - 1); // deja 1 fila de aire
+  } catch (e) {}
+}
+
+function _ocultarColumnasSobrantes(sheet, ultimaUtil) {
+  const maxC = sheet.getMaxColumns();
+  if (maxC > ultimaUtil) sheet.hideColumns(ultimaUtil + 1, maxC - ultimaUtil);
 }
 
 function _aplicarFormatosCondicionales(sheet) {
@@ -1342,10 +1372,10 @@ function _aplicarFormatosCondicionales(sheet) {
   _estiloTactilPedido(sheet, count);
 }
 
-const MISE_VERSION = "1.7.6u";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6v";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
-  "Pedido Diario más cómodo en el celular: filas más altas y letra más grande",
+  "Pedido y Surtido Rápido más cómodos en el celular: filas altas, letra y casillas grandes, sin desplazarse de más",
   "Menú más simple: ⚙️ Mise para el día a día y 🛠 Técnico para mantenimiento",
   "Pides en tu unidad (domo, caja, paquete) y el saldo y los colores ya se ven en esa misma unidad",
   "Pedido Diario más limpio: se retiró una columna vacía que quedaba de una función antigua",
@@ -1712,6 +1742,8 @@ function _generarSurtidoRapidoInternal(activateSheet) {
   sSheet.setColumnWidth(9, 20);   // Separador
   sSheet.setColumnWidth(10, 120); // Column J width
   sSheet.setColumnWidth(11, 60);  // Column K width
+
+  _estiloTactilSurtido(sSheet, rows);
 
   // Marcar que surtido está activo
   PropertiesService.getScriptProperties().setProperty("IS_SURTIDO_ACTIVE", "true");
