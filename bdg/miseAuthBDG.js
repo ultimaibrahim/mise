@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.6s Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.6t Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -207,68 +207,68 @@ function onOpen() {
   } catch(e) {}
   try {
     const ui = SpreadsheetApp.getUi();
-    // Herramientas forenses de DEV (bdg/MiseDevTools.js): solo aparecen si el archivo está en el proyecto
-    const forense = ui.createMenu("🧪 Reconciliación Forense y Recuperación")
-      .addItem("🔄 Reconciliar días pasados de la semana (desde registros)", "reconciliarSemanaCompletaDesdeLogs")
-      .addItem("🧠 Reconciliador Inteligente de Huérfanos", "abrirReconciliadorInteligenteHTML");
-    if (typeof procesarInyeccionRecuperacionKardex === "function") {
-      forense.addSeparator()
-        .addItem("🧪 Preparar plantilla de recuperación semanal", "prepararPlantillaRecuperacionSemana")
-        .addItem("🧪 Inyectar datos de recuperación a Kardex y Logs", "procesarInyeccionRecuperacionKardex");
-    }
-    const menu = ui.createMenu("⚙️ Mise")
-      // Operación Diaria y Supervisión Rápida
-      .addItem("🚀 Configurar este libro (activadores, vistas, tiendas)", "configurarEsteLibroBDG")
+    // Menús (1.7.6t): ⚙️ Mise = uso diario (pocas opciones, el resto en "Más opciones"); 🛠 Técnico = mantenimiento
+    // y zona de riesgo; 🧪 Mise DEV = solo si bdg/MiseDevTools.js está en el proyecto (los libros DEV).
+    ui.createMenu("⚙️ Mise")
+      .addItem("🚀 Configurar este libro", "configurarEsteLibroBDG")
+      .addItem("⚡ Mise Powerhouse (catálogo y orden)", "abrirConstructorPickingHTML")
+      .addItem("🔄 Registrar traspaso (computadora)", "abrirDialogoTraspasoBDGHTML")
+      .addItem("🌐 Página de estado", "abrirPaginaEstado")
       .addSeparator()
-      .addItem("🚚 Descontar Pedidos de Hoy (Cierre diario)", "descontarSurtidoAutomaticoManualmente")
-      .addItem("🔄 Registrar Traspaso entre Sucursales",  "abrirDialogoTraspasoBDGHTML")
-      .addItem("📥 Preparar 📥 Registrar entradas (celular)",   "prepararHojaEntradasManualmente")
-      .addItem("⚡ Mise Powerhouse (Catálogo & Picking)", "abrirConstructorPickingHTML")
-      .addItem("📅 Sincronizar semana actual (Ambas bodegas)", "configurarSemanaAmbas")
-      .addSeparator()
-      .addItem("🩺 Diagnosticar y reparar sistema",       "repararYSincronizarSistemaManualmente")
-      .addSeparator()
-      // Gestión de Semanas y Calendario
-      .addSubMenu(ui.createMenu("📅 Gestión Semanal")
-        .addItem("📅 Configurar semana — Andares",          "configurarSemanaBA")
-        .addItem("📅 Configurar semana — Mercado",          "configurarSemanaBM")
-        .addSeparator()
-        .addItem("⏩ Avanzar semana — Andares",             "avanzarSemanaBA")
-        .addItem("⏩ Avanzar semana — Mercado",             "avanzarSemanaBM")
-        .addItem("⏩ Auto-verificar y avanzar semana ahora", "forzarAutoVerificarYAvanzarSemana"))
-      // Gestión de Catálogo
-      .addSubMenu(ui.createMenu("🛠️ Gestión de Catálogo")
-        .addItem("🧹 Eliminar productos duplicados",        "eliminarDuplicadosCatalogo"))
-      .addSeparator()
-      // Cuarentena de Alto Riesgo / Mantenimiento
-      .addSubMenu(ui.createMenu("⚠️ Mantenimiento Avanzado y Zona de Riesgo")
-        .addSubMenu(ui.createMenu("🚨 Reconstrucción y Respaldo")
-          .addItem("🏗️ Reconstruir 📦 Inventario Andares (con respaldo)", "reconstruirKardexBAConRespaldo")
-          .addItem("🏗️ Reconstruir 📦 Inventario Mercado (con respaldo)", "reconstruirKardexBMConRespaldo")
-          .addItem("🏗️ Reconstruir 📋 Catálogo (con respaldo)",       "reconstruirMaestroConRespaldo")
+      .addSubMenu(ui.createMenu("▸ Más opciones")
+        .addSubMenu(ui.createMenu("📅 Semana")
+          .addItem("Verificar y avanzar semanas ahora", "forzarAutoVerificarYAvanzarSemana")
+          .addItem("Sincronizar semana actual (ambas bodegas)", "configurarSemanaAmbas")
           .addSeparator()
-          .addItem("📊 Recrear VISTA_MOVIL_BA",             "crearVistaMovilBA")
-          .addItem("📊 Recrear VISTA_MOVIL_BM",             "crearVistaMovilBM"))
-        .addSubMenu(forense)
-        .addSubMenu(ui.createMenu("⚙️ Automatizaciones y Triggers")
-          .addItem("🚚 Descontar pedidos de ayer (Manual)", "descontarSurtidoAyerManualmente")
+          .addItem("Configurar semana — Andares", "configurarSemanaBA")
+          .addItem("Configurar semana — Mercado", "configurarSemanaBM")
+          .addItem("Avanzar semana — Andares", "avanzarSemanaBA")
+          .addItem("Avanzar semana — Mercado", "avanzarSemanaBM"))
+        .addSubMenu(ui.createMenu("🚚 Descuentos")
+          .addItem("Descontar pedidos de hoy (cierre)", "descontarSurtidoAutomaticoManualmente")
+          .addItem("Descontar pedidos de ayer (desde registros)", "descontarSurtidoAyerManualmente")
+          .addItem("Reconciliar días pasados de la semana", "reconciliarSemanaCompletaDesdeLogs"))
+        .addSubMenu(ui.createMenu("📋 Catálogo")
           .addItem("⚖️ Llenar factores desde la presentación", "sugerirFactoresDesdePresentacion")
-          .addItem("🩺 Estado del sistema (Bodega y tiendas)", "mostrarEstadoSistema")
-          .addItem("🌐 Abrir página de estado", "abrirPaginaEstado")
-          .addItem("🩺 Diagnosticar activadores", "diagnosticarActivadores")
-          .addItem("⏰ Reiniciar activadores (23:00 diario y domingo)", "instalarActivadoresNocturnosBDG")
-          .addItem("🔗 Configurar conexión con Logs (IMPORTRANGE)", "configurarConexionLogTiendas")
-          .addItem("🛡️ Ejecutar mantenimiento semanal (Manual)", "ejecutarMantenimientoSemanalBDG"))
-        .addSubMenu(ui.createMenu("🔒 Protección y Seguridad Crítica")
-          .addItem("🔒 Blindar todas las hojas",   "protegerTodasLasHojasSeguras")
-          .addItem("🔐 Auditoría de permisos",   "auditarPermisos")
-          .addItem("👥 Administradores (Powerhouse y Catálogo completo)", "configurarAdministradores")
-          .addSeparator()
+          .addItem("🧹 Eliminar productos duplicados", "eliminarDuplicadosCatalogo")
+          .addItem("🧠 Reconciliador de productos huérfanos", "abrirReconciliadorInteligenteHTML"))
+        .addSubMenu(ui.createMenu("🔒 Seguridad")
+          .addItem("👥 Administradores", "configurarAdministradores")
           .addItem("🔐 Cambiar contraseña de administrador", "cambiarPasswordAdmin")
-          .addItem("⚠️ Restablecer sistema desde cero (Destructivo)", "setupCompleto")))
+          .addItem("🔐 Auditoría de permisos", "auditarPermisos")))
       .addSeparator()
-      .addItem("ℹ️ Acerca de Mise",                        "acercaDe");
-    menu.addToUi();
+      .addItem("ℹ️ Acerca de Mise", "acercaDe")
+      .addToUi();
+
+    ui.createMenu("🛠 Técnico")
+      .addItem("🩺 Diagnosticar y reparar sistema", "repararYSincronizarSistemaManualmente")
+      .addItem("🩺 Estado del sistema (resumen)", "mostrarEstadoSistema")
+      .addItem("📥 Rehacer la hoja Registrar entradas", "prepararHojaEntradasManualmente")
+      .addSeparator()
+      .addItem("🩺 Diagnosticar activadores", "diagnosticarActivadores")
+      .addItem("⏰ Reiniciar activadores", "instalarActivadoresNocturnosBDG")
+      .addItem("🛡️ Ejecutar mantenimiento semanal", "ejecutarMantenimientoSemanalBDG")
+      .addItem("🔗 Conexión con los logs de tiendas", "configurarConexionLogTiendas")
+      .addItem("🔒 Blindar todas las hojas", "protegerTodasLasHojasSeguras")
+      .addSeparator()
+      .addSubMenu(ui.createMenu("🏗️ Reconstruir (con respaldo)")
+        .addItem("📦 Inventario Andares", "reconstruirKardexBAConRespaldo")
+        .addItem("📦 Inventario Mercado", "reconstruirKardexBMConRespaldo")
+        .addItem("📋 Catálogo", "reconstruirMaestroConRespaldo")
+        .addSeparator()
+        .addItem("Vista para Andares (VISTA_MOVIL_BA)", "crearVistaMovilBA")
+        .addItem("Vista para Mercado (VISTA_MOVIL_BM)", "crearVistaMovilBM"))
+      .addSeparator()
+      .addItem("⚠️ Restablecer sistema desde cero (destructivo)", "setupCompleto")
+      .addToUi();
+
+    // 🧪 Mise DEV: herramientas de bdg/MiseDevTools.js (solo existen en los libros DEV)
+    if (typeof procesarInyeccionRecuperacionKardex === "function") {
+      ui.createMenu("🧪 Mise DEV")
+        .addItem("Preparar plantilla de recuperación semanal", "prepararPlantillaRecuperacionSemana")
+        .addItem("Inyectar datos de recuperación a Inventario y logs", "procesarInyeccionRecuperacionKardex")
+        .addToUi();
+    }
   } catch(e) {}
 }
 
@@ -1992,9 +1992,10 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.6s";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6t";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "Menú más simple: ⚙️ Mise para el día a día y 🛠 Técnico para mantenimiento",
   "📦 Inventario con encabezado claro: semana con fechas y qué significa ENT, SAL y SLD",
   "⏳ 🚀 Configurar muestra cada paso en vivo, en una ventana que no bloquea la hoja",
   "⚡ Powerhouse edita también la unidad de pedido y el factor",
@@ -3281,7 +3282,9 @@ const CATALOGO_COLOR = { BA: "#DCEFE3", BM: "#E3E8F5", base: "#F5EFE6" };
 const UNIDADES_BASE = {
   g: ["masa", 1], gr: ["masa", 1], grs: ["masa", 1], gramos: ["masa", 1], kg: ["masa", 1000], kgs: ["masa", 1000], kilo: ["masa", 1000], kilos: ["masa", 1000],
   ml: ["volumen", 1], l: ["volumen", 1000], lt: ["volumen", 1000], lts: ["volumen", 1000], litro: ["volumen", 1000], litros: ["volumen", 1000],
-  pz: ["pieza", 1], pza: ["pieza", 1], pzas: ["pieza", 1], pzs: ["pieza", 1], pieza: ["pieza", 1], piezas: ["pieza", 1], u: ["pieza", 1], unidades: ["pieza", 1]
+  pz: ["pieza", 1], pza: ["pieza", 1], pzas: ["pieza", 1], pzs: ["pieza", 1], pieza: ["pieza", 1], piezas: ["pieza", 1], u: ["pieza", 1], unidades: ["pieza", 1],
+  hoja: ["pieza", 1], hojas: ["pieza", 1],
+  m: ["longitud", 100], mt: ["longitud", 100], mts: ["longitud", 100], metro: ["longitud", 100], metros: ["longitud", 100], cm: ["longitud", 1]
 };
 
 function _unidadBase(u) {
@@ -3296,7 +3299,11 @@ function _sugerirFactorDesdePresentacion(presentacion, unidadBodega) {
   const uPres = _unidadBase(m[3]);
   const uBod = _unidadBase(unidadBodega);
   if (!uPres || !uBod) return { revisar: `unidad no reconocida (${m[3]} / ${unidadBodega || "sin unidad de bodega"})` };
-  if (uPres[0] !== uBod[0]) return { revisar: `${m[3]} no se puede convertir a ${unidadBodega}` };
+  if (uPres[0] !== uBod[0]) {
+    return { revisar: uBod[0] === "pieza"
+      ? `bodega cuenta por ${unidadBodega}: si la tienda pide la misma pieza, no hace falta factor (déjalo vacío)`
+      : `${m[3]} no se puede convertir a ${unidadBodega}` };
+  }
   if (!(cantidad > 0)) return { revisar: "cantidad no válida" };
   const factor = Math.round(cantidad * uPres[1] / uBod[1] * 1e6) / 1e6;
   return { unidad: m[1].trim().toLowerCase(), factor };

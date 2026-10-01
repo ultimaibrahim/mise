@@ -23,6 +23,12 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6t Altair — Menú Más Simple (Octubre 2026) [EN PRUEBAS]
+
+* 🧭 **El menú ⚙️ Mise ahora muestra solo lo del día a día**; lo técnico se movió a un menú aparte (🛠 Técnico) y las herramientas de prueba ya no aparecen en los libros de operación.
+
+---
+
 ## Versión 1.7.6s Altair — Inventario que se Explica Solo (Octubre 2026) [EN PRUEBAS]
 
 * 📦 **Encabezado del inventario más claro**: arriba dice de qué bodega es, en qué semana está (con sus fechas) y qué significa cada columna: ENT = entró, SAL = salió, SLD = lo que queda.

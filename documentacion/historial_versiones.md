@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6t Altair (Menús por uso) — 2026-10-01 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* Menús ⚙️ Mise / 🛠 Técnico / 🧪 Mise DEV; sugeridor con hojas y metros.
+
+---
+
 ## ⚡ v1.7.6s Altair (Encabezado del Inventario) — 2026-10-01 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG)

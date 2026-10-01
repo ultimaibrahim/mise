@@ -84,40 +84,39 @@ function onOpen() {
   }
   try {
     const ui = SpreadsheetApp.getUi();
-    // Herramientas de prueba (tienda/MiseDevTools.js): solo existen en DEV
-    const pruebas = ui.createMenu("🧪 Diagnóstico y Pruebas")
-      .addItem("🔐 Auditoría de permisos", "auditarPermisos");
+    // Menús (1.7.6t): ⚙️ Mise = uso diario; 🛠 Técnico = mantenimiento y zona de riesgo;
+    // 🧪 Mise DEV = solo si tienda/MiseDevTools.js está en el proyecto (los libros DEV).
+    ui.createMenu("⚙️ Mise")
+      .addItem("🚚 Generar Surtido Rápido", "generarSurtidoRapido")
+      .addItem("🖐️ Reordenar lista por picking", "ordenarPedido")
+      .addSeparator()
+      .addSubMenu(ui.createMenu("▸ Más opciones")
+        .addItem("🔧 Sincronizar catálogo y reparar formato", "repararSistemaTienda")
+        .addItem("🔄 Aplicar actualización de estructura pendiente", "aplicarActualizacionPendienteManualmente")
+        .addItem("🗑️ Limpiar el pedido de hoy", "resetearPedidoManualmente")
+        .addItem("🔐 Auditoría de permisos", "auditarPermisos"))
+      .addSeparator()
+      .addItem("ℹ️ Acerca de Mise", "acercaDe")
+      .addToUi();
+
+    ui.createMenu("🛠 Técnico")
+      .addItem("🚀 Configurar este libro", "configurarEsteLibroTienda")
+      .addItem("⏰ Reiniciar activadores", "instalarActivadoresTienda")
+      .addItem("🔒 Proteger Pedido Diario", "protegerPedidoSeguro")
+      .addItem("🛡️ Blindar Pedido y Surtido (total)", "protegerTodasLasHojasTiendaSeguras")
+      .addSeparator()
+      .addItem(`🔗 Configurar conexión con ${BODEGA_NOMBRE}`, "configurarBodega")
+      .addItem("🔐 Cambiar contraseña de administrador", "cambiarPasswordAdmin")
+      .addItem("⚠️ Restablecer sistema desde cero (destructivo)", "setupCompleto")
+      .addToUi();
+
+    // 🧪 Mise DEV: herramientas de tienda/MiseDevTools.js (solo existen en los libros DEV)
     if (typeof generarDatosPrueba === "function") {
-      pruebas.addItem("🎲 Generar datos aleatorios de prueba", "generarDatosPrueba")
-        .addItem("🗒️ Forzar registro en LOG_SURTIDO", "probadorForzarLogSurtido");
+      ui.createMenu("🧪 Mise DEV")
+        .addItem("🎲 Generar datos aleatorios de prueba", "generarDatosPrueba")
+        .addItem("🗒️ Forzar registro en LOG_SURTIDO", "probadorForzarLogSurtido")
+        .addToUi();
     }
-    const menu = ui.createMenu("⚙️ Mise")
-      // Operación Diaria
-      .addItem("🚀 Configurar este libro (activadores, estructura, picking)", "configurarEsteLibroTienda")
-      .addSeparator()
-      .addItem("🚚 Generar Surtido Rápido (móvil)",       "generarSurtidoRapido")
-      .addItem("🖐️ Reordenar lista por picking",          "ordenarPedido")
-      .addSeparator()
-      .addItem("🔧 Sincronizar catálogo y reparar formato", "repararSistemaTienda")
-      .addItem("🔄 Aplicar actualización de estructura pendiente", "aplicarActualizacionPendienteManualmente")
-      .addItem("🔐 Auditoría de permisos", "auditarPermisos")
-      .addSeparator()
-      // Submenú Cuarentena / Zona Avanzada
-      .addSubMenu(ui.createMenu("⚠️ Mantenimiento Avanzado y Zona de Riesgo")
-        .addSubMenu(ui.createMenu("🚨 Reseteo y Cierre Manual")
-          .addItem("🗑️ Limpiar / Reiniciar pedido de hoy", "resetearPedidoManualmente")
-          .addItem("⏰ Reiniciar activadores (00:00 y 04:00)", "instalarActivadoresTienda"))
-        .addSubMenu(ui.createMenu("🔒 Blindaje y Permisos")
-          .addItem("🔒 Proteger Pedido Diario", "protegerPedidoSeguro")
-          .addItem("🛡️ Blindar Pedido y Surtido (Total)", "protegerTodasLasHojasTiendaSeguras"))
-        .addSubMenu(pruebas)
-        .addSubMenu(ui.createMenu("⚠️ Configuración Crítica")
-          .addItem(`🔗 Configurar conexión con ${BODEGA_NOMBRE}`, "configurarBodega")
-          .addItem("🔐 Cambiar contraseña de administrador", "cambiarPasswordAdmin")
-          .addItem("⚠️ Restablecer sistema desde cero (Destructivo)", "setupCompleto")))
-      .addSeparator()
-      .addItem("ℹ️ Acerca de Mise",                        "acercaDe");
-    menu.addToUi();
   } catch(e) {}
 }
 
@@ -1331,9 +1330,10 @@ function _aplicarFormatosCondicionales(sheet) {
   sheet.setConditionalFormatRules(rules);
 }
 
-const MISE_VERSION = "1.7.6s";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6t";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "Menú más simple: ⚙️ Mise para el día a día y 🛠 Técnico para mantenimiento",
   "Pides en tu unidad (domo, caja, paquete) y el saldo y los colores ya se ven en esa misma unidad",
   "Pedido Diario más limpio: se retiró una columna vacía que quedaba de una función antigua",
   "Los cambios de catálogo de Bodega (orden y productos desactivados) se aplican solos al abrir",

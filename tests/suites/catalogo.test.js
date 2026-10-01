@@ -63,6 +63,9 @@ function runCatalogoTests() {
   assert.deepStrictEqual(sug("Bolsa de polvo 800 g", "kg"), { unidad: "bolsa de polvo", factor: 0.8 }, "Nombre de varias palabras");
   assert.ok(sug("Caja 12 kg", "pz").revisar, "Unidades incompatibles (kg contra pz): a revisión, no inventa");
   assert.strictEqual(sandbox._sugerirFactorDesdePresentacion("DOMO", "kg"), null, "Sin contenido: nada que sugerir");
+  assert.deepStrictEqual(sug("PAQ 25 HOJAS", "pza"), { unidad: "paq", factor: 25 }, "Hojas = piezas");
+  assert.deepStrictEqual(sug("ROL 180 m", "cm"), { unidad: "rol", factor: 18000 }, "Metros a centímetros");
+  assert.ok(/déjalo vacío/.test(sug("BOT 1 LT", "pza").revisar), "Bodega cuenta por pieza: el aviso dice que no hace falta factor");
 
   const h2 = ["No", "PRODUCTO", "PRESENTACION", "UNIDAD", "UNIDAD_TIENDA", "FACTOR_CONVERSION"];
   const c2 = ss.insertSheet("Cat2");
