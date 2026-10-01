@@ -62,6 +62,18 @@ function runKardexVistaTests() {
     assert.strictEqual(k.getRange(5, 1).getValue(), "PRODUCTO", "Fila 5 sin 'DATOS DEL PRODUCTO' duplicado");
     assert.ok(/📦 Inventario Mercado/.test(k.getRange(2, 3).getValue()) && /^(✅|⏳) Semana/.test(k.getRange(2, 4).getValue()), "Fila 2: título y estado de la semana");
     console.log("  ✓ Encabezado: título, semana con fechas y leyenda; filas 3–4 limpias y ocultas; G4 intacta");
+
+    // Ayudas visuales (1.7.6u)
+    let reglas = [];
+    k.getConditionalFormatRules = () => [];
+    k.setConditionalFormatRules = (r) => { reglas = r; return k; };
+    sandbox._simplificarVistaKardex(k);
+    const hoy = reglas.filter(r => /WEEKDAY\(TODAY\(\),2\)-1/.test(r.formula || ""));
+    assert.ok(hoy.length === 2 && hoy.every(r => /\$G\$4<=TODAY\(\), TODAY\(\)<\$G\$4\+7/.test(r.formula)), "Columna de HOY resaltada (datos y encabezado), solo si la semana activa incluye hoy");
+    const neg = reglas.find(r => r.menorQue === 0), cero = reglas.find(r => r.igualA === 0);
+    assert.ok(neg && neg.color === "#FFCDD2" && neg.ranges.length === 7 && neg.ranges.every(rg => (rg.col - 12) % 3 === 0), "Saldo negativo en rojo en las 7 columnas SLD");
+    assert.ok(cero && cero.letra === "#C9C9C9", "Saldos en cero atenuados");
+    console.log("  ✓ Inventario: columna de hoy resaltada, saldo negativo en rojo y ceros atenuados");
   }
 
 

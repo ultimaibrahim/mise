@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.6t Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.6u Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -1992,9 +1992,10 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.6t";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6u";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "📦 Inventario: la columna de hoy resaltada, saldos negativos en rojo y ceros atenuados",
   "Menú más simple: ⚙️ Mise para el día a día y 🛠 Técnico para mantenimiento",
   "📦 Inventario con encabezado claro: semana con fechas y qué significa ENT, SAL y SLD",
   "⏳ 🚀 Configurar muestra cada paso en vivo, en una ventana que no bloquea la hoja",
@@ -3133,10 +3134,37 @@ function protegerKardexSeguro(keyOrSheet) {
 // Ocultas: A No · B CATEGORÍA · D PRESENTACIÓN · F CADUCIDAD · G LOTE (+ fecha G4) · H 🚦 (siguen existiendo:
 // el código las usa por posición). La semana se lee en el badge (L2) y en E4/I4.
 const KARDEX_COLS_OCULTAS = [1, 2, 4, 6, 7, 8];
+// Ayudas visuales del Inventario (1.7.6u): la columna de HOY resaltada (solo si la semana activa incluye hoy), los
+// saldos en cero atenuados y los saldos negativos en rojo. Se conservan las reglas previas que no son de los días.
+function _reglasVisualesInventario(sheet) {
+  const lr = Math.max(sheet.getLastRow(), KARDEX_START);
+  const n = lr - KARDEX_START + 1;
+  const previas = (sheet.getConditionalFormatRules() || []).filter(r => {
+    try { return r.getRanges().every(rg => rg.getColumn() < 10); } catch (e) { return true; }
+  });
+  const dias = sheet.getRange(KARDEX_START, 10, n, 21);
+  const encDias = sheet.getRange(5, 10, 2, 21);
+  const sld = [];
+  for (let d = 0; d < KARDEX_DAYS; d++) sld.push(sheet.getRange(KARDEX_START, 12 + d * 3, n, 1));
+  const hoy = '=AND($G$4<=TODAY(), TODAY()<$G$4+7, INT((COLUMN()-10)/3)=WEEKDAY(TODAY(),2)-1)';
+  const reglas = [
+    SpreadsheetApp.newConditionalFormatRule().whenNumberLessThan(0)
+      .setBackground("#FFCDD2").setFontColor("#B71C1C").setBold(true).setRanges(sld).build(),
+    SpreadsheetApp.newConditionalFormatRule().whenNumberEqualTo(0)
+      .setFontColor("#C9C9C9").setRanges(sld).build(),
+    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(hoy)
+      .setBackground("#FFF4C2").setRanges([dias]).build(),
+    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(hoy)
+      .setBackground("#F9A825").setFontColor("#1A281F").setBold(true).setRanges([encDias]).build()
+  ];
+  sheet.setConditionalFormatRules(previas.concat(reglas));
+}
+
 function _simplificarVistaKardex(sheet) {
   if (!sheet) return;
   sheet.showColumns(1, Math.min(KARDEX_TOTAL_COLS, sheet.getMaxColumns()));
   KARDEX_COLS_OCULTAS.forEach(c => sheet.hideColumns(c));
+  try { _reglasVisualesInventario(sheet); } catch (e) { MiseLogger.warn("_simplificarVistaKardex", `Reglas visuales: ${e.message}`); }
   try {
     _limpiarEncabezadoInventario(sheet);
     const key = Object.keys(BODEGAS).find(k => BODEGAS[k].kardex === _nombreCanonico(sheet.getName()));

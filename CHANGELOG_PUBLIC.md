@@ -23,6 +23,13 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.6u Altair — Más Fácil de Leer (Octubre 2026) [EN PRUEBAS]
+
+* 📦 **Inventario**: la columna del día de hoy se resalta sola, los saldos negativos se pintan de rojo (avisan de un error de captura) y los ceros se ven tenues para que destaque lo importante.
+* 📋 **Pedido Diario** más cómodo en el celular: filas más altas y letra más grande en el producto y la cantidad a pedir.
+
+---
+
 ## Versión 1.7.6t Altair — Menú Más Simple (Octubre 2026) [EN PRUEBAS]
 
 * 🧭 **El menú ⚙️ Mise ahora muestra solo lo del día a día**; lo técnico se movió a un menú aparte (🛠 Técnico) y las herramientas de prueba ya no aparecen en los libros de operación.

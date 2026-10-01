@@ -147,6 +147,18 @@ function runEstadoTests() {
     assert.strictEqual(reordenes, 2, "Solo 2 reordenamientos");
     console.log("  ✓ Catálogo: misma huella en tienda y Bodega; reordena solo si cambió y nunca con el enlace cargando");
 
+    // Pedido cómodo en el celular (1.7.6u): filas altas y PRODUCTO / CANT. A PEDIR más grandes
+    const ped = t2.ss.insertSheet("📋 PEDIDO DIARIO");
+    const alturas = [], tamanos = {};
+    ped.setRowHeights = (r, n, h) => { alturas.push([r, n, h]); return ped; };
+    const rpT = Object.getPrototypeOf(ped.getRange(1, 1));
+    const setFontSizePrevio = rpT.setFontSize;
+    rpT.setFontSize = function(t) { tamanos[this.col] = t; return this; };
+    try { t2.sandbox._estiloTactilPedido(ped, 5); } finally { rpT.setFontSize = setFontSizePrevio; }
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(alturas)), [[4, 5, 34]], "Filas de 34 px");
+    assert.ok(tamanos[3] === 12 && tamanos[6] === 13, "PRODUCTO 12 y CANT. A PEDIR 13");
+    console.log("  ✓ Pedido Diario: filas más altas y letra más grande en producto y cantidad (táctil)");
+
     const catalogo = (huellaTienda) => sandbox._evaluarComponentes({ bodega: { activadores: [], cierres: [], kardex: {}, version: "x", huellas: { BA: "2-abc" } },
       tiendas: { BA: { nombre: "Andares", accesible: true, conLatido: true, estado: { ULTIMO_LATIDO: new Date().toISOString(), VERSION: "x",
         SYNC_VIVO: "SI", ACTIVADORES: HANDLERS_TIENDA.join(", "), CATALOGO_HUELLA: huellaTienda } } } }, ahora).find(c => c.id === "BA.catalogo").estado;

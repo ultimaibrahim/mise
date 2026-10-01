@@ -33,6 +33,11 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.6u Altair — UX del Inventario y del Pedido Diario (Octubre 2026) [EN PRUEBAS · DEV]
+* **📦 Inventario** (`_reglasVisualesInventario`, vía `_simplificarVistaKardex`): la **columna de HOY** (ENT/SAL/SLD y su encabezado) se resalta sola, solo si la semana activa (G4) incluye hoy; **SLD negativo en rojo**; **SLD en cero atenuado** (formato condicional, sin cambiar el formato numérico para no dejar "5." en cantidades decimales). Conserva las reglas previas de columnas < J.
+* **📋 Pedido Diario** (`_estiloTactilPedido`, vía `_aplicarFormatosCondicionales`): filas de 34 px, PRODUCTO a 12 pt y CANT. A PEDIR a 13 pt en negritas, centrada. (La "cantidad sugerida" propuesta se descartó por decisión de Ibrahim.)
+* **Testing**: reglas del Inventario verificadas (hoy con la condición de semana, negativo en las 7 columnas SLD, ceros); estilo táctil del Pedido; el emulador de Bodega ahora registra las reglas de formato condicional.
+
 ### Version 1.7.6t Altair — Menús por Uso y Sugeridor de Factores Afinado (Octubre 2026) [EN PRUEBAS · DEV]
 * **Tres menús en lugar de uno con 34 opciones**: `⚙️ Mise` (uso diario: Configurar, Powerhouse, traspaso, página de estado, Acerca de y "▸ Más opciones" con Semana, Descuentos, Catálogo y Seguridad), `🛠 Técnico` (diagnóstico, activadores, mantenimiento, blindaje, reconstrucciones, restablecer) y `🧪 Mise DEV` (solo si `MiseDevTools.js` está en el proyecto: libros DEV). En tiendas: `⚙️ Mise` (Surtido Rápido, reordenar, "▸ Más opciones"), `🛠 Técnico` (Configurar, activadores, protección, conexión, contraseña, restablecer) y `🧪 Mise DEV`. Se unificó "Sincronizar semana actual" dentro de 📅 Semana.
 * **Sugeridor de factores** probado contra el formato real del Catálogo (`MAN 453 G`, `BOT 1.89 LT`, `CAJ 700 PZA`, `ROLL 1000 PZA`…): ahora reconoce `HOJAS` (= piezas) y metros (`m`, `cm`); cuando la bodega cuenta por pieza y la presentación trae volumen o peso, el aviso explica que no hace falta factor.

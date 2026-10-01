@@ -1260,6 +1260,17 @@ function _asegurarColumnasAuxiliaresPedido(sheet) {
   sheet.hideColumns(COL_AUX, 4);
 }
 
+// Pedido cómodo en el celular (1.7.6u): filas más altas y PRODUCTO / CANT. A PEDIR más grandes
+function _estiloTactilPedido(sheet, count) {
+  if (!count || count < 1) return;
+  try {
+    sheet.setRowHeights(DATA_START_ROW, count, 34);
+    sheet.getRange(DATA_START_ROW, 3, count, 1).setFontSize(12).setVerticalAlignment("middle");
+    sheet.getRange(DATA_START_ROW, COL_CANT_PEDIR, count, 1).setFontSize(13).setFontWeight("bold")
+      .setHorizontalAlignment("center").setVerticalAlignment("middle");
+  } catch (e) {}
+}
+
 function _aplicarFormatosCondicionales(sheet) {
   _asegurarColumnasAuxiliaresPedido(sheet);
   sheet.clearConditionalFormatRules();
@@ -1328,11 +1339,13 @@ function _aplicarFormatosCondicionales(sheet) {
   _sem(`=AND($C4<>"", ${N}=0, ${X}=0)`,                   "#CFD8DC", "#37474F");
       
   sheet.setConditionalFormatRules(rules);
+  _estiloTactilPedido(sheet, count);
 }
 
-const MISE_VERSION = "1.7.6t";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.6u";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "Pedido Diario más cómodo en el celular: filas más altas y letra más grande",
   "Menú más simple: ⚙️ Mise para el día a día y 🛠 Técnico para mantenimiento",
   "Pides en tu unidad (domo, caja, paquete) y el saldo y los colores ya se ven en esa misma unidad",
   "Pedido Diario más limpio: se retiró una columna vacía que quedaba de una función antigua",

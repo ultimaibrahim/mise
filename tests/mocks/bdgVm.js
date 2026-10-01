@@ -44,8 +44,19 @@ function crearContextoBDG(opts = {}) {
       getActiveSpreadsheet: () => ss,
       getActive: () => ss,
       setActiveSheet: () => {},
+      // Registra fórmula/condición/colores/rangos de cada regla (como tiendaVm) para poder verificarlas
       newConditionalFormatRule: () => {
-        const b = new Proxy({}, { get: (_, prop) => prop === "build" ? () => ({}) : () => b });
+        const regla = {};
+        const b = new Proxy({}, { get: (_, prop) => {
+          if (prop === "build") return () => regla;
+          if (prop === "whenFormulaSatisfied") return (f) => { regla.formula = f; return b; };
+          if (prop === "whenNumberLessThan") return (x) => { regla.menorQue = x; return b; };
+          if (prop === "whenNumberEqualTo") return (x) => { regla.igualA = x; return b; };
+          if (prop === "setBackground") return (c) => { regla.color = c; return b; };
+          if (prop === "setFontColor") return (c) => { regla.letra = c; return b; };
+          if (prop === "setRanges") return (r) => { regla.ranges = r; return b; };
+          return () => b;
+        } });
         return b;
       },
       newDataValidation: () => {

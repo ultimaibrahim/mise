@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.6u Altair (UX de Inventario y Pedido) — 2026-10-01 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
+* Columna de hoy resaltada, SLD negativo en rojo y ceros atenuados; Pedido Diario con filas y letra táctiles.
+
+---
+
 ## ⚡ v1.7.6t Altair (Menús por uso) — 2026-10-01 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG) & 📱 Tiendas (PDA / PDM)
