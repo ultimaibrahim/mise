@@ -93,7 +93,7 @@ function _estadoBodega(ss) {
       kardex[key] = { nombre: BODEGAS[key].nombre, semana: _isoWeek(lunes), semanaActual: _isoWeek(actual),
         lunes: lunes.toISOString(), alDia: lunes.getTime() >= new Date(actual.getFullYear(), actual.getMonth(), actual.getDate()).getTime() };
     } catch (e) { kardex[key] = { nombre: BODEGAS[key].nombre, error: e.message }; }
-    bajoMinimo[key] = _productosBajoMinimo(_hoja(ss, BODEGAS[key].vista));
+    try { bajoMinimo[key] = _productosBajoMinimo(ss, key); } catch (e) { bajoMinimo[key] = { total: 0, productos: [], error: e.message }; }
     const vista = _hoja(ss, BODEGAS[key].vista);
     huellas[key] = vista && vista.getLastRow() >= 4 ? _huellaCatalogo(vista.getRange(4, 1, vista.getLastRow() - 3, 12).getValues()) : "";
   });
@@ -113,13 +113,25 @@ function _estadoBodega(ss) {
   };
 }
 
-function _productosBajoMinimo(vista) {
-  if (!vista || vista.getLastRow() < 4) return { total: 0, productos: [] };
-  // VISTA_MOVIL A4:L = No, CATEGORÍA, PRODUCTO, UNIDAD, SALDO, 🚦, ENT_HOY, SAL_HOY, ACTIVO, MÍN, MÁX, PICKING
-  const filas = vista.getRange(4, 1, vista.getLastRow() - 3, 12).getValues();
-  const bajos = filas.filter(r => r[2] && String(r[8]).trim().toUpperCase() !== "NO"
-    && Number(r[9]) > 0 && (Number(r[4]) || 0) < Number(r[9]))
-    .map(r => ({ producto: String(r[2]), saldo: Number(r[4]) || 0, minimo: Number(r[9]), unidad: String(r[3] || "") }));
+// Saldo de Bodega (SLD del Inventario) contra el MÍNIMO DE BODEGA del Catálogo (MÍN_BA/MÍN_BM), igual que el 🚦 del
+// Inventario. Antes leía la vista de la tienda: comparaba contra el mínimo de QUIOSCO y en unidad de pedido.
+function _productosBajoMinimo(ss, key) {
+  const vacio = { total: 0, productos: [] };
+  const kardex = _hoja(ss, BODEGAS[key].kardex), maestro = _hoja(ss, SHEET_MAESTRO);
+  if (!kardex || !maestro || kardex.getLastRow() < KARDEX_START || maestro.getLastRow() < MAESTRO_START) return vacio;
+  const map = _getMaestroHeaderMap(maestro);
+  const cMin = map[`MÍN_${key}`], cProd = map["PRODUCTO"], cAct = map["ACTIVO"];
+  if (!cMin || !cProd) return vacio;
+  const minimos = {};
+  maestro.getRange(MAESTRO_START, 1, maestro.getLastRow() - MAESTRO_START + 1, maestro.getLastColumn()).getValues().forEach(r => {
+    const n = String(r[cProd.index] || "").trim().toUpperCase();
+    if (n && !(cAct && String(r[cAct.index]).trim().toUpperCase() === "NO")) minimos[n] = Number(r[cMin.index]) || 0;
+  });
+  // Inventario: C = producto, E = unidad, AD (30) = saldo al cierre de la semana activa
+  const bajos = kardex.getRange(KARDEX_START, 1, kardex.getLastRow() - KARDEX_START + 1, 30).getValues()
+    .map(r => ({ producto: String(r[2] || "").trim(), unidad: String(r[4] || ""), saldo: Math.round((Number(r[29]) || 0) * 1000) / 1000 }))
+    .filter(p => p.producto && minimos[p.producto.toUpperCase()] > 0 && p.saldo < minimos[p.producto.toUpperCase()])
+    .map(p => Object.assign(p, { minimo: minimos[p.producto.toUpperCase()] }));
   return { total: bajos.length, productos: bajos.slice(0, 15) };
 }
 

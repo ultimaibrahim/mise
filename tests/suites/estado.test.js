@@ -55,9 +55,18 @@ function runEstadoTests() {
     ss.insertSheet("KARDEX_BA").getRange(4, 7).setValue(enVm("_obtenerLunesSemanaActual()"));
     ss.insertSheet("KARDEX_BM").getRange(4, 7).setValue(enVm("(() => { const d = _obtenerLunesSemanaActual(); d.setDate(d.getDate() - 14); return d; })()"));
     ss.insertSheet("VISTA_MOVIL_BA").getRange(4, 1, 3, 12).setValues([
-      [1, "FRUTAS", "Fresa", "kg", 1, "", 0, 0, "SÍ", 3, 6, 1],
-      [2, "LÁCTEOS", "Leche", "lt", 5, "", 0, 0, "SÍ", 2, 8, 2],
-      [3, "ABARROTES", "Harina", "kg", 0, "", 0, 0, "NO", 2, 5, 3]]);
+      [1, "FRUTAS", "Fresa", "kg", 1, "", 0, 0, "SÍ", 0, 0, 1],
+      [2, "LÁCTEOS", "Leche", "lt", 5, "", 0, 0, "SÍ", 9, 9, 2],     // mínimo de QUIOSCO: no cuenta para Bodega
+      [3, "ABARROTES", "Harina", "kg", 0, "", 0, 0, "NO", 0, 0, 3]]);
+    // Bajo mínimo = saldo del Inventario (AD) contra el MÍN de BODEGA del Catálogo
+    ss.insertSheet("MAESTRO").getRange(3, 1, 4, 8).setValues([
+      ["No", "CATEGORÍA", "PRODUCTO", "PRESENTACION", "UNIDAD", "ACTIVO", "MÍN_BA", "MÁX_BA"],
+      [1, "FRUTAS", "Fresa", "DOM", "kg", "SÍ", 3, 6], [2, "LÁCTEOS", "Leche", "LT", "lt", "SÍ", 2, 8], [3, "ABARROTES", "Harina", "BOL", "kg", "NO", 2, 5]]);
+    [["Fresa", "kg", 1], ["Leche", "lt", 5], ["Harina", "kg", 0]].forEach(([n, u, sld], i) => {
+      ss.getSheetByName("KARDEX_BA").getRange(7 + i, 3).setValue(n);
+      ss.getSheetByName("KARDEX_BA").getRange(7 + i, 5).setValue(u);
+      ss.getSheetByName("KARDEX_BA").getRange(7 + i, 30).setValue(sld);
+    });
     const log = ss.insertSheet("🗒 LOG");
     log.getRange(1, 1, 4, 7).setValues([
       ["TIMESTAMP", "NIVEL", "FUNCIÓN", "DURACIÓN (ms)", "DETALLE", "USUARIO", "STACK"],

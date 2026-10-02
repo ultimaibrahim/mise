@@ -49,6 +49,7 @@ La app de Sheets no muestra menús ni diálogos; la webapp sí funciona en el te
 - [ ] **Hoja de conteo físico** (si el conteo del jueves se vuelve rutina): captura móvil, teórico vs. contado, mermas registradas y ajuste del saldo con folio.
 
 ## Fase 5 — Ingeniería (continua)
+- [x] *(1.7.7e)* Emulador aislado por suite disponible (`tests/mocks/aislado.js`) y con fórmulas calculadas; falta migrar las suites viejas.
 - [ ] **Aislar el emulador por suite** (prototipos por contexto): hoy algunas suites reemplazan `setFormulas` en el prototipo compartido.
 - [ ] **Pedido por nombre, no por fila de `_SYNC`** (Developer Metadata o búsqueda por nombre en la tienda): permite retirar del todo el escritor remoto de Bodega y que altas/bajas no dependan del reordenamiento a distancia.
 - [ ] Evaluar biblioteca **`MiseCore`** (código compartido Bodega/tiendas: huella, logger, fechas).

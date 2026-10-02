@@ -23,6 +23,15 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.7e Altair — Revisión con un Día Simulado (Octubre 2026)
+
+* 🚦 **El semáforo de STOCK del Inventario vuelve a funcionar** después de reconstrucciones (altas, mantenimiento del domingo).
+* 📋 **La columna STOCK del Catálogo vuelve a mostrar el saldo**.
+* 🌐 **"Bajo mínimo" en la página de estado** usa el mínimo de Bodega (antes, el de quiosco).
+* 🎭 Mise se prueba ahora simulando un día completo: proveedor, traspaso, pedido, recepción en tienda, cierre nocturno, Powerhouse y mantenimiento.
+
+---
+
 ## Versión 1.7.7d Altair — Powerhouse más Rápido y Cómodo (Octubre 2026) [EN PRUEBAS]
 
 * ⚡ **Powerhouse abre más rápido y ya no bloquea la hoja**: puedes consultar el Catálogo o el Inventario con la ventana abierta.

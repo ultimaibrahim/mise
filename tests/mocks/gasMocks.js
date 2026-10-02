@@ -6,6 +6,13 @@
 // Error diferido pendiente (compartido, como la cola de escrituras de Apps Script)
 const _cola = { error: null };
 function _diferir(msg) { if (!_cola.error) _cola.error = new Error(msg); }
+// Fórmulas calculadas como Google (opt-in por instancia del módulo: solo la simulación aislada lo activa)
+let _evaluar = null;
+let _version = 0;
+let _importRange = () => null;
+function activarCalculoDeFormulas() { _evaluar = require("./formulas").crearEvaluador(() => _version, (u, r) => _importRange(u, r)); }
+function registrarImportRange(fn) { _importRange = fn; }
+
 function _aplicarPendientes() { if (_cola.error) { const e = _cola.error; _cola.error = null; throw e; } }
 
 class MockRange {
@@ -35,7 +42,7 @@ class MockRange {
       const rowArr = [];
       for (let c = 0; c < this.numCols; c++) {
         const val = this.sheet._getCell(this.row + r, this.col + c);
-        rowArr.push(val);
+        rowArr.push(_evaluar && typeof val === "string" && val.startsWith("=") ? _evaluar(val, this.sheet) : val);
       }
       res.push(rowArr);
     }
@@ -53,7 +60,7 @@ class MockRange {
 
   // Como Google: devuelve la fórmula de la celda (las fórmulas se guardan como texto que empieza con "=")
   getFormula() {
-    const v = this.getValue();
+    const v = this.sheet._getCell(this.row, this.col);
     return (typeof v === "string" && v.startsWith("=")) ? v : "";
   }
 
@@ -169,6 +176,7 @@ class MockSheet {
   getName() { return this.name; }
   _getCell(r, c) { return this.grid[`${r},${c}`] !== undefined ? this.grid[`${r},${c}`] : ""; }
   _setCell(r, c, v) {
+    _version++;
     this.grid[`${r},${c}`] = v;
     if (r > this.maxRow) this.maxRow = r;
     if (c > this.maxCol) this.maxCol = c;
@@ -310,6 +318,7 @@ class MockSheet {
 
   // Como Google: renombrar mantiene la hoja (y su contenido) bajo el nombre nuevo
   setName(nombre) {
+    _version++;
     if (this.spreadsheet && this.spreadsheet.sheets) {
       this.spreadsheet.sheets.delete(this.name);
       this.spreadsheet.sheets.set(nombre, this);
@@ -431,6 +440,8 @@ const MockHtmlService = {
 };
 
 module.exports = {
+  activarCalculoDeFormulas,
+  registrarImportRange,
   MockSpreadsheetApp,
   MockLockService,
   MockPropertiesService,

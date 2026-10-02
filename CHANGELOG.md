@@ -33,6 +33,19 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.7e Altair — Simulación de un Día por Roles y 3 Correcciones que Encontró (Octubre 2026) [PROD]
+* **🐛 🚦 STOCK del Inventario vacío tras renombrar**: las 4 copias de la fórmula del semáforo (`_buildKardex`, `_ordenarYRenumerarTodo`) tenían `MAESTRO!` literal. Tras el renombrado a "📋 Catálogo", cada reconstrucción la dejaba en `#REF!` dentro de `IFERROR`, es decir, vacía y sin aviso. Las reconstrucciones son altas en Powerhouse, el mantenimiento del domingo y el diagnóstico. Ahora hay una sola fuente, `_formulaSemaforoKardex`, con `_refHoja(SHEET_MAESTRO)`. Mercado además comparaba contra su mínimo en lugar de su máximo.
+* **🐛 STOCK del Catálogo**: `_ordenarYRenumerarTodo` buscaba la columna 26 de `C:AD` (ENT del domingo) en lugar de la 28 (SLD al cierre), y la celda mostraba solo " (-n)". `_buildMaestro` ya usaba 28.
+* **🐛 Bajo mínimo en la página de estado**: comparaba el saldo de la vista de la tienda (unidad de pedido) contra el mínimo de **quiosco**. Ahora compara el SLD del Inventario contra `MÍN_BA`/`MÍN_BM` del Catálogo (lo mismo que el 🚦) y omite inactivos.
+* **🎭 Simulación por roles** (`tests/suites/simulacion.test.js`): usa el código real de Bodega y de Andares, conectados. Recorre en orden:
+  - Administrador → Proveedor (entradas en domos, kg exactos y cajas) → Bodeguero (traspaso) → Encargado (pedido) → Surtidor (✅/❌/parcial);
+  - cierre de las 23:00 → reset de las 00:00 → reintento idempotente;
+  - Powerhouse (alta + mínimo) → mantenimiento semanal → página de estado.
+* **Emulador**:
+  - `tests/mocks/formulas.js`, evaluador de fórmulas como Google: referencias entre hojas, rangos perezosos, celda vacía ≠ texto vacío, operaciones por celda y `IF/AND/OR/IFERROR/VLOOKUP/CHOOSE/WEEKDAY/TODAY/ROUND/N/LEN/SUM/SUMPRODUCT/IMPORTRANGE`;
+  - `tests/mocks/aislado.js`, copia aislada del emulador por suite (sin contaminar prototipos) con métodos de formato sin efecto;
+  - `Range.getFormula` lee la celda cruda.
+
 ### Version 1.7.7d Altair — Powerhouse: Ficha por Producto, Carga en una Ejecución y Sin Bloqueo (Octubre 2026) [EN PRUEBAS · DEV]
 * **🐛 Fórmulas de STOCK congeladas al guardar** (`_guardarCatalogoPowerhouse`): las ediciones reescribían el Catálogo completo con `getValues`/`setValues`, convirtiendo `STOCK_BA`/`STOCK_BM` en números fijos hasta el siguiente Configurar o mantenimiento. Ahora se leen `getFormulas()` y las celdas con fórmula se reescriben como fórmula.
 * **⚡ Carga más rápida**:

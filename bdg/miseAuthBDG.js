@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.7d Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.7e Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -935,9 +935,9 @@ function _poblarKardex(sheet) {
     const rn = KARDEX_START + r;
     let f = "";
     if (sheetName === BODEGAS.BA.kardex) {
-      f = `=IF(AND(IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMinBA}, FALSE), 0)=0, IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMaxBA}, FALSE), 0)=0), "", IF(AD${rn}<IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMinBA}, FALSE), 0), "🔴 -" & (IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMinBA}, FALSE), 0)-AD${rn}), IF(AD${rn}>IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMaxBA}, FALSE), 0), "🔵 +" & (AD${rn}-IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMaxBA}, FALSE), 0)), "🟢 -")))`;
+      f = _formulaSemaforoKardex(rn, `${lProd}:${lMaxBA}`, idxMinBA, idxMaxBA);
     } else {
-      f = `=IF(AND(IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMinBM}, FALSE), 0)=0, IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMaxBM}, FALSE), 0)=0), "", IF(AD${rn}<IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMinBM}, FALSE), 0), "🔴 -" & (IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMinBM}, FALSE), 0)-AD${rn}), IF(AD${rn}>IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMaxBM}, FALSE), 0), "🔵 +" & (AD${rn}-IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMaxBM}, FALSE), 0)), "🟢 -")))`;
+      f = _formulaSemaforoKardex(rn, `${lProd}:${lMaxBM}`, idxMinBM, idxMaxBM);
     }
     formulasH.push([f]);
   }
@@ -1754,6 +1754,16 @@ function _col(n) {
 // Referencia de fórmula a una hoja con su nombre REAL actual (nuevo o anterior): nunca #REF! a mitad del renombrado.
 // Memorizada por ejecución (se usa dentro de bucles por fila).
 const _refHojaCache = {};
+// 🚦 semáforo de STOCK del Inventario (col H). Una sola fuente (antes 4 copias): la referencia al Catálogo usa su
+// nombre ACTUAL (antes "MAESTRO!" literal: tras renombrar la pestaña la columna quedaba vacía) y Mercado usaba su
+// mínimo como máximo.
+function _formulaSemaforoKardex(rn, rango, idxMin, idxMax) {
+  const ref = _refHoja(SHEET_MAESTRO);
+  const mn = `IFERROR(VLOOKUP(C${rn}, ${ref}!${rango}, ${idxMin}, FALSE), 0)`;
+  const mx = `IFERROR(VLOOKUP(C${rn}, ${ref}!${rango}, ${idxMax}, FALSE), 0)`;
+  return `=IF(AND(${mn}=0, ${mx}=0), "", IF(AD${rn}<${mn}, "🔴 -" & (${mn}-AD${rn}), IF(AD${rn}>${mx}, "🔵 +" & (AD${rn}-${mx}), "🟢 -")))`;
+}
+
 function _refHoja(nombre) {
   if (!_refHojaCache[nombre]) {
     const h = _hoja(SpreadsheetApp.getActiveSpreadsheet(), nombre);
@@ -2009,7 +2019,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.7d";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7e";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "📥 Entradas en la unidad de cada producto (bolsa, caja…) y la fruta en kg exactos: Mise convierte",
@@ -2289,8 +2299,8 @@ function _ordenarYRenumerarTodo() {
   const formulasBM = new Array(data.length);
   for (let i = 0; i < data.length; i++) {
     const rn = MAESTRO_START + i;
-    const fBA = `=IFERROR(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 26, FALSE), 0) & IF(AND(${lMinBA}${rn}=0, ${lMaxBA}${rn}=0), "", IF(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 26, FALSE)<${lMinBA}${rn}, " (-" & (${lMinBA}${rn}-VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 26, FALSE)) & ")", IF(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 26, FALSE)>${lMaxBA}${rn}, " (+" & (VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 26, FALSE)-${lMaxBA}${rn}) & ")", " (-)")))`;
-    const fBM = `=IFERROR(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 26, FALSE), 0) & IF(AND(${lMinBM}${rn}=0, ${lMaxBM}${rn}=0), "", IF(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 26, FALSE)<${lMinBM}${rn}, " (-" & (${lMinBM}${rn}-VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 26, FALSE)) & ")", IF(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 26, FALSE)>${lMaxBM}${rn}, " (+" & (VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 26, FALSE)-${lMaxBM}${rn}) & ")", " (-)")))`;
+    const fBA = `=IFERROR(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 28, FALSE), 0) & IF(AND(${lMinBA}${rn}=0, ${lMaxBA}${rn}=0), "", IF(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 28, FALSE)<${lMinBA}${rn}, " (-" & (${lMinBA}${rn}-VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 28, FALSE)) & ")", IF(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 28, FALSE)>${lMaxBA}${rn}, " (+" & (VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BA.kardex)}!C:AD, 28, FALSE)-${lMaxBA}${rn}) & ")", " (-)")))`;
+    const fBM = `=IFERROR(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 28, FALSE), 0) & IF(AND(${lMinBM}${rn}=0, ${lMaxBM}${rn}=0), "", IF(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 28, FALSE)<${lMinBM}${rn}, " (-" & (${lMinBM}${rn}-VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 28, FALSE)) & ")", IF(VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 28, FALSE)>${lMaxBM}${rn}, " (+" & (VLOOKUP(${lProd}${rn}, ${_refHoja(BODEGAS.BM.kardex)}!C:AD, 28, FALSE)-${lMaxBM}${rn}) & ")", " (-)")))`;
     formulasBA[i] = [fBA];
     formulasBM[i] = [fBM];
   }
@@ -2415,9 +2425,9 @@ function _ordenarYRenumerarTodo() {
 
       // Fórmula de Semáforo en Col H
       if (b.key === "BA") {
-        valRow[7] = `=IF(AND(IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMinBA}, FALSE), 0)=0, IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMaxBA}, FALSE), 0)=0), "", IF(AD${rn}<IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMinBA}, FALSE), 0), "🔴 -" & (IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMinBA}, FALSE), 0)-AD${rn}), IF(AD${rn}>IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMaxBA}, FALSE), 0), "🔵 +" & (AD${rn}-IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBA}, ${idxMaxBA}, FALSE), 0)), "🟢 -")))`;
+        valRow[7] = _formulaSemaforoKardex(rn, `${lProd}:${lMaxBA}`, idxMinBA, idxMaxBA);
       } else {
-        valRow[7] = `=IF(AND(IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMinBM}, FALSE), 0)=0, IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMinBM}, FALSE), 0)=0), "", IF(AD${rn}<IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMinBM}, FALSE), 0), "🔴 -" & (IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMinBM}, FALSE), 0)-AD${rn}), IF(AD${rn}>IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMinBM}, FALSE), 0), "🔵 +" & (AD${rn}-IFERROR(VLOOKUP(C${rn}, MAESTRO!${lProd}:${lMaxBM}, ${idxMinBM}, FALSE), 0)), "🟢 -")))`;
+        valRow[7] = _formulaSemaforoKardex(rn, `${lProd}:${lMaxBM}`, idxMinBM, idxMaxBM);
       }
 
       valRow[8] = rowData[8]; // SALDO ANT

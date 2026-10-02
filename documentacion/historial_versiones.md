@@ -5,6 +5,18 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.7e Altair (Simulación por roles) — 2026-10-01 [PROD]
+
+### 🏬 Bodega (BDG)
+* Corregido: 🚦 STOCK del Inventario vacío tras reconstruir (referencia al Catálogo renombrado) y Mercado comparando contra su mínimo.
+* Corregido: STOCK del Catálogo leía la columna equivocada.
+* Página de estado: bajo mínimo contra el mínimo de Bodega.
+
+### 🧪 Pruebas
+* Simulación de un día completo por roles con fórmulas calculadas (Bodega + Andares).
+
+---
+
 ## ⚡ v1.7.7d Altair (Powerhouse) — 2026-10-01 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG)
