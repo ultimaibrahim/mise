@@ -57,6 +57,19 @@ class MockRange {
     return (typeof v === "string" && v.startsWith("=")) ? v : "";
   }
 
+  getFormulas() {
+    const res = [];
+    for (let r = 0; r < this.numRows; r++) {
+      const fila = [];
+      for (let c = 0; c < this.numCols; c++) {
+        const v = this.sheet._getCell(this.row + r, this.col + c);
+        fila.push((typeof v === "string" && v.startsWith("=")) ? v : "");
+      }
+      res.push(fila);
+    }
+    return res;
+  }
+
   setFormula(formula) {
     this.sheet._setCell(this.row, this.col, formula);
     return this;

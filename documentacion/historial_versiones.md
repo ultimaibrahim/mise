@@ -5,6 +5,15 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.7d Altair (Powerhouse) — 2026-10-01 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG)
+* Powerhouse: precarga en una ejecución, sin reformatear el Catálogo al abrir, ventana sin bloqueo.
+* Pestaña Productos con ficha por secciones (General · Unidades · Mín/Máx · Orden), nombres completos y peso exacto.
+* Botón Orden del Catálogo; corregido: guardar ya no congela las fórmulas de STOCK.
+
+---
+
 ## ⚡ v1.7.7c Altair (Monitor de progreso) — 2026-10-01 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG)

@@ -33,6 +33,22 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.7d Altair — Powerhouse: Ficha por Producto, Carga en una Ejecución y Sin Bloqueo (Octubre 2026) [EN PRUEBAS · DEV]
+* **🐛 Fórmulas de STOCK congeladas al guardar** (`_guardarCatalogoPowerhouse`): las ediciones reescribían el Catálogo completo con `getValues`/`setValues`, convirtiendo `STOCK_BA`/`STOCK_BM` en números fijos hasta el siguiente Configurar o mantenimiento. Ahora se leen `getFormulas()` y las celdas con fórmula se reescriben como fórmula.
+* **⚡ Carga más rápida**:
+  - `_asegurarColumnasQuioscoEnMaestro` solo llama a `_asegurarFormatoHeadersMaestro` si agregó columnas (antes, en cada apertura y cada guardado: descombinar + `flush` + recombinar la fila 1, formato de encabezados y anchos).
+  - `abrirConstructorPickingHTML` usa `createTemplateFromFile` con los datos precargados (`_jsonParaHtml`, `<` escapado): una ejecución en vez de dos.
+  - **Diálogo sin bloqueo** (`showModelessDialog`).
+* **📝 Productos** (antes Edición Rápida, tabla de 17 columnas con nombres cortados): lista con nombres completos, filtro por categoría, marca de cambios sin guardar y **ficha por secciones**:
+  - General (nombre, categoría, presentación, activo, retirar);
+  - Unidades (unidad de bodega, unidad de pedido, factor con ejemplo vivo, **se recibe pesado** `RECEPCION_PESADA`);
+  - Mín/Máx (bodegas y quioscos, aviso si máx < mín);
+  - Orden (posición en el picking de la tienda activa, inicio/subir/bajar/final).
+
+  Mismo búfer de ediciones y mismo guardado.
+* **↺ Orden del Catálogo** en Orden Picking (junto a Alfabético).
+* **Testing**: fórmula de STOCK intacta tras guardar (con `getValues` que devuelve el resultado, como Google), peso exacto ida y vuelta, apertura sin reformatear, ventana sin bloqueo con precarga segura, cliente real en VM (ficha, conversión, orden). Mock: `Range.getFormulas()`.
+
 ### Version 1.7.7c Altair — Monitor de Progreso en Todos los Procesos Pesados (Octubre 2026) [EN PRUEBAS · DEV]
 * **⏳ Monitor sin bloqueo** (`ProgresoDialog.html`, `PROCESOS_MONITOREADOS`, `ejecutarConMonitor`, `leerProgreso` con `CacheService`) extendido de 🚀 Configurar a:
   - **Bodega**: Descontar pedidos de hoy / de ayer (un paso por bodega con su desglose por producto + vistas y tiendas), Reconciliar días pasados (un paso por día), Mantenimiento semanal (Catálogo · orden y validaciones · semana · vistas y blindaje) y Diagnosticar y reparar (fórmulas · columnas y validaciones · vistas · activadores).

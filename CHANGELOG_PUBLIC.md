@@ -23,6 +23,15 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.7d Altair — Powerhouse más Rápido y Cómodo (Octubre 2026) [EN PRUEBAS]
+
+* ⚡ **Powerhouse abre más rápido y ya no bloquea la hoja**: puedes consultar el Catálogo o el Inventario con la ventana abierta.
+* 📝 **Nueva pestaña Productos**: eliges un producto (con su nombre completo) y lo editas por secciones: General, Unidades, Mín/Máx y Orden. En Unidades ves un ejemplo de la conversión y puedes marcar si se recibe pesado.
+* ↺ **Botón "Orden del Catálogo"** en el orden de picking.
+* 🐛 Guardar en Powerhouse ya no deja fijo el stock del Catálogo.
+
+---
+
 ## Versión 1.7.7c Altair — Ver el Avance de los Procesos Largos (Octubre 2026) [EN PRUEBAS]
 
 * ⏳ **Descontar, reconciliar, mantenimiento, diagnóstico y, en las tiendas, Configurar y reparar, ahora muestran una ventana con su avance paso a paso** (✅ / ❌ y tiempo), sin bloquear la hoja. Al terminar, un resumen de lo que se hizo.

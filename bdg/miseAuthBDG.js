@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.7c Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.7d Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -2009,7 +2009,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.7c";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7d";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "📥 Entradas en la unidad de cada producto (bolsa, caja…) y la fruta en kg exactos: Mise convierte",
@@ -4018,6 +4018,7 @@ function obtenerDatosPowerhouse(key = "BA") {
       unit: unit,
       unitTienda: map["UNIDAD_TIENDA"] ? String(r[map["UNIDAD_TIENDA"].index] || "").trim() : "",
       factor: map["FACTOR_CONVERSION"] ? (parseFloat(String(r[map["FACTOR_CONVERSION"].index]).replace(",", ".")) || "") : "",
+      pesado: map["RECEPCION_PESADA"] ? /^S[IÍ]$/i.test(String(r[map["RECEPCION_PESADA"].index] || "").trim()) : false,
       activo: activo,
       minBa: minBa,
       maxBa: maxBa,
@@ -4043,12 +4044,17 @@ function obtenerDatosPowerhouse(key = "BA") {
 /**
  * Abre el Modal Powerhouse Unificado de Catálogo y Picking (HTML)
  */
+// 1.7.7d: los datos viajan dentro del diálogo (una sola ejecución en vez de abrir + pedir datos) y la ventana
+// no bloquea la hoja (se puede consultar el Catálogo o el Inventario con Powerhouse abierto).
 function abrirConstructorPickingHTML() {
-  const html = HtmlService.createHtmlOutputFromFile('PickingDialog')
-    .setWidth(1050)
-    .setHeight(700);
+  const t = HtmlService.createTemplateFromFile("PickingDialog");
+  t.precarga = _jsonParaHtml(obtenerDatosPowerhouse());
+  SpreadsheetApp.getUi().showModelessDialog(t.evaluate().setWidth(1050).setHeight(700), "⚡ Mise Powerhouse (Catálogo & Picking)");
+}
 
-  SpreadsheetApp.getUi().showModalDialog(html, "⚡ Mise Powerhouse (Catálogo & Picking)");
+// JSON seguro dentro de <script>: "<" escapado para que un nombre con "</script>" no cierre la etiqueta
+function _jsonParaHtml(obj) {
+  return JSON.stringify(obj).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
 }
 
 // ── ⚡ POWERHOUSE: GUARDADO EN 2 FASES (catálogo → tiendas en paralelo) ─────────────────
@@ -4117,8 +4123,8 @@ function _guardarCatalogoPowerhouse(key, payload) {
       const newCol = lastCol + 1;
       maestro.getRange(3, newCol).setValue(cPicKey);
       cPicObj = { col: newCol, index: newCol - 1 };
+      _asegurarFormatoHeadersMaestro(maestro);
     }
-    _asegurarFormatoHeadersMaestro(maestro);
 
     // 1. Procesar Altas
     const prodsNuevos = payload.nuevos || [];
@@ -4187,6 +4193,7 @@ function _guardarCatalogoPowerhouse(key, payload) {
       const countCurr = lrCurr - MAESTRO_START + 1;
       const mRange = maestro.getRange(MAESTRO_START, 1, countCurr, maestro.getLastColumn());
       const mData = mRange.getValues();
+      const mFormulas = mRange.getFormulas(); // STOCK_BA/BM son fórmulas: se reescriben como fórmula, no como número fijo
 
       const editMap = {};
       ediciones.forEach(e => {
@@ -4218,6 +4225,7 @@ function _guardarCatalogoPowerhouse(key, payload) {
             const f = parseFloat(String(ed.factor).replace(",", "."));
             mData[i][map["FACTOR_CONVERSION"].index] = f > 0 ? f : ""; // vacío o inválido → sin conversión
           }
+          if (ed.pesado !== undefined && map["RECEPCION_PESADA"]) mData[i][map["RECEPCION_PESADA"].index] = ed.pesado ? "SÍ" : "";
           if (ed.minBa !== undefined && map["MÍN_BA"])     mData[i][map["MÍN_BA"].index] = parseFloat(ed.minBa) || 0;
           if (ed.maxBa !== undefined && map["MÁX_BA"])     mData[i][map["MÁX_BA"].index] = parseFloat(ed.maxBa) || 0;
           if (ed.minBm !== undefined && map["MÍN_BM"])     mData[i][map["MÍN_BM"].index] = parseFloat(ed.minBm) || 0;
@@ -4233,7 +4241,7 @@ function _guardarCatalogoPowerhouse(key, payload) {
           if (activoDespues !== activoAntes) cambiosActivo[nuevoNombre.toUpperCase()] = activoDespues;
         }
       }
-      mRange.setValues(mData);
+      mRange.setValues(mData.map((fila, i) => fila.map((v, j) => mFormulas[i][j] || v)));
     }
 
     // 3. Procesar Picking
@@ -4597,8 +4605,10 @@ function _asegurarColumnasQuioscoEnMaestro(maestroSheet) {
   const lr = sheet.getLastRow();
   const numRows = lr >= MAESTRO_START ? lr - MAESTRO_START + 1 : 0;
 
+  let agregadas = 0;
   requiredCols.forEach(colDef => {
     if (!map[colDef.key]) {
+      agregadas++;
       const newCol = sheet.getLastColumn() + 1;
       sheet.getRange(3, newCol)
         .setValue(colDef.key)
@@ -4636,7 +4646,9 @@ function _asegurarColumnasQuioscoEnMaestro(maestroSheet) {
     }
   });
 
-  _asegurarFormatoHeadersMaestro(sheet);
+  // Solo si cambió la estructura (1.7.7d): antes descombinaba, aplicaba y recombinaba la fila 1 en CADA apertura de Powerhouse
+  if (agregadas) _asegurarFormatoHeadersMaestro(sheet);
+  return agregadas;
 }
 
 /**

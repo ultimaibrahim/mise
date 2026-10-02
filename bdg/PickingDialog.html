@@ -147,6 +147,43 @@
     input:checked + .slider { background-color: var(--dark); }
     input:checked + .slider:before { transform: translateX(16px); }
 
+    /* Tab 3: Productos — lista con nombres completos + ficha con pestañas (1.7.7d) */
+    .ficha-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(230px, 36%) 1fr; gap: 8px; }
+    .ficha-lista { overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+    .fl-item { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-bottom: 1px solid #F0EBE3; cursor: pointer; }
+    .fl-item:hover { background: #F7F4EF; }
+    .fl-item.sel { background: #E2EFE6; box-shadow: inset 3px 0 0 var(--dark); }
+    .fl-item.inactivo { opacity: .55; }
+    .fl-name { font-size: 12px; font-weight: 600; line-height: 1.3; word-break: break-word; }
+    .fl-meta { font-size: 10px; color: #6B6B6B; margin-top: 2px; }
+    .fl-punto { width: 7px; height: 7px; border-radius: 50%; background: #E65100; margin-top: 5px; flex-shrink: 0; visibility: hidden; }
+    .fl-punto.on { visibility: visible; }
+    .ficha { overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+    .ficha-vacia { margin: auto; color: #888; font-size: 12px; text-align: center; }
+    .ficha-titulo { font-size: 16px; font-weight: 700; color: var(--dark); line-height: 1.3; word-break: break-word; }
+    .ficha-sub { font-size: 11px; color: #6B6B6B; margin-top: 2px; }
+    .chip { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #E8F0EA; color: var(--dark); }
+    .chip.off { background: #ECEFF1; color: #546E7A; }
+    .subtabs { display: flex; gap: 4px; background: #E5DDD0; padding: 3px; border-radius: 8px; flex-wrap: wrap; }
+    .subtab { flex: 1; padding: 7px 10px; font-size: 11px; font-weight: 700; border: none; background: none; color: #555; cursor: pointer; border-radius: 6px; white-space: nowrap; }
+    .subtab.active { background: var(--surface); color: var(--dark); box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+    .campos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+    .campo { display: flex; flex-direction: column; gap: 4px; }
+    .campo.ancho { grid-column: 1 / -1; }
+    .campo label { font-size: 10px; font-weight: 700; color: #6B6B6B; text-transform: uppercase; letter-spacing: .03em; }
+    .campo input, .campo select { font-size: 13px; padding: 8px 10px; border-radius: 8px; }
+    .campo input:focus, .campo select:focus { border-color: var(--dark); background: #F4F8F5; }
+    .linea-switch { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 600; }
+    .ayuda { font-size: 11px; line-height: 1.5; background: #F4F8F5; border: 1px solid #D5E5D9; border-radius: 8px; padding: 8px 10px; color: #33463A; }
+    .ayuda.aviso { background: #FFF4E5; border-color: #FFCC80; color: #8A4B00; }
+    .mm-tabla { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .mm-tabla th { text-align: left; font-size: 10px; color: #6B6B6B; text-transform: uppercase; padding: 4px 6px; }
+    .mm-tabla td { padding: 4px 6px; }
+    .mm-tabla td:first-child { font-weight: 600; }
+    .mm-tabla input { width: 100%; font-size: 13px; padding: 7px 8px; border-radius: 8px; }
+    .acciones-ficha { display: flex; gap: 6px; flex-wrap: wrap; }
+    @media (max-width: 720px) { .ficha-layout { grid-template-columns: 1fr; grid-template-rows: minmax(140px, 38%) 1fr; } .campos { grid-template-columns: 1fr; } }
+
     /* Tab 4: Limpieza de Duplicados */
     .dup-container { flex: 1; overflow-y: auto; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
     .dup-card { background: #FFF9C4; border: 1px solid #FBC02D; border-radius: 8px; padding: 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
@@ -186,7 +223,7 @@
       </button>
       <button class="nav-tab" id="tabBtnEdicion" onclick="cambiarTab('edicion')">
         <span class="tab-icon">📝</span>
-        <span class="tab-text">Edición Rápida</span>
+        <span class="tab-text">Productos</span>
       </button>
       <button class="nav-tab" id="tabBtnDuplicados" onclick="cambiarTab('duplicados')">
         <span class="tab-icon">🧹</span>
@@ -282,15 +319,16 @@
     <div class="controls">
       <div style="position:relative; flex:1; display:flex; align-items:center;">
         <span style="position:absolute; left:8px; color:#888; font-size:11px;">🔍</span>
-        <input type="text" id="searchEdicion" placeholder="Filtrar producto a editar..." oninput="renderEdicionHTML()" style="padding-left:26px; width:100%;">
+        <input type="text" id="searchEdicion" placeholder="Buscar producto…" oninput="renderEdicionHTML()" style="padding-left:26px; width:100%;">
       </div>
       <select id="filtroCatEdicion" onchange="renderEdicionHTML()">
         <option value="">Todas las Categorías</option>
       </select>
     </div>
 
-    <div class="table-container" id="gridEdicionContainer">
-      <!-- Grid de edición de insumos con switch y eliminar -->
+    <div class="ficha-layout">
+      <div class="ficha-lista" id="fichaLista"></div>
+      <div class="ficha" id="fichaPanel"></div>
     </div>
   </div>
 
@@ -308,7 +346,10 @@
 
   <!-- ══════════════ FOOTER GLOBAL ══════════════ -->
   <footer>
-    <button class="batch-btn batch-btn-secondary" id="btnResetAlfabetico" onclick="resetAlfabetico()">↺ Alfabético</button>
+    <span id="botonesOrden" style="display:flex; gap:6px;">
+      <button class="batch-btn batch-btn-secondary" onclick="ordenCatalogo()" title="El orden de picking vuelve a ser el de las filas del Catálogo (por categoría y número)">↺ Orden del Catálogo</button>
+      <button class="batch-btn batch-btn-secondary" id="btnResetAlfabetico" onclick="resetAlfabetico()">↺ Alfabético</button>
+    </span>
     <button class="btn-save" id="btnSave" onclick="guardarPowerhouseCompleto()">
       <span class="spinner" id="spinner"></span>
       <span id="btnSaveText">✦ Guardar y Aplicar Cambios</span>
@@ -323,7 +364,7 @@
       <ul style="font-size:11px; line-height:1.6; padding-left:18px; margin-bottom:14px; color:#333;">
         <li><strong>🖐️ Orden Picking:</strong> Arrastra, cambia posiciones (#) y organiza rutas.</li>
         <li><strong>➕ Alta en Lote:</strong> Escribe productos nuevos sin crear hojas temporales.</li>
-        <li><strong>📝 Edición Rápida:</strong> Corrige nombres, unidades, activa/desactiva con el switch o elimina insumos obsoletos.</li>
+        <li><strong>📝 Productos:</strong> Elige un producto de la lista y edita su ficha por secciones: General, Unidades (pedido, factor y peso exacto), Mín/Máx y Orden.</li>
         <li><strong>🧹 Duplicados:</strong> Detecta y depura productos repetidos al instante.</li>
       </ul>
       <div class="dialog-actions">
@@ -418,28 +459,32 @@
       if (tab === "picking") {
         document.getElementById("tabBtnPicking").classList.add("active");
         document.getElementById("tabContentPicking").classList.add("active");
-        document.getElementById("btnResetAlfabetico").style.display = "inline-block";
+        document.getElementById("botonesOrden").style.display = "flex";
         renderPickingHTML();
       } else if (tab === "alta") {
         document.getElementById("tabBtnAlta").classList.add("active");
         document.getElementById("tabContentAlta").classList.add("active");
-        document.getElementById("btnResetAlfabetico").style.display = "none";
+        document.getElementById("botonesOrden").style.display = "none";
         renderAltaMasivaHTML();
       } else if (tab === "edicion") {
         document.getElementById("tabBtnEdicion").classList.add("active");
         document.getElementById("tabContentEdicion").classList.add("active");
-        document.getElementById("btnResetAlfabetico").style.display = "none";
+        document.getElementById("botonesOrden").style.display = "none";
         renderEdicionHTML();
       } else if (tab === "duplicados") {
         document.getElementById("tabBtnDuplicados").classList.add("active");
         document.getElementById("tabContentDuplicados").classList.add("active");
-        document.getElementById("btnResetAlfabetico").style.display = "none";
+        document.getElementById("botonesOrden").style.display = "none";
         escanearDuplicados();
       }
     }
 
     // ── CARGA DE DATOS ÚNICA (ZERO LATENCY CACHING) ───────────────────
+    // Datos que ya vienen dentro del diálogo (1.7.7d): la primera carga no espera otra llamada al servidor
+    let PRECARGA = <?!= precarga ?>;
+
     function cargarTodo() {
+      if (PRECARGA) { const d = PRECARGA; PRECARGA = null; onDataLoaded(d); return; }
       document.getElementById("itemsContainer").innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Cargando catálogo unificado...</div>';
 
       google.script.run
@@ -847,6 +892,16 @@
       renderPickingHTML();
     }
 
+    // Orden de las filas del Catálogo (id = fila), el mismo que aplica "Orden de picking = orden del Catálogo"
+    function ordenCatalogo() {
+      rawItems.sort((a, b) => a.id - b.id);
+      rawItems.forEach(it => touchedItems.add(it.name));
+      isModified = true;
+      evaluarModificaciones();
+      renderPickingHTML();
+      mostrarToast("Orden del Catálogo aplicado. Guarda para enviarlo a la tienda.", "success");
+    }
+
     // ── MOTOR TAB 2: ALTA MASIVA ─────────────────────────────────────
     function agregarFilaAltaMasiva(render = true) {
       nuevosItemsAlta.push({
@@ -910,93 +965,147 @@
       });
     }
 
-    // ── MOTOR TAB 3: EDICIÓN RÁPIDA (CON SLIDER Y ELIMINACIÓN) ───────
+    // ── MOTOR TAB 3: PRODUCTOS (lista + ficha por secciones) ─────────
+    let fichaSel = null;          // nombre ORIGINAL del producto abierto
+    let fichaTab = "general";
+    let fichaFiltrados = [];
+
     function renderEdicionHTML() {
-      const container = document.getElementById("gridEdicionContainer");
+      renderListaProductos();
+      renderFicha();
+    }
+
+    function renderListaProductos() {
+      const lista = document.getElementById("fichaLista");
       const search = document.getElementById("searchEdicion").value.toLowerCase().trim();
       const catFiltro = document.getElementById("filtroCatEdicion").value;
-
-      const filtered = catalogItems.filter(it => {
+      fichaFiltrados = catalogItems.filter(it => {
         if (itemsEliminados.has(it.name)) return false;
-        const matchSearch = !search || it.name.toLowerCase().includes(search) || it.cat.toLowerCase().includes(search);
-        const matchCat = !catFiltro || it.cat === catFiltro;
-        return matchSearch && matchCat;
+        const ed = itemsEditadosMap.get(it.name) || it;
+        const matchSearch = !search || ed.name.toLowerCase().includes(search) || it.name.toLowerCase().includes(search) || ed.cat.toLowerCase().includes(search);
+        return matchSearch && (!catFiltro || ed.cat === catFiltro);
       });
+      const scroll = lista.scrollTop;
+      lista.innerHTML = fichaFiltrados.length ? fichaFiltrados.map((it, i) => {
+        const ed = itemsEditadosMap.get(it.name) || it;
+        const activo = ed.activo !== false;
+        return `<div class="fl-item${it.name === fichaSel ? " sel" : ""}${activo ? "" : " inactivo"}" onclick="abrirFicha(${i})">
+          <span class="fl-punto${itemsEditadosMap.has(it.name) ? " on" : ""}" title="Con cambios sin guardar"></span>
+          <div><div class="fl-name">${esc(ed.name)}</div>
+          <div class="fl-meta">${esc(ed.cat)}${ed.pres ? " · " + esc(ed.pres) : ""}${activo ? "" : " · inactivo"}</div></div></div>`;
+      }).join("") : '<div class="ficha-vacia" style="padding:20px;">Sin productos con ese filtro.</div>';
+      lista.scrollTop = scroll;
+    }
 
-      container.innerHTML = `
-        <table class="power-table">
-          <thead>
-            <tr>
-              <th style="width:25px;">#</th>
-              <th style="width:50px; text-align:center;">ACTIVO</th>
-              <th style="width:130px;">CATEGORÍA</th>
-              <th style="width:160px;">PRODUCTO</th>
-              <th style="width:100px;">PRESENTACIÓN</th>
-              <th style="width:65px;" title="Unidad de bodega (Kardex)">UNIDAD</th>
-              <th style="width:80px;" title="Cómo pide la tienda: domo, caja, paquete… Vacío = igual que bodega">UNIDAD PEDIDO</th>
-              <th style="width:60px;" title="1 de pedido = ¿cuánto en bodega? (ej. 0.454 o 100). Vacío = 1">FACTOR</th>
-              <th style="width:50px;" title="Mínimo Bodega Andares">MÍN BA</th>
-              <th style="width:50px;" title="Máximo Bodega Andares">MÁX BA</th>
-              <th style="width:50px;" title="Mínimo Bodega Mercado">MÍN BM</th>
-              <th style="width:50px;" title="Máximo Bodega Mercado">MÁX BM</th>
-              <th style="width:50px; background:#2E5D4B;" title="Mínimo Quiosco Andares">MÍN Q(BA)</th>
-              <th style="width:50px; background:#2E5D4B;" title="Máximo Quiosco Andares">MÁX Q(BA)</th>
-              <th style="width:50px; background:#2E5D4B;" title="Mínimo Quiosco Mercado">MÍN Q(BM)</th>
-              <th style="width:50px; background:#2E5D4B;" title="Máximo Quiosco Mercado">MÁX Q(BM)</th>
-              <th style="width:30px; text-align:center;">🗑️</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${filtered.map((item, idx) => {
-              const ed = itemsEditadosMap.get(item.name) || item;
-              const isActivo = ed.activo !== undefined ? ed.activo : true;
-              return `
-                <tr style="${!isActivo ? 'opacity:0.6; background:#ECEFF1;' : ''}">
-                  <td style="text-align:center; font-weight:600;">${idx + 1}</td>
-                  <td style="text-align:center;">
-                    <label class="switch-toggle" title="${isActivo ? 'Insumo Activo' : 'Insumo Inactivo'}">
-                      <input type="checkbox" ${isActivo ? 'checked' : ''} onchange="solicitarCambioEstado('${item.name.replace(/'/g,"\\'")}', this.checked)">
-                      <span class="slider"></span>
-                    </label>
-                  </td>
-                  <td>
-                    <select onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'cat', this.value)">
-                      ${categoriasLista.map(c => `<option value="${esc(c)}" ${c === ed.cat ? "selected" : ""}>${esc(c)}</option>`).join("")}
-                    </select>
-                  </td>
-                  <td><input type="text" value="${esc(ed.name)}" onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'name', this.value)"></td>
-                  <td><input type="text" value="${esc(ed.pres)}" placeholder="Domo 454 g" onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'pres', this.value)"></td>
-                  <td>
-                    <select onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'unit', this.value)">
-                      ${unidadesLista.map(u => `<option value="${u}" ${u === ed.unit ? "selected" : ""}>${u}</option>`).join("")}
-                    </select>
-                  </td>
-                  <td><input type="text" value="${esc(ed.unitTienda || "")}" placeholder="—" onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'unitTienda', this.value)"></td>
-                  <td><input type="number" step="any" min="0" value="${ed.factor || ""}" placeholder="1" onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'factor', this.value)"></td>
-                  <td><input type="number" step="any" value="${ed.minBa || 0}" onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'minBa', this.value)"></td>
-                  <td><input type="number" step="any" value="${ed.maxBa || 0}" onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'maxBa', this.value)"></td>
-                  <td><input type="number" step="any" value="${ed.minBm || 0}" onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'minBm', this.value)"></td>
-                  <td><input type="number" step="any" value="${ed.maxBm || 0}" onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'maxBm', this.value)"></td>
-                  <td><input type="number" step="any" value="${ed.minQBa || 0}" onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'minQBa', this.value)" style="background:#F0FDF4; font-weight:600;"></td>
-                  <td><input type="number" step="any" value="${ed.maxQBa || 0}" onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'maxQBa', this.value)" style="background:#F0FDF4; font-weight:600;"></td>
-                  <td><input type="number" step="any" value="${ed.minQBm || 0}" onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'minQBm', this.value)" style="background:#F0FDF4; font-weight:600;"></td>
-                  <td><input type="number" step="any" value="${ed.maxQBm || 0}" onchange="actualizarEdicion('${item.name.replace(/'/g,"\\'")}', 'maxQBm', this.value)" style="background:#F0FDF4; font-weight:600;"></td>
-                  <td style="text-align:center;">
-                    <button class="btn-del-row" title="Desactivar y purgar producto" onclick="solicitarEliminacionProducto('${item.name.replace(/'/g,"\\'")}')">🗑</button>
-                  </td>
-                </tr>
-              `;
-            }).join("")}
-          </tbody>
-        </table>
-      `;
+    function abrirFicha(i) {
+      fichaSel = fichaFiltrados[i].name;
+      renderEdicionHTML();
+    }
+
+    function cambiarFichaTab(t) { fichaTab = t; renderFicha(); }
+
+    // Cambio desde la ficha: mismo búfer que antes (itemsEditadosMap) → mismo guardado
+    function campoFicha(campo, valor) {
+      actualizarEdicion(fichaSel, campo, valor);
+      renderListaProductos();
+      if (campo !== "name") renderFicha(); else document.getElementById("fichaTitulo").textContent = valor;
+    }
+
+    function renderFicha() {
+      const panel = document.getElementById("fichaPanel");
+      const item = catalogItems.find(it => it.name === fichaSel);
+      if (!item || itemsEliminados.has(item.name)) {
+        panel.innerHTML = '<div class="ficha-vacia">👈 Elige un producto de la lista para ver y editar su ficha.</div>';
+        return;
+      }
+      const ed = itemsEditadosMap.get(item.name) || item;
+      const activo = ed.activo !== false;
+      const tabs = [["general", "General"], ["unidades", "Unidades"], ["minmax", "Mín / Máx"], ["orden", "Orden"]];
+      panel.innerHTML = `
+        <div>
+          <div class="ficha-titulo" id="fichaTitulo">${esc(ed.name)}</div>
+          <div class="ficha-sub">${esc(ed.cat)}${ed.pres ? " · " + esc(ed.pres) : ""} &nbsp; <span class="chip${activo ? "" : " off"}">${activo ? "ACTIVO" : "INACTIVO"}</span></div>
+        </div>
+        <div class="subtabs">${tabs.map(([k, t]) => `<button class="subtab${fichaTab === k ? " active" : ""}" onclick="cambiarFichaTab('${k}')">${t}</button>`).join("")}</div>
+        ${({ general: fichaGeneral, unidades: fichaUnidades, minmax: fichaMinMax, orden: fichaOrden })[fichaTab](ed, item)}`;
+    }
+
+    function fichaGeneral(ed) {
+      const activo = ed.activo !== false;
+      return `<div class="campos">
+          <div class="campo ancho"><label>Nombre</label><input type="text" value="${esc(ed.name)}" onchange="campoFicha('name', this.value)"></div>
+          <div class="campo"><label>Categoría</label><select onchange="campoFicha('cat', this.value)">
+            ${categoriasLista.map(c => `<option value="${esc(c)}" ${c === ed.cat ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
+          <div class="campo"><label>Presentación</label><input type="text" value="${esc(ed.pres)}" placeholder="DOM 454 g" onchange="campoFicha('pres', this.value)"></div>
+        </div>
+        <div class="linea-switch">
+          <label class="switch-toggle"><input type="checkbox" ${activo ? "checked" : ""} onchange="solicitarCambioEstado(fichaSel, this.checked)"><span class="slider"></span></label>
+          ${activo ? "Activo: aparece en Inventario y en los pedidos" : "Inactivo: oculto en Inventario y en los pedidos"}
+        </div>
+        <div class="acciones-ficha"><button class="btn-del-row" onclick="solicitarEliminacionProducto(fichaSel)">🗑 Retirar del catálogo</button></div>`;
+    }
+
+    function fichaUnidades(ed) {
+      const f = parseFloat(String(ed.factor || "").replace(",", "."));
+      const ut = String(ed.unitTienda || "").trim();
+      let ejemplo;
+      if (ut && f > 0) ejemplo = `La tienda pide en <b>${esc(ut)}</b>. 1 ${esc(ut)} = <b>${f} ${esc(ed.unit)}</b>: si piden 3, Bodega descuenta ${Math.round(3 * f * 1000) / 1000} ${esc(ed.unit)}.`;
+      else if (ut) ejemplo = `Falta el factor: ¿cuántos ${esc(ed.unit)} trae 1 ${esc(ut)}? Sin factor no se convierte.`;
+      else ejemplo = `La tienda pide en la misma unidad de bodega (<b>${esc(ed.unit)}</b>); sin conversión.`;
+      return `<div class="campos">
+          <div class="campo"><label>Unidad de bodega (Inventario)</label><select onchange="campoFicha('unit', this.value)">
+            ${unidadesLista.map(u => `<option value="${esc(u)}" ${u === ed.unit ? "selected" : ""}>${esc(u)}</option>`).join("")}</select></div>
+          <div class="campo"><label>Unidad de pedido (tienda)</label><input type="text" value="${esc(ut)}" placeholder="igual que bodega" onchange="campoFicha('unitTienda', this.value)"></div>
+          <div class="campo"><label>1 de pedido = ¿cuánto en bodega?</label><input type="number" step="any" min="0" value="${f > 0 ? f : ""}" placeholder="1" onchange="campoFicha('factor', this.value)"></div>
+        </div>
+        <div class="ayuda${ut && !(f > 0) ? " aviso" : ""}">${ejemplo}</div>
+        <div class="linea-switch">
+          <label class="switch-toggle"><input type="checkbox" ${ed.pesado ? "checked" : ""} onchange="campoFicha('pesado', this.checked)"><span class="slider"></span></label>
+          Se recibe pesado (kg exactos en 📥 Registrar entradas)
+        </div>
+        ${ed.pesado ? `<div class="ayuda">En Registrar entradas se escribe el peso exacto en kg; Mise lo convierte a ${esc(ed.unit)} con el peso de la presentación${ed.pres ? ` (<b>${esc(ed.pres)}</b>)` : ""}.</div>` : ""}`;
+    }
+
+    function fichaMinMax(ed) {
+      const filas = [["Bodega Andares", "minBa", "maxBa"], ["Bodega Mercado", "minBm", "maxBm"], ["Quiosco Andares", "minQBa", "maxQBa"], ["Quiosco Mercado", "minQBm", "maxQBm"]];
+      const avisos = filas.filter(([, mn, mx]) => (ed[mx] || 0) > 0 && (ed[mx] || 0) < (ed[mn] || 0)).map(([t]) => t);
+      return `<table class="mm-tabla"><thead><tr><th></th><th>Mínimo</th><th>Máximo</th></tr></thead><tbody>
+        ${filas.map(([t, mn, mx]) => `<tr><td>${t}</td>
+          <td><input type="number" step="any" min="0" value="${ed[mn] || 0}" onchange="campoFicha('${mn}', this.value)"></td>
+          <td><input type="number" step="any" min="0" value="${ed[mx] || 0}" onchange="campoFicha('${mx}', this.value)"></td></tr>`).join("")}
+        </tbody></table>
+        <div class="ayuda${avisos.length ? " aviso" : ""}">${avisos.length ? `⚠️ El máximo es menor que el mínimo en: ${avisos.join(", ")}.` : `En ${esc(ed.unit)}. Bajo el mínimo, el Inventario lo marca para resurtir.`}</div>`;
+    }
+
+    function fichaOrden(ed, item) {
+      const idx = rawItems.findIndex(it => it.name === item.name);
+      const tienda = currentKey === "BM" ? "Mercado" : "Andares";
+      if (idx < 0) return '<div class="ayuda">Este producto aún no está en la lista de picking.</div>';
+      return `<div class="campos">
+          <div class="campo"><label>Posición en el picking de ${tienda}</label><input type="number" min="1" max="${rawItems.length}" value="${idx + 1}" onchange="moverDesdeFicha(this.value)"></div>
+          <div class="campo"><label>de</label><input type="text" value="${rawItems.length} productos" disabled></div>
+        </div>
+        <div class="acciones-ficha">
+          <button class="batch-btn" onclick="moverDesdeFicha(1)">⇧ Al inicio</button>
+          <button class="batch-btn" onclick="moverDesdeFicha(${idx})">▲ Subir</button>
+          <button class="batch-btn" onclick="moverDesdeFicha(${idx + 2})">▼ Bajar</button>
+          <button class="batch-btn" onclick="moverDesdeFicha(${rawItems.length})">⇩ Al final</button>
+        </div>
+        <div class="ayuda">Para la otra tienda, cámbiala en la pestaña 🖐️ Orden Picking.</div>`;
+    }
+
+    function moverDesdeFicha(pos) {
+      const idx = rawItems.findIndex(it => it.name === fichaSel);
+      if (idx < 0) return;
+      cambiarPosicionDirecta(idx, String(pos));
+      renderFicha();
     }
 
     function solicitarCambioEstado(pName, nuevoEstado) {
       document.getElementById("deleteDialogTitle").innerText = nuevoEstado ? "✅ Activar Producto" : "⏸️ Desactivar Producto";
       document.getElementById("deleteDialogDesc").innerHTML = nuevoEstado
-        ? `¿Deseas reactivar <strong>"${pName}"</strong>? Volverá a estar visible en los pedidos de tiendas.`
-        : `¿Deseas desactivar <strong>"${pName}"</strong>? Se ocultará en las vistas de pedidos diarios de las tiendas.`;
+        ? `¿Deseas reactivar <strong>"${esc(pName)}"</strong>? Volverá a estar visible en los pedidos de tiendas.`
+        : `¿Deseas desactivar <strong>"${esc(pName)}"</strong>? Se ocultará en las vistas de pedidos diarios de las tiendas.`;
       
       document.getElementById("deleteConfirmDialog").style.display = "flex";
       document.getElementById("btnConfirmDeleteAction").style.background = nuevoEstado ? "var(--dark)" : "#E65100";
@@ -1026,7 +1135,7 @@
       };
     }
 
-    function cerrarDeleteModal() { document.getElementById("deleteConfirmDialog").style.display = "none"; }
+    function cerrarDeleteModal() { document.getElementById("deleteConfirmDialog").style.display = "none"; if (activeTab === "edicion") renderFicha(); }
 
     function actualizarEdicion(originalName, campo, valor) {
       if (!itemsEditadosMap.has(originalName)) {
@@ -1036,7 +1145,7 @@
       const ed = itemsEditadosMap.get(originalName);
       if (campo.startsWith("min") || campo.startsWith("max")) {
         ed[campo] = parseFloat(valor) || 0;
-      } else if (campo === "activo") {
+      } else if (campo === "activo" || campo === "pesado") {
         ed[campo] = Boolean(valor);
       } else {
         ed[campo] = valor.trim();
