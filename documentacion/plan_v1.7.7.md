@@ -14,7 +14,7 @@
 ## Fase 0.2 — Pedido de Ibrahim (01/oct, tras la subida de la 1.7.6)
 - [x] *(1.7.7a)* **Entradas con conversión**: presentaciones × factor; fruta/verdura en kg exactos → domos/piezas por peso de la presentación.
 - [x] *(1.7.7b)* **Orden del Catálogo como default de picking** (por tienda o ambas) y desde ahí ajustar.
-- [ ] *(1.7.7c)* **Monitor de progreso** en todos los procesos pesados de Bodega y tiendas.
+- [x] *(1.7.7c)* **Monitor de progreso** en todos los procesos pesados de Bodega y tiendas.
 - [ ] *(1.7.7d–e)* **Powerhouse**: medir y acelerar la carga, ficha por producto con pestañas (General · Unidades · Mín/Máx · Orden), nombres completos, diálogo sin bloqueo.
 
 ## Fase 0.5 — 🌐 Página de estado más útil (1.7.7a) · primera mejora tras PROD
@@ -41,7 +41,7 @@ La app de Sheets no muestra menús ni diálogos; la webapp sí funciona en el te
 - [ ] Acceso por cuenta (solo dominio / correos permitidos), sin depender de permisos de hojas.
 
 ## Fase 3 — Experiencia en computadora (1.7.7g–h)
-- [ ] **Monitor de progreso** para más procesos: guardar en Powerhouse, descontar manual, reconciliación, 🚀 Configurar de tiendas.
+- [ ] **Monitor de progreso** al guardar en Powerhouse (descontar, reconciliar, mantenimiento, diagnóstico y 🚀 Configurar de tiendas: hecho en 1.7.7c).
 - [ ] **Barra lateral "Panel de Bodega"**: estado del sistema, accesos y monitor sin salir de la hoja (lo que era 🏠 INICIO, sin ocupar una pestaña).
 
 ## Fase 4 — Alertas y conteo (1.7.7i–j)

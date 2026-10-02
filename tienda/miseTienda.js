@@ -786,27 +786,25 @@ function _fmtDate(date) {
 }
 
 function repararSistemaTienda() {
+  _abrirMonitor("reparar");
+}
+
+function _repararSistemaTiendaCore(rep) {
   const tId = "repararSistemaTienda_" + Date.now();
   MiseLogger.time(tId);
-  const ui = SpreadsheetApp.getUi();
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(15000)) {
-    ui.alert("El archivo está ocupado. Intenta de nuevo.");
-    return;
-  }
+  if (!lock.tryLock(15000)) return rep.cerrar(false, "⚠️ Archivo ocupado", "Otro proceso está trabajando; intenta de nuevo en unos segundos.");
 
   try {
-    SpreadsheetApp.getActive().toast("⏳ Reconstruyendo fórmulas, sincronizando productos y protegiendo celdas...", "🔧 Reparar Sistema", 5);
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const syncCount = _reconstruirPedidoDiarioCore(_leerCapturasTienda(ss.getSheetByName(SHEET_PEDIDO), ss.getSheetByName(SHEET_SURTIDO)));
+    const syncCount = _reconstruirPedidoDiarioCore(_leerCapturasTienda(ss.getSheetByName(SHEET_PEDIDO), ss.getSheetByName(SHEET_SURTIDO)), rep);
     const dur = MiseLogger.timeEnd(tId);
     MiseLogger.info("repararSistemaTienda", `Reconstrucción limpia completada: ${syncCount} productos sincronizados y fórmulas reestablecidas.`, dur);
-    SpreadsheetApp.getActive().toast("✅ Reconstrucción Limpia Completada", "🔧 Reparar Sistema", 4);
-    ui.alert("✅ Sistema Reconstruido y Sanitizado", "Se guardaron tus cantidades de pedido, se reconstruyó la plantilla desde cero eliminando formatos corruptos y se blindaron las celdas.", ui.ButtonSet.OK);
+    return rep.cerrar(true, "✅ Pedido sincronizado y reparado", `${syncCount} productos. Tus cantidades se conservaron; formatos y protecciones rehechos.`);
   } catch (err) {
     const dur = MiseLogger.timeEnd(tId);
     MiseLogger.error("repararSistemaTienda", err.message, err, dur);
-    ui.alert("❌ Error en reparación", err.message, ui.ButtonSet.OK);
+    return rep.cerrar(false, "❌ Error en reparación", err.message);
   } finally {
     lock.releaseLock();
   }
@@ -854,13 +852,14 @@ function _leerCapturasTienda(pedido, surtido) {
 
 // Reconstrucción limpia de 📋 PEDIDO DIARIO sin UI (la usan la reparación manual y el motor de migración).
 // El llamador debe tener el candado. Lanza Error si la conexión con Bodega no está lista.
-function _reconstruirPedidoDiarioCore(backupData) {
+function _reconstruirPedidoDiarioCore(backupData, rep = null) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const pedido = ss.getSheetByName(SHEET_PEDIDO);
   const sync = ss.getSheetByName(SHEET_SYNC);
   if (!pedido || !sync) throw new Error("No se encontraron las pestañas necesarias del sistema.");
 
   // 1. Asegurar la conexión IMPORTRANGE en _SYNC
+  if (rep) rep.inicio("Enlace con Bodega");
   const url = PropertiesService.getScriptProperties().getProperty(`BODEGA_URL_${BODEGA_KEY}`);
   if (!url) throw new Error(`Falta la propiedad BODEGA_URL_${BODEGA_KEY}. Ve a ⚙️ Mise → Configurar Bodega.`);
   const syncFormula = '=IMPORTRANGE("' + url + '", "'  + VISTA_MOVIL + '!A4:L")';
@@ -871,7 +870,11 @@ function _reconstruirPedidoDiarioCore(backupData) {
 
   // 2. Conteo de productos sincronizados
   const syncCount = Math.max(0, sync.getLastRow() - 3);
-  if (syncCount < 1) throw new Error("No se detectaron productos sincronizados desde Bodega.");
+  if (syncCount < 1) {
+    if (rep) rep.fin("Enlace con Bodega", false, "no llegan productos desde Bodega");
+    throw new Error("No se detectaron productos sincronizados desde Bodega.");
+  }
+  if (rep) { rep.fin("Enlace con Bodega", true, `${syncCount} productos`); rep.inicio("Pedido reconstruido (capturas conservadas)"); }
 
   // 3. Reconstrucción total limpia de la hoja
   _buildPedidoDiario(pedido);
@@ -903,12 +906,14 @@ function _reconstruirPedidoDiarioCore(backupData) {
   rangeData.clearContent();
   rangeData.setBackgrounds(cleanBgs);
   rangeData.setValues(outputGrid); // texto (ESTADO) no se vuelve #NAME?
+  if (rep) { rep.fin("Pedido reconstruido (capturas conservadas)", true, ""); rep.inicio("Colores, inactivos y protección"); }
 
   // 5. Visibilidad, formatos condicionales y protecciones
   _aplicarFormatosCondicionales(pedido);
   _actualizarVisibilidadInactivos(pedido);
   _protegerPedidoDiario(pedido, syncCount);
   SpreadsheetApp.flush();
+  if (rep) rep.fin("Colores, inactivos y protección", true, "");
   return syncCount;
 }
 
@@ -1043,17 +1048,22 @@ function _migrarSiEsActivador(e) {
 }
 
 function aplicarActualizacionPendienteManualmente() {
-  const ui = SpreadsheetApp.getUi();
-  const props = PropertiesService.getScriptProperties();
-  const actual = parseInt(props.getProperty(PROP_SCHEMA) || "1", 10);
+  const actual = parseInt(PropertiesService.getScriptProperties().getProperty(PROP_SCHEMA) || "1", 10);
   if (actual >= MISE_SCHEMA_TIENDA) {
+    const ui = SpreadsheetApp.getUi();
     ui.alert("✅ Al día", `La estructura ya está en la versión ${actual}.`, ui.ButtonSet.OK);
     return;
   }
+  _abrirMonitor("actualizar");
+}
+
+function _aplicarActualizacionCore(rep) {
+  const actual = parseInt(PropertiesService.getScriptProperties().getProperty(PROP_SCHEMA) || "1", 10);
+  rep.inicio("Respaldo, actualización y restauración de capturas");
   const ok = _migrarEsquemaTienda();
-  ui.alert(ok ? "✅ Estructura actualizada" : "⚠️ No se pudo actualizar",
-    ok ? `Versión ${actual} → ${MISE_SCHEMA_TIENDA}. Tus capturas se respaldaron y restauraron; revisa 🗒 LOG para el detalle.`
-       : "Revisa 🗒 LOG. Se reintentará automáticamente esta noche.", ui.ButtonSet.OK);
+  rep.fin("Respaldo, actualización y restauración de capturas", ok, ok ? `versión ${actual} → ${MISE_SCHEMA_TIENDA}` : "revisa 🗒 LOG");
+  return rep.cerrar(ok, ok ? "✅ Estructura actualizada" : "⚠️ No se pudo actualizar",
+    ok ? "Tus capturas se respaldaron y restauraron." : "Se reintentará automáticamente esta noche.");
 }
 
 function _protegerPedidoDiario(sheet, count) {
@@ -1382,7 +1392,7 @@ function _aplicarFormatosCondicionales(sheet) {
   _estiloTactilPedido(sheet, count);
 }
 
-const MISE_VERSION = "1.7.7b";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7c";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "🚚 Surtido: el producto y lo pedido siempre a la vista, incluso en pantallas chicas",
@@ -2148,11 +2158,15 @@ function _diagnosticarConexionTienda() {
 
 // ── 🚀 CONFIGURAR ESTE LIBRO (un clic: activadores, estructura, picking y diagnóstico) ──────
 function configurarEsteLibroTienda() {
-  const ui = SpreadsheetApp.getUi();
+  _abrirMonitor("configurar");
+}
+
+function _configurarTiendaCore(rep) {
   const pasos = [];
   const paso = (nombre, fn) => {
-    try { const d = fn(); pasos.push(`✅ ${nombre}${d ? " — " + d : ""}`); }
-    catch (err) { pasos.push(`❌ ${nombre} — ${err.message}`); MiseLogger.error("configurarEsteLibro", `${nombre}: ${err.message}`); }
+    rep.inicio(nombre);
+    try { const d = fn(); pasos.push(`✅ ${nombre}${d ? " — " + d : ""}`); rep.fin(nombre, true, d); }
+    catch (err) { pasos.push(`❌ ${nombre} — ${err.message}`); rep.fin(nombre, false, err.message); MiseLogger.error("configurarEsteLibro", `${nombre}: ${err.message}`); }
   };
   paso("Activadores", () => { const r = _reiniciarActivadoresTienda(); return `${r.borrados.length} viejos borrados, ${r.creados.length} creados`; });
   paso("Enlace con Bodega", () => { _validarYAutoRepararSyncSilencioso(); _asegurarSyncVivo(); return ""; });
@@ -2180,8 +2194,51 @@ function configurarEsteLibroTienda() {
 
   const ok = pasos.every(p => p.startsWith("✅")) && con.ok;
   MiseLogger[ok ? "info" : "warn"]("configurarEsteLibro", pasos.join(" | "));
-  ui.alert(ok ? `🚀 ${BODEGA_NOMBRE} lista` : `🚀 ${BODEGA_NOMBRE} configurada con observaciones`,
-    `${pasos.join("\n")}\n\n🔗 ${con.linea}`, ui.ButtonSet.OK);
+  return rep.cerrar(ok, ok ? `🚀 ${BODEGA_NOMBRE} lista` : `🚀 ${BODEGA_NOMBRE} configurada con observaciones`, `🔗 ${con.linea}`);
+}
+
+// ── MONITOR DE PROGRESO (1.7.7c) ─────────────────────────────────────────────
+// Diálogo sin bloqueo (ProgresoDialog.html, el mismo de Bodega): lanza el proceso y consulta su avance en caché.
+const PROCESOS_MONITOREADOS = {
+  configurar: { titulo: "🚀 Configurar este libro", pasos: 7, fn: (rep) => _configurarTiendaCore(rep) },
+  reparar: { titulo: "🔧 Sincronizar catálogo y reparar", pasos: 3, fn: (rep) => _repararSistemaTiendaCore(rep) },
+  actualizar: { titulo: "🔄 Actualizar estructura", pasos: 1, fn: (rep) => _aplicarActualizacionCore(rep) }
+};
+
+function _reporteProgreso(runId) {
+  let cache = null;
+  try { cache = runId ? CacheService.getScriptCache() : null; } catch (e) {}
+  const estado = { pasos: [] };
+  const guardar = () => { if (cache) { try { cache.put("prog_" + runId, JSON.stringify(estado), 600); } catch (e) {} } };
+  return {
+    estado,
+    inicio(nombre) { estado.pasos.push({ nombre, estado: "corriendo", t0: Date.now() }); guardar(); },
+    fin(nombre, ok, detalle) {
+      const p = estado.pasos.filter(x => x.nombre === nombre).pop();
+      if (p) { p.estado = ok ? "ok" : "falla"; p.detalle = detalle ? String(detalle) : ""; p.ms = Date.now() - p.t0; }
+      guardar();
+    },
+    cerrar(ok, titulo, resumen) { Object.assign(estado, { fin: true, ok, titulo, resumen }); guardar(); return JSON.stringify(estado); }
+  };
+}
+
+function leerProgreso(runId) {
+  try { return CacheService.getScriptCache().get("prog_" + runId) || "{}"; } catch (e) { return "{}"; }
+}
+
+function ejecutarConMonitor(proceso, runId) {
+  const def = PROCESOS_MONITOREADOS[proceso];
+  if (!def) throw new Error("Proceso no permitido: " + proceso);
+  return def.fn(_reporteProgreso(String(runId || "")));
+}
+
+function _abrirMonitor(proceso) {
+  const def = PROCESOS_MONITOREADOS[proceso];
+  const t = HtmlService.createTemplateFromFile("ProgresoDialog");
+  t.runId = Utilities.getUuid();
+  t.proceso = proceso;
+  t.totalPasos = def.pasos;
+  SpreadsheetApp.getUi().showModelessDialog(t.evaluate().setWidth(440).setHeight(520), def.titulo);
 }
 
 // Si _SYNC quedó con valores fijos (sin IMPORTRANGE), restaurar el enlace vivo desde BODEGA_URL

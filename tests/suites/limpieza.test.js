@@ -44,7 +44,7 @@ function runLimpiezaTests() {
   console.log("\n🧪 [TEST SUITE] 🧹 Limpieza: menús válidos, DevTools fuera de PROD, sin código muerto");
   const b = revisarLibro("Bodega", ["bdg/miseAuthBDG.js", "bdg/MiseKardexEngine.js", "bdg/MiseEstado.js"], "bdg/MiseDevTools.js",
     ["bdg/PickingDialog.html", "bdg/TraspasoDialog.html", "bdg/EstadoSistema.html", "bdg/ProgresoDialog.html"]);
-  const t = revisarLibro("Tienda", ["tienda/miseTienda.js"], "tienda/MiseDevTools.js", []);
+  const t = revisarLibro("Tienda", ["tienda/miseTienda.js"], "tienda/MiseDevTools.js", ["bdg/ProgresoDialog.html"]);
   console.log(`  ✓ Bodega: ${b.items} opciones de menú válidas · ${b.funciones} funciones con uso · ${b.dev} herramientas solo DEV`);
   console.log(`  ✓ Tienda: ${t.items} opciones de menú válidas · ${t.funciones} funciones con uso · ${t.dev} herramientas solo DEV`);
 

@@ -6,6 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 const { crearContextoBDG } = require("../mocks/bdgVm");
+const { crearContextoTienda } = require("../mocks/tiendaVm");
 
 function runProgresoTests() {
   console.log("\n🧪 [TEST SUITE] ⏳ Monitor de progreso (diálogo sin bloqueo) · Powerhouse con unidad y factor");
@@ -42,6 +43,45 @@ function runProgresoTests() {
   assert.strictEqual(nodos.cerrar.disabled, false, "Al terminar se habilita Cerrar");
   assert.ok(!/undefined|NaN/.test(nodos.pasos.innerHTML), "Sin undefined/NaN");
   console.log("  ✓ Diálogo: lanza el proceso, pinta cada paso en vivo y habilita Cerrar al terminar");
+
+  // 2b. (1.7.7c) Todos los procesos pesados de Bodega abren el monitor y siempre cierran (aunque fallen)
+  const abiertos = [];
+  const abrirReal = sandbox._abrirMonitor;
+  sandbox._abrirMonitor = (p) => abiertos.push(p);
+  const getUiPrevio = sandbox.SpreadsheetApp.getUi;
+  sandbox.SpreadsheetApp.getUi = () => ({ alert: () => sandbox.SpreadsheetApp.getUi().Button.YES, Button: { YES: "YES" }, ButtonSet: {} });
+  ["descontarSurtidoAutomaticoManualmente", "descontarSurtidoAyerManualmente", "reconciliarSemanaCompletaDesdeLogs",
+   "ejecutarMantenimientoSemanalManualmente", "repararYSincronizarSistemaManualmente"].forEach(f => sandbox[f]());
+  sandbox._abrirMonitor = abrirReal;
+  sandbox.SpreadsheetApp.getUi = getUiPrevio;
+  assert.deepStrictEqual(abiertos, ["descontarHoy", "descontarAyer", "reconciliar", "mantenimiento", "reparar"], "Cada opción del menú abre su monitor");
+  ["mantenimiento", "reparar"].forEach(p => {
+    const r = JSON.parse(sandbox.ejecutarConMonitor(p, "m-" + p));
+    assert.ok(r.fin === true && r.titulo && r.pasos.every(x => x.estado !== "corriendo"), `${p}: cierra sin pasos colgados`);
+  });
+  const repD = sandbox._reporteProgreso("");
+  assert.ok(/ocupada/.test(JSON.parse(sandbox._cerrarDescuento(repD, undefined)).titulo), "Descuento con Bodega ocupada → aviso, no error");
+  const fuera = JSON.parse(sandbox._cerrarDescuento(sandbox._reporteProgreso(""), { totalDescontados: 1, totalOmitidosDuplicados: 0, totalVaciadosTiendas: 1, fueraDeSemana: ["Mercado"] }));
+  assert.ok(fuera.ok === false && /Mercado/.test(fuera.resumen), "Una bodega fuera de semana se marca como observación");
+  assert.strictEqual(sandbox.ejecutarMantenimientoSemanalBDG.length, 0, "El activador semanal no recibe el reporte (su argumento es el evento)");
+  console.log("  ✓ Bodega: descuentos, reconciliación, mantenimiento y diagnóstico abren el monitor y siempre cierran");
+
+  // 2c. Tiendas: mismo monitor (ProgresoDialog.html se copia desde bdg/)
+  const tv = crearContextoTienda("pda", "miseAuthPDA.js");
+  tv.sandbox.CacheService = sandbox.CacheService;
+  const abiertosT = [];
+  tv.sandbox._abrirMonitor = (p) => abiertosT.push(p);
+  tv.sandbox.configurarEsteLibroTienda();
+  tv.sandbox.repararSistemaTienda();
+  assert.deepStrictEqual(abiertosT, ["configurar", "reparar"], "Tienda: Configurar y reparar abren el monitor");
+  const cfgT = JSON.parse(tv.sandbox.ejecutarConMonitor("configurar", "t1"));
+  assert.strictEqual(cfgT.pasos.length, 7, "Tienda: Configurar reporta sus 7 pasos");
+  assert.ok(cfgT.fin && cfgT.pasos.every(x => x.estado !== "corriendo"), "Tienda: Configurar cierra sin pasos colgados");
+  const repT = JSON.parse(tv.sandbox.ejecutarConMonitor("reparar", "t2"));
+  assert.ok(repT.fin && repT.pasos.every(x => x.estado !== "corriendo"), "Tienda: reparar cierra (aunque falte el enlace en la prueba)");
+  assert.throws(() => tv.sandbox.ejecutarConMonitor("setupCompleto", "t3"), /no permitido/, "Tienda: solo procesos permitidos");
+  assert.ok(fs.existsSync(path.join(__dirname, "..", "..", "pda", "ProgresoDialog.html")), "build-tienda copia el diálogo a las tiendas");
+  console.log("  ✓ Tiendas: Configurar, reparar y actualizar estructura con el mismo monitor");
 
   // 3. Powerhouse guarda unidad de pedido y factor (y rechaza un factor inválido)
   const probe = ss.insertSheet("__p__");

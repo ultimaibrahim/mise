@@ -296,9 +296,54 @@ function abrirPaginaEstado() {
 // ── ⏳ MONITOR DE PROGRESO (1.7.6r) ───────────────────────────────────────────────────────────
 // Un diálogo SIN bloqueo (ProgresoDialog.html) lanza el proceso con google.script.run y, en paralelo, consulta su avance
 // cada ~0.7 s. El proceso reporta cada paso en CacheService (10 min). Solo se ejecutan procesos de esta lista.
+// Procesos pesados con monitor (1.7.7c). Cada uno corre sin alertas y cierra el reporte con su resumen;
+// las confirmaciones (si las hay) se piden en el menú ANTES de abrir el monitor.
 const PROCESOS_MONITOREADOS = {
-  configurar: { titulo: "🚀 Configurar este libro", pasos: 10, fn: (rep) => _configurarBDGCore(rep) }
+  configurar: { titulo: "🚀 Configurar este libro", pasos: 10, fn: (rep) => _configurarBDGCore(rep) },
+  descontarHoy: { titulo: "🚚 Descontar pedidos de hoy", pasos: 3, fn: (rep) => _cerrarDescuento(rep,
+    MiseSmartSync.ejecutarDescuento(true, null, { rep, manual: true })) },
+  descontarAyer: { titulo: "🚚 Descontar pedidos de ayer", pasos: 3, fn: (rep) => {
+    const ayer = new Date();
+    ayer.setDate(ayer.getDate() - 1);
+    return _cerrarDescuento(rep, MiseSmartSync.ejecutarDescuento(true, ayer, { rep, manual: true, soloRegistros: true }));
+  } },
+  reconciliar: { titulo: "🔄 Reconciliar días pasados", pasos: 7, fn: (rep) => {
+    const r = MiseSmartSync.reconciliarSemanaCompleta(true, null, { rep });
+    return rep.cerrar(true, "✅ Reconciliación terminada", r.dias
+      ? `${r.dias} día(s) revisado(s) · ${r.totalDescontados} descontado(s) ahora · ${r.totalOmitidos} ya estaban aplicados.`
+      : "La semana activa empieza hoy: no hay días pasados que revisar.");
+  } },
+  mantenimiento: { titulo: "🛡️ Mantenimiento semanal", pasos: 4, fn: (rep) => _cerrarSimple(rep,
+    _mantenimientoSemanalCore(rep), "✅ Mantenimiento terminado", "Catálogo ordenado, vistas al día y hojas blindadas.") },
+  reparar: { titulo: "🩺 Diagnosticar y reparar", pasos: 4, fn: (rep) => _cerrarSimple(rep,
+    repararYSincronizarSistema(false, rep), "✅ Sistema verificado", "Fórmulas, validaciones, vistas y activadores al día.") }
 };
+
+// Paso con reporte opcional: sin monitor (rep null) solo ejecuta fn
+function _pasoMonitor(rep, nombre, fn) {
+  if (rep) rep.inicio(nombre);
+  try {
+    const d = fn();
+    if (rep) rep.fin(nombre, true, d || "");
+    return d;
+  } catch (e) {
+    if (rep) rep.fin(nombre, false, e.message);
+    throw e;
+  }
+}
+
+function _cerrarSimple(rep, r, titulo, resumen) {
+  if (!r || !r.ok) return rep.cerrar(false, "⚠️ Terminado con observaciones", (r && r.error) || "Revisa 🗒 Registro del sistema.");
+  return rep.cerrar(true, titulo, resumen);
+}
+
+function _cerrarDescuento(rep, r) {
+  if (!r) return rep.cerrar(false, "⚠️ Bodega ocupada", "Otro proceso está trabajando; intenta de nuevo en unos segundos.");
+  if (r.error) return rep.cerrar(false, "❌ No se pudo descontar", r.error);
+  let resumen = `${r.totalDescontados} insumo(s) descontado(s) · ${r.totalOmitidosDuplicados} ya aplicado(s) · ${r.totalVaciadosTiendas} tienda(s) vaciada(s).`;
+  if (r.fueraDeSemana && r.fueraDeSemana.length) resumen += ` Sin descontar (fuera de la semana activa): ${r.fueraDeSemana.join(", ")}.`;
+  return rep.cerrar(!(r.fueraDeSemana && r.fueraDeSemana.length), "✅ Descuento terminado", resumen);
+}
 
 function _reporteProgreso(runId) {
   let cache = null;

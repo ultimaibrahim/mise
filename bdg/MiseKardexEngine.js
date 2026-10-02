@@ -57,6 +57,9 @@ const MiseSmartSync = {
   // (quien llama lo hace una vez al final); sinHistorial → no se anota como cierre en la página de estado.
   ejecutarDescuento(silent = true, fechaTargetPersonalizada = null, opciones = {}) {
     const soloRegistros = !!opciones.soloRegistros;
+    // Monitor de progreso (1.7.7c): opciones.rep recibe un paso por bodega y uno para vistas/tiendas
+    const rep = opciones.rep || null;
+    const manual = opciones.manual != null ? !!opciones.manual : !silent;
     const fueraDeSemana = [];
     const tId = "MiseSmartSync.ejecutarDescuento_" + Date.now();
     MiseLogger.time(tId);
@@ -179,6 +182,22 @@ const MiseSmartSync = {
       }
 
       Object.keys(BODEGAS).forEach(key => {
+        const pasoB = `${BODEGAS[key].nombre}: pedidos y registros`;
+        if (rep) rep.inicio(pasoB);
+        const antes = totalDescontados, fueraAntes = fueraDeSemana.length, desgloseAntes = resumenDesglose.length;
+        try {
+          procesarBodega(key);
+        } catch (eB) {
+          if (rep) rep.fin(pasoB, false, eB.message);
+          throw eB;
+        }
+        if (rep) rep.fin(pasoB, true, fueraDeSemana.length > fueraAntes
+          ? "la fecha no está en la semana activa de su Inventario; no se descontó"
+          : `${totalDescontados - antes} insumo(s) descontado(s)` + (resumenDesglose.length > desgloseAntes
+            ? "\n" + resumenDesglose[resumenDesglose.length - 1].split("\n").slice(1, 16).map(l => l.trim()).join("\n") : ""));
+      });
+
+      function procesarBodega(key) {
         const bConfig = BODEGAS[key];
         const kSheet = _hoja(ss, bConfig.kardex);
         if (!kSheet) return;
@@ -465,7 +484,7 @@ const MiseSmartSync = {
         if (listaDesgloseSucursal.length > 0) {
           resumenDesglose.push(`📍 ${bConfig.nombre.toUpperCase()} (${fechaObjetivoStr}):\n` + listaDesgloseSucursal.join("\n"));
         }
-      });
+      }
 
       // 4. Registrar hashes aplicados en el ledger
       MiseIdempotencyLedger.registerBatch(txHashesAplicados);
@@ -473,6 +492,7 @@ const MiseSmartSync = {
 
       // 5. Reconstruir vistas móviles para actualizar Stock Act
       if (!opciones.sinVistas) try {
+        if (rep) rep.inicio("Vistas y tiendas al día");
         _cerrarFase("kardex");
         if (typeof _buildVista === "function") {
           _buildVista("BA");
@@ -483,7 +503,9 @@ const MiseSmartSync = {
           sincronizarRemotamenteTiendasPush();
         }
         _cerrarFase("push");
+        if (rep) rep.fin("Vistas y tiendas al día", true, "");
       } catch(eRebuild) {
+        if (rep) rep.fin("Vistas y tiendas al día", false, eRebuild.message);
         MiseLogger.warn("MiseSmartSync", `Error refrescando vistas: ${eRebuild.message}`);
       }
 
@@ -491,7 +513,7 @@ const MiseSmartSync = {
       const seg = (ms) => (ms / 1000).toFixed(1) + " s";
       MiseLogger.info("MiseSmartSync", `Descuento completado: ${totalDescontados} insumos aplicados, ${totalOmitidosDuplicados} omitidos por idempotencia, ${totalVaciadosTiendas} tiendas vaciadas. Fases: tiendas ${seg(fases.tiendas)} · log ${seg(fases.log)} · kardex ${seg(fases.kardex)} · vistas ${seg(fases.vistas)} · push ${seg(fases.push)}.`, dur);
       if (!opciones.sinHistorial) try {
-        _registrarCierre({ fecha: new Date().toISOString(), objetivo: fechaObjetivoStr, ok: true, manual: !silent, ms: dur, fases,
+        _registrarCierre({ fecha: new Date().toISOString(), objetivo: fechaObjetivoStr, ok: true, manual, ms: dur, fases,
           descontados: totalDescontados, omitidos: totalOmitidosDuplicados, tiendas: totalVaciadosTiendas });
       } catch (eHist) {}
 
@@ -518,7 +540,7 @@ const MiseSmartSync = {
     } catch(err) {
       const dur = MiseLogger.timeEnd(tId);
       MiseLogger.error("MiseSmartSync", `Error al descontar: ${err.message}`, err, dur);
-      try { _registrarCierre({ fecha: new Date().toISOString(), ok: false, manual: !silent, ms: dur, fases, error: String(err.message).substring(0, 200) }); } catch (eHist) {}
+      try { _registrarCierre({ fecha: new Date().toISOString(), ok: false, manual, ms: dur, fases, error: String(err.message).substring(0, 200) }); } catch (eHist) {}
       if (!silent) {
         SpreadsheetApp.getUi().alert("❌ Error", `Ocurrió un error al descontar: ${err.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
       }
@@ -545,7 +567,8 @@ const MiseSmartSync = {
    * Antes: corría el descuento completo 7 veces desde el lunes, tomaba el pedido de HOY como si fuera del lunes, lo
    * vaciaba en plena operación y usaba la semana de Andares para ambas bodegas.
    */
-  reconciliarSemanaCompleta(silent = false, hoyRef = null) {
+  reconciliarSemanaCompleta(silent = false, hoyRef = null, opciones = {}) {
+    const rep = opciones.rep || null;
     const tId = "MiseSmartSync.reconciliarSemanaCompleta_" + Date.now();
     MiseLogger.time(tId);
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -568,7 +591,11 @@ const MiseSmartSync = {
     let granTotalOmitidos = 0;
     const desgloseDias = [];
     dias.forEach(f => {
+      const paso = `${dayNames[f.getDay()]} ${f.getDate()}/${f.getMonth() + 1}`;
+      if (rep) rep.inicio(paso);
       const res = this.ejecutarDescuento(true, f, { soloRegistros: true, sinVistas: true, sinHistorial: true });
+      if (rep) rep.fin(paso, !!res && !res.error, !res ? "Bodega ocupada; no se revisó" : res.error ||
+        `${res.totalDescontados} descontado(s) · ${res.totalOmitidosDuplicados} ya aplicado(s)`);
       if (!res) return;
       granTotalDescontados += (res.totalDescontados || 0);
       granTotalOmitidos += (res.totalOmitidosDuplicados || 0);
@@ -578,10 +605,13 @@ const MiseSmartSync = {
     });
 
     if (granTotalDescontados > 0) {
+      if (rep) rep.inicio("Vistas y tiendas al día");
       try {
         if (typeof _buildVista === "function") { _buildVista("BA"); _buildVista("BM"); }
         if (typeof sincronizarRemotamenteTiendasPush === "function") sincronizarRemotamenteTiendasPush();
+        if (rep) rep.fin("Vistas y tiendas al día", true, "");
       } catch (e) {
+        if (rep) rep.fin("Vistas y tiendas al día", false, e.message);
         MiseLogger.warn("reconciliarSemanaCompleta", `Error refrescando vistas: ${e.message}`);
       }
     }
@@ -596,7 +626,7 @@ const MiseSmartSync = {
       msg += desgloseDias.length ? "Desglose por día:\n" + desgloseDias.join("\n") : "ℹ️ No había surtidos pendientes de descontar en los días pasados.";
       SpreadsheetApp.getUi().alert("🔄 Reconciliación de la semana (días pasados)", msg, SpreadsheetApp.getUi().ButtonSet.OK);
     }
-    return { dias: dias.length, totalDescontados: granTotalDescontados, totalOmitidos: granTotalOmitidos };
+    return { dias: dias.length, totalDescontados: granTotalDescontados, totalOmitidos: granTotalOmitidos, desgloseDias };
   },
 
 };

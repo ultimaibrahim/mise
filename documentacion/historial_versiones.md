@@ -5,6 +5,16 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.7c Altair (Monitor de progreso) — 2026-10-01 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG)
+* Monitor sin bloqueo en Descontar hoy / ayer (por bodega, con desglose), Reconciliar (por día), Mantenimiento semanal y Diagnosticar y reparar.
+
+### 🏪 Tiendas (PDA / PDM)
+* Monitor en 🚀 Configurar, Sincronizar catálogo y reparar, y Aplicar actualización de estructura.
+
+---
+
 ## ⚡ v1.7.7b Altair (Picking por default) — 2026-10-01 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG)

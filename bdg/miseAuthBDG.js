@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.7b Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.7c Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -252,7 +252,7 @@ function onOpen() {
       .addSeparator()
       .addItem("🩺 Diagnosticar activadores", "diagnosticarActivadores")
       .addItem("⏰ Reiniciar activadores", "instalarActivadoresNocturnosBDG")
-      .addItem("🛡️ Ejecutar mantenimiento semanal", "ejecutarMantenimientoSemanalBDG")
+      .addItem("🛡️ Ejecutar mantenimiento semanal", "ejecutarMantenimientoSemanalManualmente")
       .addItem("🔗 Conexión con los logs de tiendas", "configurarConexionLogTiendas")
       .addItem("🔒 Blindar todas las hojas", "protegerTodasLasHojasSeguras")
       .addSeparator()
@@ -279,10 +279,11 @@ function onOpen() {
 
 // ── MOTOR AUTORREPARADOR (SELF-HEALING ENGINE) ────────────────────────────────
 function repararYSincronizarSistemaManualmente() {
-  repararYSincronizarSistema(false);
+  _abrirMonitor("reparar");
 }
 
-function repararYSincronizarSistema(silent = false) {
+// rep (1.7.7c): reporte al monitor de progreso; con rep no hay alertas (el resumen lo muestra el monitor)
+function repararYSincronizarSistema(silent = false, rep = null) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const maestro = _hoja(ss, SHEET_MAESTRO);
   if (!maestro) return;
@@ -308,23 +309,26 @@ function repararYSincronizarSistema(silent = false) {
       const hasErrorBA = valuesStkBA.some(r => String(r[0]).includes("#N/A") || String(r[0]).includes("#REF") || String(r[0]).includes("#ERROR") || String(r[0]).includes("#VALUE"));
       const hasErrorBM = valuesStkBM.some(r => String(r[0]).includes("#N/A") || String(r[0]).includes("#REF") || String(r[0]).includes("#ERROR") || String(r[0]).includes("#VALUE"));
 
-      if (hasErrorBA || hasErrorBM || !silent) {
-        _ordenarYRenumerarTodo();
-        repairsCount++;
-      }
+      _pasoMonitor(rep, "Fórmulas y orden del Catálogo", () => {
+        if (hasErrorBA || hasErrorBM || !silent) {
+          _ordenarYRenumerarTodo();
+          repairsCount++;
+          return hasErrorBA || hasErrorBM ? "había errores; reconstruidas" : "reordenado y renumerado";
+        }
+        return "sin errores";
+      });
 
       // 2. Verificar dropdowns y validaciones desprendidas + asegurar columnas de quiosco
-      _asegurarColumnasQuioscoEnMaestro(maestro);
-      restaurarValidacionesMaestro();
+      _pasoMonitor(rep, "Columnas y validaciones", () => { _asegurarColumnasQuioscoEnMaestro(maestro); restaurarValidacionesMaestro(); });
 
       // 3. Recrear Vistas Móviles
-      _buildVista("BA");
-      _buildVista("BM");
+      _pasoMonitor(rep, "Vistas móviles", () => { _buildVista("BA"); _buildVista("BM"); });
 
       // 4. Asegurar activadores nocturnos autónomos
-      _ensureTriggersBDG();
+      _pasoMonitor(rep, "Activadores", () => { _ensureTriggersBDG(); });
     }
 
+    if (rep) return { ok: true };
     if (!silent) {
       SpreadsheetApp.getActive().toast("🩺 Sistema verificado y autorreparado con éxito ✓", "⚙️ Mise Self-Healing", 4);
       SpreadsheetApp.getUi().alert("🩺 Diagnóstico Completo", "El sistema ha verificado todas las fórmulas, punteros y validaciones de MAESTRO y KARDEX.\n\nTodo se encuentra 100% sincronizado y saludable.", SpreadsheetApp.getUi().ButtonSet.OK);
@@ -332,6 +336,7 @@ function repararYSincronizarSistema(silent = false) {
       SpreadsheetApp.getActive().toast("🩺 Se detectaron y repararon fórmulas desfasadas automáticamente ✓", "⚙️ Mise Self-Healing", 4);
     }
   } catch (err) {
+    if (rep) return { ok: false, error: err.message };
     if (!silent) {
       SpreadsheetApp.getUi().alert("❌ Error en Diagnóstico", err.toString(), SpreadsheetApp.getUi().ButtonSet.OK);
     }
@@ -2004,7 +2009,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.7b";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7c";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "📥 Entradas en la unidad de cada producto (bolsa, caja…) y la fruta en kg exactos: Mise convierte",
@@ -5457,19 +5462,17 @@ function reconciliarSemanaCompletaDesdeLogs() {
   );
   if (resp !== ui.Button.YES) return;
 
-  MiseSmartSync.reconciliarSemanaCompleta(false);
+  _abrirMonitor("reconciliar");
 }
 
 function descontarSurtidoAutomaticoManualmente() {
-  MiseSmartSync.ejecutarDescuento(false);
+  _abrirMonitor("descontarHoy");
 }
 
 // Recuperación: el cierre de anoche no corrió. Solo desde 🗒 LOG_SURTIDO (la tienda registró lo de ayer en su reset
 // de las 00:00); NUNCA toma el pedido en curso, que es el de hoy. Idempotente: lo ya descontado no se repite.
 function descontarSurtidoAyerManualmente() {
-  const ayer = new Date();
-  ayer.setDate(ayer.getDate() - 1);
-  MiseSmartSync.ejecutarDescuento(false, ayer, { soloRegistros: true });
+  _abrirMonitor("descontarAyer");
 }
 
 function forzarAutoVerificarYAvanzarSemana() {
@@ -5594,14 +5597,23 @@ function _asegurarHojasSyncLogBDG() {
  * 3. Auto-avance semanal de Kardex a la nueva semana sin requerir evento onOpen.
  * 4. Reconstrucción de VISTAS_MOVILES y re-aplicación del blindaje total de celdas.
  */
+// Activador semanal (recibe el evento del activador como argumento; por eso el núcleo va aparte)
 function ejecutarMantenimientoSemanalBDG() {
+  _mantenimientoSemanalCore(null);
+}
+
+function ejecutarMantenimientoSemanalManualmente() {
+  _abrirMonitor("mantenimiento");
+}
+
+function _mantenimientoSemanalCore(rep) {
   const tId = "ejecutarMantenimientoSemanalBDG_" + Date.now();
   MiseLogger.time(tId);
 
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(45000)) {
     MiseLogger.warn("ejecutarMantenimientoSemanalBDG", "Bodega ocupada por otro proceso. Se reintentará.");
-    return;
+    return { ok: false, error: "Bodega ocupada por otro proceso; intenta en un momento." };
   }
 
   try {
@@ -5613,6 +5625,7 @@ function ejecutarMantenimientoSemanalBDG() {
     const lrM = maestro.getLastRow();
 
     // ── FASE 1: PURGA DE FILAS CORRUPTAS / METIDAS A LA FUERZA ────────────────
+    if (rep) rep.inicio("Revisión del Catálogo");
     if (lrM >= MAESTRO_START) {
       const count = lrM - MAESTRO_START + 1;
       const map = _getMaestroHeaderMap(maestro);
@@ -5646,15 +5659,17 @@ function ejecutarMantenimientoSemanalBDG() {
       }
     }
 
+    if (rep) rep.fin("Revisión del Catálogo", true, purgasCount ? `${purgasCount} fila(s) incompleta(s) en el registro` : "sin filas incompletas");
+
     // ── FASE 2: RE-ORDENAMIENTO, RENUMERACIÓN Y SANEAMIENTO DE FÓRMULAS ───────
-    _ordenarYRenumerarTodo();
-    restaurarValidacionesMaestro();
+    _pasoMonitor(rep, "Orden, numeración y validaciones", () => { _ordenarYRenumerarTodo(); restaurarValidacionesMaestro(); });
 
     // ── FASE 3: AUTO-AVANCE AUTÓNOMO DE SEMANA (ÚNICAMENTE SI ES DOMINGO O FORZADO) ─
     const hoy = new Date();
     const esDomingo = hoy.getDay() === 0; // 0 = Domingo
     let semanasAvanzadas = 0;
 
+    if (rep) rep.inicio("Semana");
     if (esDomingo) {
       // 1. Descontar pedidos de hoy domingo antes de avanzar la semana
       try {
@@ -5666,19 +5681,24 @@ function ejecutarMantenimientoSemanalBDG() {
       // 2. Auto-avanzar semana silenciosamente
       semanasAvanzadas = _autoVerificarYAvanzarSemanaSilencioso(true);
     }
+    if (rep) rep.fin("Semana", true, esDomingo ? `domingo: cierre y ${semanasAvanzadas || 0} bodega(s) avanzada(s)` : "sin cambios (solo los domingos)");
 
     // ── FASE 4: RECONSTRUCCIÓN DE VISTAS Y RE-APLICACIÓN DE BLINDAJE ──────────
-    _buildVista("BA");
-    _buildVista("BM");
-    protegerTodasLasHojasSeguras();
-    Object.values(BODEGAS).forEach(b => _simplificarVistaKardex(_hoja(ss, b.kardex)));
+    _pasoMonitor(rep, "Vistas y blindaje", () => {
+      _buildVista("BA");
+      _buildVista("BM");
+      protegerTodasLasHojasSeguras();
+      Object.values(BODEGAS).forEach(b => _simplificarVistaKardex(_hoja(ss, b.kardex)));
+    });
 
     const dur = MiseLogger.timeEnd(tId);
     MiseLogger.info("ejecutarMantenimientoSemanalBDG", `Mantenimiento Semanal Exitoso: ${purgasCount} filas purgadas, ${semanasAvanzadas} bodegas avanzadas, fórmulas saneadas y blindaje activo.`, dur);
+    return { ok: true, purgas: purgasCount, semanas: semanasAvanzadas };
 
   } catch(err) {
     const dur = MiseLogger.timeEnd(tId);
     MiseLogger.error("ejecutarMantenimientoSemanalBDG", `Error en mantenimiento semanal: ${err.message}`, err, dur);
+    return { ok: false, error: err.message };
   } finally {
     lock.releaseLock();
   }

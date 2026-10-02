@@ -23,6 +23,12 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.7c Altair — Ver el Avance de los Procesos Largos (Octubre 2026) [EN PRUEBAS]
+
+* ⏳ **Descontar, reconciliar, mantenimiento, diagnóstico y, en las tiendas, Configurar y reparar, ahora muestran una ventana con su avance paso a paso** (✅ / ❌ y tiempo), sin bloquear la hoja. Al terminar, un resumen de lo que se hizo.
+
+---
+
 ## Versión 1.7.7b Altair — Volver al Orden del Catálogo (Octubre 2026) [EN PRUEBAS]
 
 * 🔢 **Un botón para que el orden de picking de una tienda sea el mismo del Catálogo**, como punto de partida para luego acomodarlo a mano.

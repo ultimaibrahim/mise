@@ -14,6 +14,8 @@ const SUCURSALES = [
   { dir: "pdm", archivo: "miseAuthPDM.js", key: "BM", nombre: "Mercado" }
 ];
 const COPIAS_TAL_CUAL = ["appsscript.json", "MiseDevTools.js"];
+// Mismo archivo en los 3 libros: se toma de bdg/ para no mantener dos copias
+const COPIAS_DE_BODEGA = ["ProgresoDialog.html"];
 
 function build() {
   const src = fs.readFileSync(path.join(FUENTE, "miseTienda.js"), "utf8");
@@ -37,6 +39,7 @@ function build() {
 const MISE_SUCURSAL_DEFAULT = { key: "${s.key}", nombre: "${s.nombre}" };`;
     fs.writeFileSync(path.join(ROOT, s.dir, s.archivo), cabecera + cuerpo);
     COPIAS_TAL_CUAL.forEach(f => fs.copyFileSync(path.join(FUENTE, f), path.join(ROOT, s.dir, f)));
+    COPIAS_DE_BODEGA.forEach(f => fs.copyFileSync(path.join(ROOT, "bdg", f), path.join(ROOT, s.dir, f)));
   });
   return { version, sucursales: SUCURSALES.map(s => s.nombre) };
 }

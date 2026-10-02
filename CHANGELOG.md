@@ -33,6 +33,15 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.7c Altair — Monitor de Progreso en Todos los Procesos Pesados (Octubre 2026) [EN PRUEBAS · DEV]
+* **⏳ Monitor sin bloqueo** (`ProgresoDialog.html`, `PROCESOS_MONITOREADOS`, `ejecutarConMonitor`, `leerProgreso` con `CacheService`) extendido de 🚀 Configurar a:
+  - **Bodega**: Descontar pedidos de hoy / de ayer (un paso por bodega con su desglose por producto + vistas y tiendas), Reconciliar días pasados (un paso por día), Mantenimiento semanal (Catálogo · orden y validaciones · semana · vistas y blindaje) y Diagnosticar y reparar (fórmulas · columnas y validaciones · vistas · activadores).
+  - **Tiendas**: 🚀 Configurar (7 pasos), Sincronizar catálogo y reparar (enlace · pedido reconstruido · colores y protección) y Aplicar actualización de estructura.
+* **Ganchos opcionales**: `ejecutarDescuento(…, { rep, manual })` y `reconciliarSemanaCompleta(…, { rep })`; `_pasoMonitor(rep, nombre, fn)` envuelve pasos sin cambiar el comportamiento cuando no hay monitor (activadores nocturnos). `ejecutarMantenimientoSemanalBDG` (activador) delega en `_mantenimientoSemanalCore(null)`; el menú usa `ejecutarMantenimientoSemanalManualmente`.
+* Confirmaciones (reconciliar) se piden antes de abrir el monitor; los procesos corren sin alertas y cierran con resumen. El cierre manual se sigue anotando como `manual` en el historial.
+* **Fuente única del diálogo**: `build-tienda` copia `bdg/ProgresoDialog.html` a `pda/` y `pdm/` (`COPIAS_DE_BODEGA`).
+* **Testing**: pasos por bodega/día con desglose, apertura del monitor desde cada opción de menú, cierre sin pasos colgados en Bodega y tiendas, procesos fuera de la lista rechazados.
+
 ### Version 1.7.7b Altair — Orden del Catálogo como Picking por Default (Octubre 2026) [EN PRUEBAS · DEV]
 * **🔢 Restablecer el picking al orden del Catálogo** (`_restablecerPickingCatalogo`; menú ⚙️ Mise → ▸ Más opciones → 📋 Catálogo → 🔢 Orden de picking = orden del Catálogo → Andares / Mercado / Ambas, con confirmación): copia el orden de filas del Catálogo (categoría y número) a `PICKING_BA`/`PICKING_BM` como punto de partida para ajustar después en Powerhouse. Las tiendas lo aplican solas por la huella del catálogo (al abrir o a las 00:00); no hay reordenamiento a distancia porque las posiciones del inventario no cambian.
 * **Testing**: picking de Mercado = orden del Catálogo, Andares conserva su orden personalizado.

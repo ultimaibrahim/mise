@@ -54,7 +54,8 @@ function runSmartSyncTests() {
     const getOrig = props.getProperty;
     props.getProperty = (k) => { if (k === "PROCESSED_SURTIDO_TX_HASHES") lecturasLedger++; return getOrig(k); };
 
-    const r1 = sandbox.MiseSmartSync.ejecutarDescuento(true, fecha);
+    const rep1 = sandbox._reporteProgreso("");   // monitor (1.7.7c) sin caché: solo junta los pasos
+    const r1 = sandbox.MiseSmartSync.ejecutarDescuento(true, fecha, { rep: rep1 });
     props.getProperty = getOrig;
 
     assert.strictEqual(sal("KARDEX_BA", 7), 3, "Andares Fresa: SAL previa 1 + recibido 2");
@@ -67,6 +68,11 @@ function runSmartSyncTests() {
     assert.ok(cierre.ok && cierre.descontados === 3 && cierre.manual === false && "push" in cierre.fases, "Historial de cierres con tiempos por fase");
     assert.ok(lecturasLedger <= 2, `La lista de idempotencia se lee una vez por corrida (leída ${lecturasLedger} veces)`);
     console.log("  ✓ Descuenta solo lo recibido, suma sobre la SAL existente y lee la lista de idempotencia una sola vez");
+    const pasos1 = rep1.estado.pasos;
+    assert.deepStrictEqual(Array.from(pasos1, p => p.nombre), ["Andares: pedidos y registros", "Mercado: pedidos y registros", "Vistas y tiendas al día"], "Monitor: un paso por bodega + vistas");
+    assert.ok(pasos1.every(p => p.estado === "ok"), "Monitor: todos los pasos terminan en ✅");
+    assert.ok(/^2 insumo\(s\) descontado\(s\)\n.*Fresa/.test(pasos1[0].detalle), `Monitor: Andares con su conteo y desglose (${pasos1[0].detalle})`);
+    console.log("  ✓ Monitor: el descuento reporta cada bodega con su desglose y las vistas");
 
     // Re-ejecución de la misma fecha (reintento de madrugada o botón manual): nada cambia
     const antes = JSON.stringify(foto());
@@ -103,8 +109,11 @@ function runSmartSyncTests() {
     tiendas.ID_PDA.getSheetByName("🗒 LOG_SURTIDO").appendRow([fechaVm(2026, 8, 28), "Andares", "Leche", "LÁCTEOS", 1, 1, "COMPLETO"]); // lunes, pendiente
     const salLun = () => ss.getSheetByName("KARDEX_BA").getRange(8, 11).getValue();
     const antesMar = JSON.stringify(foto());
-    const rr = sandbox.MiseSmartSync.reconciliarSemanaCompleta(true, fechaVm(2026, 9, 1)); // "hoy" = jueves 1/oct
+    const repRr = sandbox._reporteProgreso("");
+    const rr = sandbox.MiseSmartSync.reconciliarSemanaCompleta(true, fechaVm(2026, 9, 1), { rep: repRr }); // "hoy" = jueves 1/oct
     assert.strictEqual(rr.dias, 3, "Revisa solo los días pasados de la semana activa (lun, mar, mié)");
+    assert.deepStrictEqual(Array.from(repRr.estado.pasos, p => p.nombre), ["Lunes 28/9", "Martes 29/9", "Miércoles 30/9", "Vistas y tiendas al día"], "Monitor: un paso por día revisado");
+    assert.ok(/^1 descontado/.test(repRr.estado.pasos[0].detalle), "Monitor: el lunes reporta lo que descontó");
     assert.strictEqual(salLun(), 1, "Descuenta en el LUNES lo registrado el lunes que faltaba");
     assert.strictEqual(JSON.stringify(foto()), antesMar, "El martes (ya descontado) no cambia");
     assert.strictEqual(pda.getRange(4, 6).getValue(), 9, "El pedido en curso de hoy NO se toca");
