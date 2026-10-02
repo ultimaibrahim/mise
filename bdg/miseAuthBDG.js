@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.7f Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.7g Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -2021,7 +2021,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.7f";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7g";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "📥 Entradas en la unidad de cada producto (bolsa, caja…) y la fruta en kg exactos: Mise convierte",
@@ -4390,11 +4390,20 @@ function sincronizarRemotamenteTiendasPush(sourceKey = null, sourceRankMap = nul
           //    reordena sola por la huella del catálogo (1.7.6i). Menos escritura cruzada y push más rápido.
           const pedidoSheet = _hoja(targetSs, "📋 PEDIDO DIARIO");
           if (pedidoSheet && syncSheet) {
-            const nSync = Math.max(syncSheet.getLastRow() - 3, 0);
-            const actuales = nSync > 0 ? syncSheet.getRange(4, 3, nSync, 1).getValues().map(r => String(r[0]).trim()) : [];
             const nuevos = datosFrescos.map(r => String(r[2]).trim());
-            const mismasPosiciones = actuales.length === nuevos.length && actuales.every((p, i) => p === nuevos[i]);
-            if (!mismasPosiciones) _reordenarPedidoRemotoDirecto(targetSs, syncSheet, pedidoSheet, datosFrescos);
+            const nPed = Math.max(pedidoSheet.getLastRow() - 3, 0);
+            const porNombre = nPed > 0 && !pedidoSheet.getRange(4, 3).getFormula();   // esquema 4: PRODUCTO fijo
+            let reordenar;
+            if (porNombre) {
+              // Las filas no dependen de la posición en _SYNC: solo hay que tocar el pedido si entran o salen productos
+              const enPedido = new Set(pedidoSheet.getRange(4, 3, nPed, 1).getValues().map(r => String(r[0]).trim()).filter(Boolean));
+              reordenar = nuevos.length !== enPedido.size || nuevos.some(p => !enPedido.has(p));
+            } else {
+              const nSync = Math.max(syncSheet.getLastRow() - 3, 0);
+              const actuales = nSync > 0 ? syncSheet.getRange(4, 3, nSync, 1).getValues().map(r => String(r[0]).trim()) : [];
+              reordenar = !(actuales.length === nuevos.length && actuales.every((p, i) => p === nuevos[i]));
+            }
+            if (reordenar) _reordenarPedidoRemotoDirecto(targetSs, syncSheet, pedidoSheet, datosFrescos);
           }
 
           // 4. AL FINAL refrescar el enlace vivo (re-escribir la fórmula rompe la caché). NUNCA pisar A4 con
@@ -4412,6 +4421,21 @@ function sincronizarRemotamenteTiendasPush(sourceKey = null, sourceRankMap = nul
       }
     }
   });
+}
+
+// Esquema 4 (1.7.7g): el PRODUCTO (C) es un valor fijo y lo demás se busca POR NOMBRE en _SYNC. Antes cada fila apuntaba
+// a un NÚMERO de fila de _SYNC: un alta recorría las filas y la cantidad capturada quedaba junto al producto vecino
+// (caso real Canada Dry 600 ml). La MISMA función vive en tienda/miseTienda.js (lo verifica simulacion.test.js).
+function _formulasPedidoPorNombre(r, hojaSync) {
+  const S = "'" + hojaSync + "'!";
+  const m = `MATCH($C${r}, ${S}$C$4:$C, 0)`;
+  const col = (L) => `INDEX(${S}$${L}$4:$${L}, ${m})`;
+  return {
+    categoria: `=IFERROR(${col("B")}, "")`,
+    unidad: `=IFERROR(${col("D")}, "")`,
+    saldo: `=IFERROR(LET(e, ${col("E")}*1, j, ${col("J")}, k, ${col("K")}, e & IF(AND(j=0, k=0), "", IF(e<j, " (-" & (j-e) & ")", IF(e>k, " (+" & (e-k) & ")", " (-)")))), 0)`,
+    minmax: `=IFERROR(LET(j, ${col("J")}, k, ${col("K")}, IF(AND(j=0, k=0), "—", j & "  |  " & k)), "—")`
+  };
 }
 
 /**
@@ -4503,15 +4527,6 @@ function _reordenarPedidoRemotoDirecto(targetSs, syncSheet, pedidoSheet, syncVal
       return numA - numB;
     });
 
-    const syncRowMap = {};
-    for (let i = 0; i < syncValues.length; i++) {
-      const pName = String(syncValues[i][2]).trim();
-      if (pName) {
-        syncRowMap[pName] = 4 + i;
-      }
-    }
-
-    const sRef = "'" + syncSheet.getName() + "'";
     const outputData = [];
     const bgs = [];
     const cleanFonts = [];
@@ -4520,7 +4535,6 @@ function _reordenarPedidoRemotoDirecto(targetSs, syncSheet, pedidoSheet, syncVal
       const r = DATA_START_ROW + i;
       const prodName = String(items[i].vals[2]).trim();
       const prodNo = parseInt(items[i].vals[0]) || (i + 1);
-      const sr = syncRowMap[prodName] || (prodNo + 3);
 
       const isInactive = (activeMap[prodName] === "NO");
 
@@ -4536,17 +4550,18 @@ function _reordenarPedidoRemotoDirecto(targetSs, syncSheet, pedidoSheet, syncVal
       rowFont[COL_CANT_PEDIR - 1] = "bold";
       cleanFonts.push(rowFont);
 
+      const f = _formulasPedidoPorNombre(r, syncSheet.getName());
       const fila = [
         prodNo,
-        '=' + sRef + '!B' + sr,
-        '=' + sRef + '!C' + sr,
-        '=' + sRef + '!D' + sr,
-        '=IFERROR(' + sRef + '!E' + sr + '*1, 0) & IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "", IF(' + sRef + '!E' + sr + '<' + sRef + '!J' + sr + ', " (-" & (' + sRef + '!J' + sr + '-' + sRef + '!E' + sr + ') & ")", IF(' + sRef + '!E' + sr + '>' + sRef + '!K' + sr + ', " (+" & (' + sRef + '!E' + sr + '-' + sRef + '!K' + sr + ') & ")", " (-)")))',
+        f.categoria,
+        prodName,                       // PRODUCTO fijo: la identidad de la fila (esquema 4)
+        f.unidad,
+        f.saldo,
         items[i].vals[5],
         '=IF(OR(F' + r + '="", H' + r + '=""), "", H' + r + ' - F' + r + ')',
         items[i].vals[7] === "" ? "" : items[i].vals[7],
         items[i].vals[8] || "",
-        '=IF(AND(' + sRef + '!J' + sr + '=0, ' + sRef + '!K' + sr + '=0), "—", ' + sRef + '!J' + sr + ' & "  |  " & ' + sRef + '!K' + sr + ')'
+        f.minmax
       ];
       if (esquema2) fila.splice(9, 0, ""); // J reservada vacía (ADICIÓN retirada en 1.7.6e)
       outputData.push(fila);

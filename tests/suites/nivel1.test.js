@@ -140,8 +140,8 @@ function runNivel1Tests() {
       if (esq === 3) ped.getRange(4, 11).setValue("ARRAYFORMULA-AUX"); // auxiliar _ACTIVO en K (no debe pisarse)
       reordenarReal(t, sy, ped, filasSync);
       const colMinMax = esq === 3 ? 10 : 11;
-      assert.ok(String(ped.getRange(4, colMinMax).getValue()).startsWith("=IF(AND('_SYNC_BA'!J"), `Esquema ${esq}: MÍN|MÁX en la columna ${colMinMax}`);
-      assert.strictEqual(ped.getRange(4, 3).getValue(), "='_SYNC_BA'!C5", `Esquema ${esq}: Leche (picking 1) primero, enlazada a SU fila de _SYNC`);
+      assert.ok(String(ped.getRange(4, colMinMax).getValue()).includes("INDEX('_SYNC_BA'!$J$4:$J, MATCH($C4, '_SYNC_BA'!$C$4:$C, 0))"), `Esquema ${esq}: MÍN|MÁX en la columna ${colMinMax}, buscado por nombre`);
+      assert.strictEqual(ped.getRange(4, 3).getValue(), "Leche", `Esquema ${esq}: Leche (picking 1) primero, con su nombre fijo (1.7.7g)`);
       assert.strictEqual(ped.getRange(4, 6).getValue(), 2, `Esquema ${esq}: Leche conserva su captura`);
       if (esq === 3) assert.strictEqual(ped.getRange(4, 11).getValue(), "ARRAYFORMULA-AUX", "Esquema 3: no pisa las auxiliares (K)");
       else assert.strictEqual(ped.getRange(4, 10).getValue(), "", "Esquema 2: J reservada vacía");

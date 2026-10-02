@@ -33,6 +33,15 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.7g Altair — Pedido por Nombre: un Alta Ya No Mueve Cantidades (Octubre 2026) [PROD]
+* **🐛 Cantidades que brincaban al producto vecino tras un alta** (caso real: alta de "Agua mineral (600ml) Canada Dry" junto a la presentación anterior).
+  - **Causa:** en 📋 PEDIDO DIARIO, PRODUCTO/CATEGORÍA/UNIDAD/SALDO/MÍN|MÁX eran fórmulas `='_SYNC'!C{fila}` por número de fila, y la cantidad un valor fijo. Un alta recorre las filas de `_SYNC`. Si el `IMPORTRANGE` de la tienda se actualizaba antes que el escritor remoto de Bodega, este comparaba `_SYNC` (ya nuevo) contra la vista, veía "mismas posiciones" y no reordenaba. Los nombres se recorrían, las cantidades no, y el producto desplazado podía desaparecer del pedido (reproducido en la simulación: Plátano 10 → "Fresa (domo 1 kg)" 10).
+  - **Esquema 4 de tienda:** PRODUCTO es el **nombre fijo** de la fila y lo demás se busca por nombre (`_formulasPedidoPorNombre`: `INDEX/MATCH` + `LET`, misma función en tienda y Bodega). `_filaPedido(r, nombre, no, c)` y sus 3 llamadas, y `_reordenarPedidoRemotoDirecto`, escriben por nombre.
+  - El push de Bodega decide reordenar comparando los **nombres del pedido** contra el catálogo (altas/bajas), no las posiciones de `_SYNC`. Las tiendas aún en esquema 3 conservan la lógica anterior hasta migrar.
+  - `MISE_SCHEMA_TIENDA = 4`: la migración existente respalda (`_RESPALDO_*_v4`), reconstruye y restaura capturas por nombre. Corre sola de noche, o al momento con "Aplicar actualización de estructura" o 🚀 Configurar.
+* **Emulador:** `INDEX`, `MATCH` y `LET` en el evaluador de fórmulas.
+* **Testing:** la simulación por roles da un alta junto a un producto con pedido y con el `IMPORTRANGE` adelantado. Cada cantidad sigue en su producto; con el código anterior falla, porque Plátano desaparece. Migración y escritor remoto verifican las fórmulas por nombre.
+
 ### Version 1.7.7f Altair — Registrar Entradas Vuelve Sola a Modo Entrada (Octubre 2026) [PROD]
 * **🐛 Modo traspaso que se quedaba puesto** (`_procesarTraspasoEntradas`): después de enviar un traspaso, A2 seguía en "🔄 Andares → Mercado". Lo siguiente que llegara del proveedor se enviaba como traspaso: restaba de una bodega y sumaba a la otra en vez de sumar entrada. Lo encontró la simulación por roles en los libros DEV reales. Ahora la hoja vuelve a `📥 Entrada` al enviar (el mensaje lo dice) y `descontarSurtidoAutomatico` la deja en Entrada cada noche.
 * **🎬 `prepararDatosVideo`** (solo DEV, `MiseDevTools.js`, menú 🧪 Mise DEV): deja inventarios con saldos y movimientos creíbles (deterministas desde mín/máx del Catálogo), hoy en blanco, tiendas reiniciadas y Pepino/Limón como pesados, para grabar y practicar.

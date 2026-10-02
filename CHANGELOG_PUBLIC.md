@@ -23,6 +23,13 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.7g Altair — Dar de Alta un Producto Ya No Mueve los Pedidos (Octubre 2026)
+
+* 🛡️ **Al dar de alta un producto (por ejemplo, una presentación nueva), las cantidades que ya se habían pedido se quedan en su producto.** Antes, una cantidad podía pasar al producto de al lado.
+* 🔄 Las tiendas se actualizan solas esta noche; para hacerlo de inmediato: ⚙️ Mise → ▸ Más opciones → 🔄 Aplicar actualización de estructura pendiente.
+
+---
+
 ## Versión 1.7.7f Altair — Entradas Más Seguras (Octubre 2026)
 
 * 📥 **Después de un traspaso, Registrar entradas vuelve sola a modo Entrada** (y cada noche también). Antes se quedaba en traspaso y lo siguiente del proveedor se podía enviar como traspaso por error.

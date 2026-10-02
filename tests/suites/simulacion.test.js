@@ -122,10 +122,30 @@ function runSimulacionTests() {
   assert.deepStrictEqual(["Fresa", "Leche", "Plátano"].map(x => ped.getRange(filaPed(x), 9).getValue()), ["COMPLETO", "PARCIAL", "INEXISTENTE"], "El Pedido refleja la recepción");
   console.log("  ✓ Encargado y surtidor: pedido en domos, Surtido Rápido con ✅/❌/parcial, CANT. FINAL y avance calculados");
 
-  // ── 23:00: cierre en Bodega (abre la tienda, descuenta lo recibido y la vacía) ──
   B.PropertiesService.getScriptProperties().setProperty("PDA_SPREADSHEET_ID", tda.getId());
   B.PropertiesService.getScriptProperties().setProperty("PDM_SPREADSHEET_ID", "");
   B.SpreadsheetApp.openById = (id) => { if (id === tda.getId()) return tda; throw new Error("sin acceso"); };
+
+  // ── Administrador da de alta una presentación nueva junto a la anterior con pedidos ya capturados (caso real
+  //    Canada Dry 600 ml, 1.7.7g). El IMPORTRANGE de la tienda se actualiza ANTES de que Bodega reordene. ──
+  const pedidoPorNombre = () => {
+    const filas = ped.getRange(4, 3, ped.getLastRow() - 3, 4).getValues();
+    return Object.fromEntries(filas.filter(r => r[0]).map(r => [r[0], [r[1], r[3]]]));   // nombre → [unidad, cantidad]
+  };
+  const antesAlta = pedidoPorNombre();
+  B.powerhouseGuardarCatalogo("BA", { nuevos: [{ name: "Fresa (domo 1 kg)", cat: "FRUTAS", pres: "DOM 1 kg", unit: "kg" }], ediciones: [], eliminados: [], picking: [] });
+  B._buildVista("BA");
+  importar();
+  B.sincronizarRemotamenteTiendasPush("BA");
+  T._sincronizarSiCambioCatalogo("apertura");
+  const despuesAlta = pedidoPorNombre();
+  Object.keys(antesAlta).forEach(nombre => assert.deepStrictEqual(despuesAlta[nombre], antesAlta[nombre],
+    `Tras el alta, ${nombre} conserva su unidad y su cantidad (antes la cantidad brincaba al producto vecino)`));
+  assert.ok(despuesAlta["Fresa (domo 1 kg)"] && despuesAlta["Fresa (domo 1 kg)"][1] === "", "La presentación nueva entra sin cantidad");
+  assert.strictEqual(B._formulasPedidoPorNombre(9, "_SYNC_BA").saldo, T._formulasPedidoPorNombre(9, "_SYNC_BA").saldo, "Misma fórmula por nombre en Bodega y tienda");
+  console.log("  ✓ Alta de una presentación nueva junto a la anterior: cada cantidad se queda en su producto (Pedido por nombre)");
+
+  // ── 23:00: cierre en Bodega (abre la tienda, descuenta lo recibido y la vacía) ──
   const r1 = B.MiseSmartSync.ejecutarDescuento(true);
   assert.strictEqual(r1.totalDescontados, 2, "Se descuentan Fresa y Leche");
   cerca(celdaInv("BA", "Fresa", SAL), 3.178, "Fresa: traspaso 0.908 + 5 domos × 0.454");

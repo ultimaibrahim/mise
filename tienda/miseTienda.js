@@ -165,7 +165,6 @@ function _actualizarAvisoPedido() {
   const count  = sync.getLastRow() - 3; 
   if (count < 1) return;
   const DR     = DATA_START_ROW;
-  const sRef   = "'" + SHEET_SYNC + "'";
   
   const existente = pedido.getRange(DR, 3).getValue(); 
   if (existente !== "" && existente !== null) {
@@ -176,13 +175,13 @@ function _actualizarAvisoPedido() {
 
   const outputGrid = [];
   const bgs = [];
-  
+  const syncNombres = sync.getRange(4, 3, count, 1).getValues();
+
   for (let i = 0; i < count; i++) {
     const r  = DR + i;
-    const sr = 4 + i;
     const bg = i % 2 === 0 ? COLORS.neutral_a : COLORS.neutral_b;
 
-    outputGrid.push(_filaPedido(r, sr, i + 1, {}));
+    outputGrid.push(_filaPedido(r, String(syncNombres[i][0] || "").trim(), i + 1, {}));
 
     const rowBg = Array(_layoutPedido().numCols).fill(bg);
     rowBg[COL_CANT_PEDIR - 1] = COLORS.yellow; // Col F
@@ -494,25 +493,14 @@ function ordenarPedido() {
       return numA - numB;
     });
 
-    // Crear mapa de nombres de producto -> Fila en _SYNC (4-indexed)
-    const syncRowMap = {};
-    for (let i = 0; i < syncValues.length; i++) {
-      const pName = String(syncValues[i][2]).trim(); // Col C = PRODUCTO (index 2)
-      if (pName) {
-        syncRowMap[pName] = 4 + i;
-      }
-    }
-
     const bgs = [];
     const cleanFonts = [];
     const outputData = [];
 
-    const sRef = "'" + SHEET_SYNC + "'";
     for (let i = 0; i < items.length; i++) {
       const r = DATA_START_ROW + i;
       const prodNo = parseInt(items[i].vals[0]) || (i + 1);
       const prodName = String(items[i].vals[2] || "").trim();
-      const sr = syncRowMap[prodName] || (prodNo + 3);
       
       // Generar fondos estándar
       const bgRow = i % 2 === 0 ? COLORS.neutral_a : COLORS.neutral_b;
@@ -527,7 +515,7 @@ function ordenarPedido() {
       cleanFonts.push(rowFont);
 
       // Generar fórmulas y valores limpios (Col G es DIFERENCIA, Col K es MÍN/MÁX QUIOSCO)
-      outputData.push(_filaPedido(r, sr, prodNo, { pedir: items[i].vals[5], recibida: items[i].vals[7], estado: _normalizarEstado(items[i].vals[8]) }));
+      outputData.push(_filaPedido(r, prodName, prodNo, { pedir: items[i].vals[5], recibida: items[i].vals[7], estado: _normalizarEstado(items[i].vals[8]) }));
     }
 
     // Escribir en bloque
@@ -882,7 +870,6 @@ function _reconstruirPedidoDiarioCore(backupData, rep = null) {
 
   // 4. Ensamblado en matriz 2D unificada, restaurando capturas por nombre de producto
   const DR = DATA_START_ROW;
-  const sRef = "'" + SHEET_SYNC + "'";
   const syncVals = sync.getRange(4, 1, syncCount, 12).getValues();
   const orden = _ordenPickingSync(syncVals);
   const outputGrid = [];
@@ -894,7 +881,7 @@ function _reconstruirPedidoDiarioCore(backupData, rep = null) {
     const pName = String(syncVals[orden[i]][2] || "").trim();
     const b = (backupData && backupData[pName]) || {};
 
-    outputGrid.push(_filaPedido(r, sr, i + 1, b));
+    outputGrid.push(_filaPedido(r, pName, i + 1, b));
 
     const rowBg = Array(_layoutPedido().numCols).fill(i % 2 === 0 ? COLORS.neutral_a : COLORS.neutral_b);
     rowBg[4] = COLORS.blue;                    // Col E (Saldo Teórico)
@@ -917,23 +904,37 @@ function _reconstruirPedidoDiarioCore(backupData, rep = null) {
   return syncCount;
 }
 
-// ÚNICO constructor de filas de 📋 PEDIDO DIARIO (A:J en esquema 3; A:K en el 2). Antes había 3 copias idénticas de estas fórmulas
-// (_actualizarAvisoPedido, ordenarPedido, _reconstruirPedidoDiarioCore): un cambio en una no llegaba a las otras.
-//   r = fila en PEDIDO · sr = fila de ESE producto en _SYNC · no = número · c = capturas {pedir, recibida, estado}
-function _filaPedido(r, sr, no, c) {
-  const S = "'" + SHEET_SYNC + "'!";
+// Esquema 4 (1.7.7g): el PRODUCTO (C) es un valor fijo y lo demás se busca POR NOMBRE en _SYNC. Antes cada fila apuntaba
+// a un NÚMERO de fila de _SYNC: un alta recorría las filas y la cantidad capturada quedaba junto al producto vecino
+// (caso real Canada Dry 600 ml). La MISMA función vive en bdg/miseAuthBDG.js (lo verifica simulacion.test.js).
+function _formulasPedidoPorNombre(r, hojaSync) {
+  const S = "'" + hojaSync + "'!";
+  const m = `MATCH($C${r}, ${S}$C$4:$C, 0)`;
+  const col = (L) => `INDEX(${S}$${L}$4:$${L}, ${m})`;
+  return {
+    categoria: `=IFERROR(${col("B")}, "")`,
+    unidad: `=IFERROR(${col("D")}, "")`,
+    saldo: `=IFERROR(LET(e, ${col("E")}*1, j, ${col("J")}, k, ${col("K")}, e & IF(AND(j=0, k=0), "", IF(e<j, " (-" & (j-e) & ")", IF(e>k, " (+" & (e-k) & ")", " (-)")))), 0)`,
+    minmax: `=IFERROR(LET(j, ${col("J")}, k, ${col("K")}, IF(AND(j=0, k=0), "—", j & "  |  " & k)), "—")`
+  };
+}
+
+// ÚNICO constructor de filas de 📋 PEDIDO DIARIO (A:J en esquema 3+; A:K en el 2).
+//   r = fila en PEDIDO · nombre = producto (identidad de la fila) · no = número · c = capturas {pedir, recibida, estado}
+function _filaPedido(r, nombre, no, c) {
+  const f = _formulasPedidoPorNombre(r, SHEET_SYNC);
   const v = (x) => (x !== "" && x !== null && x !== undefined) ? x : "";
   const fila = [
     no,                                                            // A No
-    '=' + S + 'B' + sr,                                            // B CATEGORÍA
-    '=' + S + 'C' + sr,                                            // C PRODUCTO
-    '=' + S + 'D' + sr,                                            // D UNIDAD
-    '=IFERROR(' + S + 'E' + sr + '*1, 0) & IF(AND(' + S + 'J' + sr + '=0, ' + S + 'K' + sr + '=0), "", IF(' + S + 'E' + sr + '<' + S + 'J' + sr + ', " (-" & (' + S + 'J' + sr + '-' + S + 'E' + sr + ') & ")", IF(' + S + 'E' + sr + '>' + S + 'K' + sr + ', " (+" & (' + S + 'E' + sr + '-' + S + 'K' + sr + ') & ")", " (-)")))', // E SALDO
+    f.categoria,                                                   // B CATEGORÍA
+    nombre,                                                        // C PRODUCTO (valor fijo)
+    f.unidad,                                                      // D UNIDAD
+    f.saldo,                                                       // E SALDO
     v(c.pedir),                                                    // F CANT. A PEDIR
     '=IF(OR(F' + r + '="", H' + r + '=""), "", H' + r + ' - F' + r + ')', // G DIFERENCIA
     v(c.recibida),                                                 // H RECIBIDA
     v(c.estado),                                                   // I ESTADO
-    '=IF(AND(' + S + 'J' + sr + '=0, ' + S + 'K' + sr + '=0), "—", ' + S + 'J' + sr + ' & "  |  " & ' + S + 'K' + sr + ')' // J MÍN | MÁX (K en esquema 2)
+    f.minmax                                                       // J MÍN | MÁX (K en esquema 2)
   ];
   if (_layoutPedido().esquema === 2) fila.splice(9, 0, "");         // esquema 2: J reservada vacía
   return fila;
@@ -958,7 +959,7 @@ function _ordenPickingSync(syncVals) {
 //    no de la hoja a medio reconstruir.
 //  • Idempotente: solo corre si la versión guardada es menor que la del código.
 //  • Compatible: mientras no migra, el código nuevo opera sobre la estructura vieja sin romperla.
-const MISE_SCHEMA_TIENDA = 3; // 2 = v1.7.5 (DIFERENCIA intra-fila, CANT. FINAL) · 3 = v1.7.6k (sin columna J reservada)
+const MISE_SCHEMA_TIENDA = 4; // 2 = v1.7.5 (DIFERENCIA intra-fila, CANT. FINAL) · 3 = v1.7.6k (sin columna J reservada) · 4 = v1.7.7g (PRODUCTO fijo, lo demás por nombre)
 const PROP_SCHEMA        = "MISE_SCHEMA_VERSION";
 const PROP_MIGRANDO      = "MISE_SCHEMA_MIGRANDO";
 const SHEET_SURTIDO      = "🚚 SURTIDO RÁPIDO";
@@ -1392,7 +1393,7 @@ function _aplicarFormatosCondicionales(sheet) {
   _estiloTactilPedido(sheet, count);
 }
 
-const MISE_VERSION = "1.7.7f";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7g";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "🚚 Surtido: el producto y lo pedido siempre a la vista, incluso en pantallas chicas",

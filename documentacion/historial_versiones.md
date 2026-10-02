@@ -5,6 +5,16 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.7g Altair (Pedido por nombre) — 2026-10-02 [PROD]
+
+### 🏪 Tiendas (PDA / PDM)
+* Esquema 4: el Pedido identifica cada fila por el nombre del producto; un alta en Bodega ya no recorre cantidades (caso Canada Dry 600 ml).
+
+### 🏬 Bodega (BDG)
+* El escritor remoto escribe por nombre y solo reordena si entran o salen productos.
+
+---
+
 ## ⚡ v1.7.7f Altair (Entradas más seguras) — 2026-10-01 [PROD]
 
 ### 🏬 Bodega (BDG)

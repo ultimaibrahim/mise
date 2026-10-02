@@ -83,7 +83,8 @@ function runMigracionTests() {
     const { ss, sandbox, props } = ctx;
     const { pedido } = _preparar(ctx);
     const pedidoFila = (r) => pedido.getRange(r, 1, 1, 10).getValues()[0];
-    const filaDe = (nombre) => { for (let r = 4; r <= 6; r++) if (String(pedido.getRange(r, 3).getValue()).includes(`!C${ {Fresa: 4, Leche: 5, Harina: 6}[nombre] }`)) return r; return -1; };
+    // Esquema 4: PRODUCTO (C) es el nombre fijo de la fila
+    const filaDe = (nombre) => { for (let r = 4; r <= 6; r++) if (String(pedido.getRange(r, 3).getValue()) === nombre) return r; return -1; };
 
     // 0. Compatibilidad: con el código nuevo, una tienda que AÚN no migra conserva su estructura (J reservada,
     //    MÍN|MÁX en K, auxiliares L:O); nada escribe las auxiliares encima de su MÍN|MÁX
@@ -100,7 +101,7 @@ function runMigracionTests() {
 
     // 2. Activador nocturno: migra, respalda y restaura capturas
     sandbox._migrarSiEsActivador({ triggerUid: "t-1" });
-    assert.strictEqual(props.MISE_SCHEMA_VERSION, "3", `${tag}: esquema actualizado`);
+    assert.strictEqual(props.MISE_SCHEMA_VERSION, "4", `${tag}: esquema actualizado`);
     assert.ok(!("MISE_SCHEMA_MIGRANDO" in props), `${tag}: bandera de reintento limpia`);
     // Orden de picking (Leche, Harina, Fresa) y cada captura en SU producto
     eq([filaDe("Leche"), filaDe("Harina"), filaDe("Fresa")], [4, 5, 6], `${tag}: reconstruye en orden de picking, no de _SYNC`);
@@ -109,8 +110,12 @@ function runMigracionTests() {
     // Esquema 3: MÍN|MÁX en J (del propio producto), auxiliares en K:N, nada en la vieja J reservada
     assert.strictEqual(pedido.getRange(3, 10).getValue(), "MÍN  |  MÁX", `${tag}: encabezado MÍN|MÁX en J`);
     assert.strictEqual(pedido.getRange(3, 11).getValue(), "_ACTIVO", `${tag}: auxiliares recorridas a K:N`);
-    assert.ok(String(pedidoFila(6)[9]).startsWith("=IF(AND('_SYNC_BA'!J4=0"), `${tag}: J de Fresa = MÍN|MÁX de Fresa (_SYNC fila 4)`);
-    assert.ok(String(pedidoFila(4)[9]).startsWith("=IF(AND('_SYNC_BA'!J5=0"), `${tag}: J de Leche = MÍN|MÁX de Leche (_SYNC fila 5)`);
+    // Esquema 4: todo lo de _SYNC se busca por el NOMBRE de la fila (un alta ya no recorre las cantidades)
+    [4, 5, 6].forEach(r => {
+      const f = pedidoFila(r);
+      assert.ok([f[1], f[3], f[4], f[9]].every(x => String(x).includes(`MATCH($C${r}, '_SYNC_BA'!$C$4:$C, 0)`)), `${tag}: fila ${r} busca categoría, unidad, saldo y MÍN|MÁX por nombre`);
+      assert.ok(!/'_SYNC_BA'![A-Z]\d/.test(f.join(" ")), `${tag}: fila ${r} sin referencias a una fila fija de _SYNC`);
+    });
     eq(pedidoFila(5).slice(5, 10)[0], "", `${tag}: Harina sin captura`);
     // Inactivo y semáforo por producto (columnas auxiliares por nombre), sin INDIRECT(ROW())
     assert.ok(String(ctx._formulas["📋 PEDIDO DIARIO!4,11"]).startsWith("=ARRAYFORMULA(IF(C4:C=\"\",,IFERROR(VLOOKUP(C4:C,'_SYNC_BA'!C4:K,{7,3,8,9},FALSE)"), `${tag}: auxiliares K:N por nombre`);
@@ -119,12 +124,12 @@ function runMigracionTests() {
     assert.ok(reglas.includes('=AND($M4>0, $L4<0.5*$M4)'), `${tag}: semáforo lee saldo (L) y mínimo (M) recorridos`);
     assert.ok(reglas.every(f => !/\$O4/.test(f)) && !reglas.includes('=$L4="NO"'), `${tag}: ninguna regla apunta a las auxiliares viejas (L:O)`);
     assert.ok(reglas.every(f => !f.includes("INDIRECT")), `${tag}: sin reglas INDIRECT(ROW())`);
-    assert.ok(ss.getSheetByName("_RESPALDO_PEDIDO_v3"), `${tag}: respaldo nativo de PEDIDO`);
-    assert.ok(ss.getSheetByName("_RESPALDO_SURTIDO_v3"), `${tag}: respaldo nativo de SURTIDO`);
-    assert.strictEqual(ss.getSheetByName("_RESPALDO_PEDIDO_v3").getRange(7, 3).getValue(), "Descontinuado", `${tag}: el respaldo conserva todo`);
+    assert.ok(ss.getSheetByName("_RESPALDO_PEDIDO_v4"), `${tag}: respaldo nativo de PEDIDO`);
+    assert.ok(ss.getSheetByName("_RESPALDO_SURTIDO_v4"), `${tag}: respaldo nativo de SURTIDO`);
+    assert.strictEqual(ss.getSheetByName("_RESPALDO_PEDIDO_v4").getRange(7, 3).getValue(), "Descontinuado", `${tag}: el respaldo conserva todo`);
     const surtido = ss.getSheetByName("🚚 SURTIDO RÁPIDO");
     assert.strictEqual(surtido.getRange(3, 8).getValue(), "FINAL", `${tag}: Surtido regenerado con estructura nueva`);
-    console.log(`  ✓ ${tag}: activador nocturno migra, respalda (copia nativa + RAM) y restaura F/H/I y quita la J reservada (esquema 3)`);
+    console.log(`  ✓ ${tag}: activador nocturno migra, respalda (copia nativa + RAM) y restaura F/H/I y quita la J reservada (esquemas 3 y 4)`);
     console.log(`  ✓ ${tag}: reconstrucción respeta el picking custom; inactivo/semáforo pintan al producto correcto`);
 
     // 3. Idempotente
@@ -132,7 +137,7 @@ function runMigracionTests() {
 
     // 4. Reintento tras fallo: toma capturas del respaldo original, no de la hoja a medias
     props.MISE_SCHEMA_VERSION = "1";
-    props.MISE_SCHEMA_MIGRANDO = "3";
+    props.MISE_SCHEMA_MIGRANDO = "4";
     pedido.getRange(4, 6, 3, 1).clearContent();           // la corrida fallida dejó F vacía
     assert.strictEqual(sandbox._migrarEsquemaTienda(), true, `${tag}: reintento`);
     eq([pedidoFila(6)[5], pedidoFila(4)[5]], [5, 4], `${tag}: cantidades recuperadas del respaldo original`);

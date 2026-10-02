@@ -38,6 +38,7 @@ function _tokens(f) {
       t.push({ tipo: "ref", hoja, a: m[2].replace(/\$/g, ""), b: m[3] ? m[3].replace(/\$/g, "") : null });
       i += m[0].length; continue;
     }
+    if ((m = resto.match(/^[A-Za-z_][A-Za-z0-9_]*(?![\w(!])/))) { t.push({ tipo: "id", v: m[0] }); i += m[0].length; continue; }   // nombre de LET
     if ((m = resto.match(re.numero))) { t.push({ tipo: "num", v: parseFloat(m[0]) }); i += m[0].length; continue; }
     if ((m = resto.match(re.op))) { t.push({ tipo: "op", v: m[1] }); i += m[0].length; continue; }
     throw new ErrorHoja("#ERROR!");
@@ -68,6 +69,7 @@ function crearEvaluador(version = () => 0, importRange = () => null) {
     try {
       const t = _tokens(formula.replace(/^=/, ""));
       let p = 0;
+      const vars = {};            // variables de LET
       const ver = () => t[p];
       const tomar = (v) => { const x = t[p]; if (v && (!x || x.v !== v)) throw new ErrorHoja("#ERROR!"); p++; return x; };
 
@@ -154,6 +156,23 @@ function crearEvaluador(version = () => 0, importRange = () => null) {
           if (v === null || v === undefined) throw new ErrorHoja("#REF!");
           return v;
         },
+        MATCH: (args) => {
+          const buscado = valor(args[0]()), rango = args[1](), tipo = args[2] ? num(valor(args[2]())) : 1;
+          if (!(rango instanceof Rango) || tipo !== 0) throw new ErrorHoja("#N/A");
+          const n = rango.filas > 1 ? rango.filas : rango.columnas;
+          for (let i = 0; i < n; i++) {
+            const v = rango.filas > 1 ? rango.en(i, 0) : rango.en(0, i);
+            if (!esError(v) && v !== VACIO && comparar(v, buscado, "=")) return i + 1;
+          }
+          throw new ErrorHoja("#N/A");
+        },
+        INDEX: (args) => {
+          const rango = args[0](), f = num(valor(args[1]())), c = args[2] ? num(valor(args[2]())) : 1;
+          if (!(rango instanceof Rango)) return rango;
+          if (rango.columnas === 1 && !args[2]) { if (f < 1 || f > rango.filas) throw new ErrorHoja("#REF!"); return rango.en(f - 1, 0); }
+          if (f < 1 || f > rango.filas || c < 1 || c > rango.columnas) throw new ErrorHoja("#REF!");
+          return rango.en(f - 1, c - 1);
+        },
         INDIRECT: () => { throw new ErrorHoja("#REF!"); }
       };
 
@@ -208,6 +227,10 @@ function crearEvaluador(version = () => 0, importRange = () => null) {
         const x = tomar();
         if (!x) throw new ErrorHoja("#ERROR!");
         if (x.tipo === "num" || x.tipo === "txt" || x.tipo === "bool") return x.v;
+        if (x.tipo === "id") {
+          if (Object.prototype.hasOwnProperty.call(vars, x.v.toUpperCase())) return vars[x.v.toUpperCase()];
+          throw new ErrorHoja("#NAME?");
+        }
         if (x.tipo === "ref") {
           if (!x.b && /\d/.test(x.a)) { const a = parteRef(x.a); return celda(hojaDe(x.hoja), a.r, a.c); }
           return rango(x);
@@ -233,6 +256,19 @@ function crearEvaluador(version = () => 0, importRange = () => null) {
             p = d;
             try { const v = expr(); if (p !== h) throw new ErrorHoja("#ERROR!"); return v; } finally { p = guarda; }
           }));
+          if (x.v === "LET") {
+            // LET(nombre1, valor1, …, expresión): los nombres se resuelven como variables locales
+            const pares = cortes.slice(0, -1);
+            const guardaVars = Object.assign({}, vars);
+            try {
+              for (let i = 0; i + 1 < pares.length; i += 2) {
+                const tk = t[pares[i][0]];
+                const nombre = tk.v || tk.a;
+                vars[String(nombre).toUpperCase()] = args[i + 1]();
+              }
+              return args[args.length - 1]();
+            } finally { Object.keys(vars).forEach(k => delete vars[k]); Object.assign(vars, guardaVars); }
+          }
           if (x.v === "SUMPRODUCT") {
             const ms = args.map(a => aMatriz(a()));
             if (!ms.every(Array.isArray)) return ms.reduce((s, m) => s * num(valor(m)), 1);

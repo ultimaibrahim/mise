@@ -428,6 +428,8 @@ function prepararDatosVideo() {
   SpreadsheetApp.flush();
   _buildVista("BA"); _buildVista("BM");
   try { sincronizarRemotamenteTiendasPush(); } catch (e) { resumen.push("Tiendas: " + e.message); }
+  const hojaEnt = _hoja(ss, SHEET_ENTRADAS);
+  if (hojaEnt) hojaEnt.getRange("A2").setValue(ENTRADAS_MODOS[0]);
   _prepararHojaEntradas(true);
   ui.alert("🎬 Datos listos", resumen.join("\n") + "\n\nPepino y Limón: se reciben pesados.", ui.ButtonSet.OK);
 }
