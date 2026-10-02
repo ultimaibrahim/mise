@@ -66,6 +66,15 @@ function runPowerhouseTests() {
   sandbox.powerhouseGuardarCatalogo("BA", { nuevos: [{ name: "Azúcar", cat: "ABARROTES", unit: "kg" }], picking: [] });
   assert.strictEqual(reconstrucciones, 1, "Altas reconstruyen");
   console.log("  ✓ Solo las altas disparan la reconstrucción completa");
+
+  // 4. Orden del Catálogo como picking por default (1.7.7b): solo la tienda elegida
+  const filas = maestro.getLastRow() - 3;                 // incluye el alta del paso 3
+  maestro.getRange(4, 18, filas, 2).setValues(Array.from({ length: filas }, (_, i) => [90 + i, 90 + i]));
+  const n = sandbox._restablecerPickingCatalogo(["BM"]);
+  assert.strictEqual(n, filas, "Todos los productos del Catálogo");
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(maestro.getRange(4, 19, filas, 1).getValues())), Array.from({ length: filas }, (_, i) => [i + 1]), "Mercado = orden de filas del Catálogo");
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(maestro.getRange(4, 18, filas, 1).getValues())), Array.from({ length: filas }, (_, i) => [90 + i]), "Andares conserva su orden personalizado");
+  console.log("  ✓ Orden del Catálogo como picking por default (por tienda), sin tocar la otra");
 }
 
 module.exports = { runPowerhouseTests };

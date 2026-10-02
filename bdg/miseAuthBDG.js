@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.7a Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.7b Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -232,6 +232,10 @@ function onOpen() {
         .addSubMenu(ui.createMenu("📋 Catálogo")
           .addItem("⚖️ Llenar factores desde la presentación", "sugerirFactoresDesdePresentacion")
           .addItem("🧹 Eliminar productos duplicados", "eliminarDuplicadosCatalogo")
+          .addSubMenu(ui.createMenu("🔢 Orden de picking = orden del Catálogo")
+            .addItem("Andares", "restablecerPickingAndares")
+            .addItem("Mercado", "restablecerPickingMercado")
+            .addItem("Ambas tiendas", "restablecerPickingAmbas"))
           .addItem("🧠 Reconciliador de productos huérfanos", "abrirReconciliadorInteligenteHTML"))
         .addSubMenu(ui.createMenu("🔒 Seguridad")
           .addItem("👥 Administradores", "configurarAdministradores")
@@ -2000,7 +2004,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.7a";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7b";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "📥 Entradas en la unidad de cada producto (bolsa, caja…) y la fruta en kg exactos: Mise convierte",
@@ -3399,6 +3403,42 @@ function _aplicarFactoresSugeridos(maestro, soloFila) {
   }
   return { aplicados, revisar };
 }
+
+// ── 🔢 ORDEN DEL CATÁLOGO COMO PICKING POR DEFAULT (1.7.7b) ──────────────────────────────────────
+// Copia el orden de filas del 📋 Catálogo (categoría y número) como orden de picking de la(s) tienda(s): un punto de
+// partida limpio para después ajustar a mano en ⚡ Powerhouse. Las tiendas lo aplican solas (huella del catálogo) al
+// abrirse o a las 00:00; las posiciones del inventario no cambian, así que no hay reordenamiento a distancia.
+function _restablecerPickingCatalogo(keys) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const maestro = _hoja(ss, SHEET_MAESTRO);
+  if (!maestro || maestro.getLastRow() < MAESTRO_START) return 0;
+  const map = _getMaestroHeaderMap(maestro);
+  const cProd = map["PRODUCTO"] ? map["PRODUCTO"].index : 2;
+  const n = maestro.getLastRow() - MAESTRO_START + 1;
+  const prods = maestro.getRange(MAESTRO_START, cProd + 1, n, 1).getValues();
+  let rank = 0;
+  const ranks = prods.map(r => [String(r[0]).trim() ? ++rank : ""]);
+  keys.forEach(k => {
+    const m = map[`PICKING_${k}`];
+    if (m) maestro.getRange(MAESTRO_START, m.col, n, 1).setValues(ranks);
+  });
+  MiseLogger.info("restablecerPickingCatalogo", `Picking de ${keys.map(k => BODEGAS[k].nombre).join(" y ")} = orden del Catálogo (${rank} productos).`);
+  return rank;
+}
+
+function _restablecerPickingConConfirmacion(keys) {
+  const ui = SpreadsheetApp.getUi();
+  const nombres = keys.map(k => BODEGAS[k].nombre).join(" y ");
+  const ok = ui.alert("🔢 Restablecer el orden de picking",
+    `El orden de picking de ${nombres} será el mismo del 📋 Catálogo (por categoría y número). Lo personalizado se reemplaza.\n\n` +
+    "La tienda lo aplica sola al abrirse o a las 00:00. Después puedes ajustarlo en ⚡ Powerhouse.\n\n¿Continuar?", ui.ButtonSet.YES_NO);
+  if (ok !== ui.Button.YES) return;
+  const n = _restablecerPickingCatalogo(keys);
+  ui.alert("✅ Orden restablecido", `${n} productos con el orden del Catálogo en ${nombres}.`, ui.ButtonSet.OK);
+}
+function restablecerPickingAndares() { _restablecerPickingConConfirmacion(["BA"]); }
+function restablecerPickingMercado() { _restablecerPickingConConfirmacion(["BM"]); }
+function restablecerPickingAmbas() { _restablecerPickingConConfirmacion(["BA", "BM"]); }
 
 function sugerirFactoresDesdePresentacion() {
   const maestro = _hoja(SpreadsheetApp.getActiveSpreadsheet(), SHEET_MAESTRO);

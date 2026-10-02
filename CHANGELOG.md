@@ -33,6 +33,10 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.7b Altair — Orden del Catálogo como Picking por Default (Octubre 2026) [EN PRUEBAS · DEV]
+* **🔢 Restablecer el picking al orden del Catálogo** (`_restablecerPickingCatalogo`; menú ⚙️ Mise → ▸ Más opciones → 📋 Catálogo → 🔢 Orden de picking = orden del Catálogo → Andares / Mercado / Ambas, con confirmación): copia el orden de filas del Catálogo (categoría y número) a `PICKING_BA`/`PICKING_BM` como punto de partida para ajustar después en Powerhouse. Las tiendas lo aplican solas por la huella del catálogo (al abrir o a las 00:00); no hay reordenamiento a distancia porque las posiciones del inventario no cambian.
+* **Testing**: picking de Mercado = orden del Catálogo, Andares conserva su orden personalizado.
+
 ### Version 1.7.7a Altair — Entradas con Conversión: Presentaciones y Peso Exacto (Octubre 2026) [EN PRUEBAS · DEV]
 * **Conversión al recibir del proveedor** (`_conversionEntrada`): en `📥 Registrar entradas` (modo Entrada) cada producto se captura en su unidad natural y Mise lo pasa a la unidad del inventario: **con unidad de pedido** → en esa unidad (bol, caj…) × factor; **pesado** (nueva columna `RECEPCION_PESADA` en el Catálogo, "Se recibe pesado (kg) 🔒", solo administrador) → **kg exactos**: directo si el inventario es de peso, o ÷ el peso por unidad de la presentación (`_pesoPorUnidadKg`: "PZA 180 g" → 0.18 kg) si cuenta domos/piezas (piezas redondeadas a entero: estimación); sin unidad de pedido → como antes. La columna UNIDAD muestra la unidad de captura de cada producto y la fila 3 lista las conversiones ("Plátano 5 kg → 28 pza").
 * **Todo o nada**: un producto pesado sin peso por unidad en la presentación (o con presentación sin contenido) bloquea el envío y lo explica.

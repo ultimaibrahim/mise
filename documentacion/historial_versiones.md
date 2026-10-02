@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.7b Altair (Picking por default) — 2026-10-01 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG)
+* Restablecer el orden de picking de una o ambas tiendas al orden del Catálogo.
+
+---
+
 ## ⚡ v1.7.7a Altair (Entradas con conversión) — 2026-10-01 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG)

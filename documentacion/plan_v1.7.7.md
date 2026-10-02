@@ -13,7 +13,7 @@
 
 ## Fase 0.2 — Pedido de Ibrahim (01/oct, tras la subida de la 1.7.6)
 - [x] *(1.7.7a)* **Entradas con conversión**: presentaciones × factor; fruta/verdura en kg exactos → domos/piezas por peso de la presentación.
-- [ ] *(1.7.7b)* **Orden del Catálogo como default de picking** (por tienda o ambas) y desde ahí ajustar.
+- [x] *(1.7.7b)* **Orden del Catálogo como default de picking** (por tienda o ambas) y desde ahí ajustar.
 - [ ] *(1.7.7c)* **Monitor de progreso** en todos los procesos pesados de Bodega y tiendas.
 - [ ] *(1.7.7d–e)* **Powerhouse**: medir y acelerar la carga, ficha por producto con pestañas (General · Unidades · Mín/Máx · Orden), nombres completos, diálogo sin bloqueo.
 

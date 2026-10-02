@@ -23,6 +23,12 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.7b Altair — Volver al Orden del Catálogo (Octubre 2026) [EN PRUEBAS]
+
+* 🔢 **Un botón para que el orden de picking de una tienda sea el mismo del Catálogo**, como punto de partida para luego acomodarlo a mano.
+
+---
+
 ## Versión 1.7.7a Altair — Recibir Mercancía sin Hacer Cuentas (Octubre 2026) [EN PRUEBAS]
 
 * 📥 **En Registrar entradas cada producto se escribe como llega**: bolsas, cajas o paquetes, y Mise calcula lo que suma al inventario.
