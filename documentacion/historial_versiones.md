@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.7a Altair (Entradas con conversión) — 2026-10-01 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG)
+* Entradas en la unidad de captura de cada producto: presentación × factor o kg exactos (pesados) convertidos al inventario; columna "Se recibe pesado (kg)".
+
+---
+
 ## ⚡ v1.7.6za Altair (Hotfix factores) — 2026-10-01 [PROD]
 
 ### 🏬 Bodega (BDG)

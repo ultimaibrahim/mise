@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.6za Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.7a Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -142,6 +142,7 @@ function _getMaestroHeaderMap(sheet) {
     { canonical: "MÍN_BM", aliases: ["MIN_BM"] },
     { canonical: "MÁX_BM", aliases: ["MAX_BM"] },
     { canonical: "UNIDAD_TIENDA", aliases: ["UNIDAD_TIENDA", "UNIDAD TIENDA", "UNIDAD_PEDIDO", "UNIDAD PEDIDO", "UNIDAD_SUCURSAL"] },
+    { canonical: "RECEPCION_PESADA", aliases: ["RECEPCION_PESADA", "RECEPCIÓN_PESADA", "SE_RECIBE_PESADO", "PESADO"] },
     { canonical: "FACTOR_CONVERSION", aliases: ["FACTOR_CONVERSION", "FACTOR_CONVERSIÓN", "FACTOR", "FACTOR CONVERSION", "FACTOR CONVERSIÓN", "CONVERSION"] }
   ];
 
@@ -1999,9 +2000,10 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.6za";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7a";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
+  "📥 Entradas en la unidad de cada producto (bolsa, caja…) y la fruta en kg exactos: Mise convierte",
   "🔄 Traspasos en la unidad de pedido (domo, caja…): Mise convierte a la unidad de bodega",
   "📦 Inventario: hoy con sus colores y en negritas; los demás días atenuados",
   "📥 Registrar entradas cabe completa en el celular y la casilla Enviar es más grande",
@@ -3314,7 +3316,7 @@ function protegerTodasLasHojasSeguras() {
 // Fila 2 = etiquetas claras por columna (con nota de ayuda); fila 3 = nombres técnicos que usa el código (no cambian).
 const CATALOGO_EDITABLES = ["ACTIVO", "MÍN_BA", "MÁX_BA", "MÍN_Q_BA", "MÁX_Q_BA", "MÍN_BM", "MÁX_BM", "MÍN_Q_BM", "MÁX_Q_BM"];
 // Visibles (1.7.6q): sin CATEGORÍA (la agrupa el Powerhouse) y con PRESENTACIÓN, de donde se sugiere el factor
-const CATALOGO_VISIBLES = ["PRODUCTO", "PRESENTACION", "UNIDAD", ...CATALOGO_EDITABLES, "UNIDAD_TIENDA", "FACTOR_CONVERSION"];
+const CATALOGO_VISIBLES = ["PRODUCTO", "PRESENTACION", "UNIDAD", ...CATALOGO_EDITABLES, "UNIDAD_TIENDA", "FACTOR_CONVERSION", "RECEPCION_PESADA"];
 const CATALOGO_PARES = [["MÍN_BA", "MÁX_BA"], ["MÍN_Q_BA", "MÁX_Q_BA"], ["MÍN_BM", "MÁX_BM"], ["MÍN_Q_BM", "MÁX_Q_BM"]];
 const CATALOGO_ETIQUETAS = {
   "CATEGORÍA": ["Categoría"], "PRODUCTO": ["Producto"], "UNIDAD": ["Unidad\nde bodega"],
@@ -3329,6 +3331,7 @@ const CATALOGO_ETIQUETAS = {
   "MÍN_Q_BM": ["Mercado\ntienda · mín.", "Mínimo que ve la tienda Mercado en su Pedido Diario."],
   "MÁX_Q_BM": ["Mercado\ntienda · máx.", "Máximo que ve la tienda Mercado en su Pedido Diario."],
   "UNIDAD_TIENDA": ["Unidad de pedido\n(tienda) 🔒", "Cómo pide la tienda: domo, caja, paquete… Vacío = la tienda pide en la misma unidad que bodega. Solo lo cambia el administrador."],
+  "RECEPCION_PESADA": ["Se recibe\npesado (kg) 🔒", "SÍ = en 📥 Registrar entradas se escribe el PESO EXACTO en kg (fruta, verdura, lo que varía). Si el inventario cuenta en domos o piezas, Mise divide entre el peso de cada uno según la presentación (ej. PZA 180 g). Solo lo cambia el administrador."],
   "FACTOR_CONVERSION": ["1 de pedido =\n¿cuánto en bodega? 🔒", "Ejemplos: 1 domo de fresa = 0.454 kg → 0.454 · 1 caja de guantes = 100 pz → 100 · 1 paquete de conos = 50 pz → 50. Vacío = 1. Bodega descuenta pedido × este número. Solo lo cambia el administrador."]
 };
 const CATALOGO_COLOR = { BA: "#DCEFE3", BM: "#E3E8F5", base: "#F5EFE6" };
@@ -3462,6 +3465,11 @@ function _prepararCatalogoAmigable(maestro) {
     maestro.setColumnWidth(map["FACTOR_CONVERSION"].col, 110);
   }
   if (map["UNIDAD_TIENDA"]) maestro.setColumnWidth(map["UNIDAD_TIENDA"].col, 110);
+  if (map["RECEPCION_PESADA"]) {
+    maestro.getRange(MAESTRO_START, map["RECEPCION_PESADA"].col, n, 1).setDataValidation(SpreadsheetApp.newDataValidation()
+      .requireValueInList(["SÍ", ""], true).setAllowInvalid(false).setHelpText("SÍ = se recibe pesado (kg exactos). Vacío = por presentación.").build());
+    maestro.setColumnWidth(map["RECEPCION_PESADA"].col, 100);
+  }
 
   if (map["PRESENTACION"]) maestro.setColumnWidth(map["PRESENTACION"].col, 130);
 
@@ -4537,7 +4545,8 @@ function _asegurarColumnasQuioscoEnMaestro(maestroSheet) {
     { key: "PICKING_BA", width: 90, isStock: false },
     { key: "PICKING_BM", width: 90, isStock: false },
     { key: "UNIDAD_TIENDA", width: 100, isStock: false, defaultVal: "" },
-    { key: "FACTOR_CONVERSION", width: 110, isStock: false, defaultVal: "", numberFormat: "0.####" } // vacío = sin conversión
+    { key: "FACTOR_CONVERSION", width: 110, isStock: false, defaultVal: "", numberFormat: "0.####" }, // vacío = sin conversión
+    { key: "RECEPCION_PESADA", width: 100, isStock: false, defaultVal: "" } // "SÍ" = en Entradas se escribe el peso exacto en kg
   ];
 
   const lr = sheet.getLastRow();
@@ -4948,9 +4957,39 @@ function _unidadesCatalogo(ss) {
     const pedido = map["UNIDAD_TIENDA"] ? String(r[map["UNIDAD_TIENDA"].index] || "").trim() : "";
     const f = map["FACTOR_CONVERSION"] ? parseFloat(String(r[map["FACTOR_CONVERSION"].index]).replace(",", ".")) : NaN;
     mapa[nombre] = { kardex: map["UNIDAD"] ? String(r[map["UNIDAD"].index] || "").trim() : "",
-      pedido, factor: pedido && f > 0 ? f : 1 };
+      pedido, factor: pedido && f > 0 ? f : 1,
+      pres: map["PRESENTACION"] ? String(r[map["PRESENTACION"].index] || "").trim() : "",
+      pesado: map["RECEPCION_PESADA"] ? /^S[IÍ]$/i.test(String(r[map["RECEPCION_PESADA"].index] || "").trim()) : false };
   });
   return mapa;
+}
+
+// ── ⚖️ CONVERSIÓN EN ENTRADAS (1.7.7a) ────────────────────────────────────────────────────────
+// Cómo se captura cada producto al recibir del proveedor y cómo pasa a la unidad del inventario:
+//  · pesado (fruta, verdura…): kg exactos → si el inventario es de peso, directo; si cuenta domos/piezas, ÷ peso de cada
+//    uno según la presentación ("PZA 180 g" → 0.18 kg); las piezas se redondean a entero (es una estimación).
+//  · con unidad de pedido: en esa unidad (bol, caj…) × factor.  · sin unidad de pedido: la unidad del inventario.
+function _pesoPorUnidadKg(presentacion) {
+  const m = String(presentacion || "").trim().match(/(\d+(?:[.,]\d+)?)\s*([\p{L}.]+)$/u);
+  if (!m) return null;
+  const u = _unidadBase(m[2]);
+  if (!u || u[0] !== "masa") return null;
+  const kg = parseFloat(m[1].replace(",", ".")) * u[1] / 1000;
+  return kg > 0 ? kg : null;
+}
+
+function _conversionEntrada(info) {
+  if (!info) return { captura: "", aInventario: (q) => q };
+  if (info.pesado) {
+    const uInv = _unidadBase(info.kardex);
+    if (uInv && uInv[0] === "masa") return { captura: "kg", aInventario: (q) => Math.round(q * 1000 / uInv[1] * 1000) / 1000 };
+    const p = _pesoPorUnidadKg(info.pres);
+    if (!p) return { captura: "kg", error: `falta el peso por unidad en la presentación (ej. "PZA 180 g") para pasar kg a ${info.kardex || "su unidad"}` };
+    const entero = uInv && uInv[0] === "pieza";
+    return { captura: "kg", aInventario: (q) => entero ? Math.round(q / p) : Math.round(q / p * 100) / 100, detalle: `÷ ${p} kg` };
+  }
+  if (info.pedido) return { captura: info.pedido, aInventario: (q) => Math.round(q * info.factor * 10000) / 10000 };
+  return { captura: info.kardex, aInventario: (q) => q };
 }
 
 // Encabezados, colores e instrucción según el modo elegido en A2
@@ -4969,7 +5008,9 @@ function _aplicarModoEntradas(sheet, conMensaje) {
     sheet.getRange(ENTRADAS_START, 2, n, 1).setValues(nombres.map(([p, uActual]) => {
       const u = uni[String(p).trim().toUpperCase()];
       if (!u) return [uActual];
-      return [tr && u.pedido ? u.pedido : (u.kardex || uActual)];
+      if (tr) return [u.pedido || u.kardex || uActual];
+      const c = _conversionEntrada(u);
+      return [c.captura || uActual];
     }));
   }
   if (tr) {
@@ -4983,7 +5024,7 @@ function _aplicarModoEntradas(sheet, conMensaje) {
   if (conMensaje) {
     _estadoEntradas(sheet, tr
       ? `🔄 Traspaso ${BODEGAS[tr.origen].nombre} → ${BODEGAS[tr.destino].nombre}: escribe la CANTIDAD como se pide en tienda (domo, caja… ver UNIDAD) y marca Enviar ⬇.`
-      : "ℹ️ Escribe lo que entró a cada bodega (en su unidad: kg, lt, pza) y marca Enviar ⬇. Aquí verás el resultado.", "info");
+      : "ℹ️ Escribe lo que entró en la UNIDAD de cada producto (bol, caj… o kg exactos en fruta) y marca Enviar ⬇. Mise convierte.", "info");
   }
 }
 
@@ -5188,18 +5229,31 @@ function procesarEntradasKardex() {
     const tr = ENTRADAS_TRASPASO[_modoEntradas(sheet)];
     if (tr) { _procesarTraspasoEntradas(ss, sheet, rows, seleccionDia, tr); return; }
 
+    // Conversión por producto (1.7.7a: pesado → kg exactos; con unidad de pedido → × factor)
+    const uniCat = _unidadesCatalogo(ss);
+    const sinConversion = [];
+    const convertidas = [];
     rows.forEach((r, i) => {
       const nombre = String(r[0]).trim().toUpperCase();
       if (!nombre) return;
+      const conv = _conversionEntrada(uniCat[nombre]);
       [["BA", r[2], 3], ["BM", r[3], 4]].forEach(([key, raw, col]) => {
         const n = _num(raw);
         if (n === null || n === 0) return;
         if (isNaN(n)) { invalidas.push([ENTRADAS_START + i, col]); return; }
-        pedidos[key][nombre] = (pedidos[key][nombre] || 0) + n;
+        if (conv.error) { invalidas.push([ENTRADAS_START + i, col]); sinConversion.push(`${String(r[0]).trim()}: ${conv.error}`); return; }
+        const enInv = conv.aInventario(n);
+        if (enInv !== n) convertidas.push(`${String(r[0]).trim()} ${n} ${conv.captura} → ${enInv} ${(uniCat[nombre] || {}).kardex || ""}`.trim());
+        pedidos[key][nombre] = (pedidos[key][nombre] || 0) + enInv;
         capturadas++;
       });
     });
 
+    if (sinConversion.length > 0) {
+      invalidas.forEach(([row, col]) => sheet.getRange(row, col).setBackground("#FFCDD2"));
+      _estadoEntradas(sheet, `❌ No se puede convertir: ${sinConversion.slice(0, 2).join(" · ")}. No se envió nada.`, "error");
+      return;
+    }
     if (invalidas.length > 0) {
       invalidas.forEach(([row, col]) => sheet.getRange(row, col).setBackground("#FFCDD2"));
       _estadoEntradas(sheet, `❌ ${invalidas.length} celda(s) en rojo no son números ≥ 0. Corrige y vuelve a enviar. No se envió nada.`, "error");
@@ -5260,7 +5314,8 @@ function procesarEntradasKardex() {
     _prepararHojaEntradas(false);
     const hora = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "HH:mm");
     const dias = [...new Set(Object.values(diaPorBodega).map(d => DIAS[d]))].join("/");
-    _estadoEntradas(sheet, `✅ ${capturadas} entrada(s) enviadas a ${dias} · ${hora} (${resumen.join(" · ")})`, "ok");
+    _estadoEntradas(sheet, `✅ ${capturadas} entrada(s) enviadas a ${dias} · ${hora} (${resumen.join(" · ")})` +
+      (convertidas.length ? ` · ${convertidas.slice(0, 3).join(" · ")}${convertidas.length > 3 ? "…" : ""}` : ""), "ok");
   } catch (err) {
     MiseLogger.error("procesarEntradasKardex", err.message || String(err), err);
     _estadoEntradas(sheet, `❌ ${err.message || err}`, "error");

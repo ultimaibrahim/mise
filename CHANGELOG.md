@@ -33,6 +33,11 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.7a Altair — Entradas con Conversión: Presentaciones y Peso Exacto (Octubre 2026) [EN PRUEBAS · DEV]
+* **Conversión al recibir del proveedor** (`_conversionEntrada`): en `📥 Registrar entradas` (modo Entrada) cada producto se captura en su unidad natural y Mise lo pasa a la unidad del inventario: **con unidad de pedido** → en esa unidad (bol, caj…) × factor; **pesado** (nueva columna `RECEPCION_PESADA` en el Catálogo, "Se recibe pesado (kg) 🔒", solo administrador) → **kg exactos**: directo si el inventario es de peso, o ÷ el peso por unidad de la presentación (`_pesoPorUnidadKg`: "PZA 180 g" → 0.18 kg) si cuenta domos/piezas (piezas redondeadas a entero: estimación); sin unidad de pedido → como antes. La columna UNIDAD muestra la unidad de captura de cada producto y la fila 3 lista las conversiones ("Plátano 5 kg → 28 pza").
+* **Todo o nada**: un producto pesado sin peso por unidad en la presentación (o con presentación sin contenido) bloquea el envío y lo explica.
+* **Testing**: fresa pesada (kg → kg), plátano pesado (5 kg → 28 pza), guantes (3 caj → 300 pz), limón sin peso por unidad (bloquea), unidad de captura por producto.
+
 ### Version 1.7.6za Altair — Hotfix: Factores Bloqueados por el "1" por Default (Octubre 2026) [PROD]
 * **Bug (reportado por Ibrahim en PROD tras migrar)**: "⚖️ Llenar factores desde la presentación" respondía "No había factores por llenar". Causa: `_asegurarColumnasQuioscoEnMaestro` creaba `FACTOR_CONVERSION` con **1** en todos los productos y `_aplicarFactoresSugeridos` no pisa un factor escrito. Ahora, sin unidad de pedido, un factor vacío **o de 1** se considera sin factor (no convierte nada) y se llena; una unidad escrita o un factor distinto de 1 nunca se pisan. Las columnas nuevas se crean vacías.
 * Versionado: tras la "z" se usan dos letras (`1.7.6za`); `version.test.js` lo acepta.

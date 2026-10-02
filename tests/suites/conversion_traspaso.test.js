@@ -63,8 +63,50 @@ function runConversionTraspasoTests() {
     // Volver a Entrada: la unidad regresa a la de bodega
     sh.getRange("A2").setValue("📥 Entrada");
     sandbox._aplicarModoEntradas(sh, true);
-    assert.strictEqual(sh.getRange(K.ENTRADAS_START, 2).getValue(), "kg", "En entrada la UNIDAD vuelve a la de bodega");
+    assert.strictEqual(sh.getRange(K.ENTRADAS_START, 2).getValue(), "domo", "En entrada (1.7.7a) se captura en la unidad de pedido");
     console.log("  ✓ Modo traspaso en unidad de pedido (2 domos → 0.908 kg): resta en origen, suma en destino, folio con factor");
+  }
+
+  // ── 1b. Entradas con conversión (1.7.7a): pesado (kg exactos) y por presentación ─────────
+  {
+    const { ss, sandbox } = crearContextoBDG();
+    const K = sandbox.__c;
+    const VMDate = vm.runInContext("Date", sandbox);
+    const hoy = new VMDate();
+    const dow = (hoy.getDay() || 7) - 1;
+    const monday = new VMDate(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - dow);
+    const m = ss.insertSheet("MAESTRO");
+    m.getRange(3, 1, 1, 9).setValues([["No", "CATEGORÍA", "PRODUCTO", "PRESENTACION", "UNIDAD", "ACTIVO", "UNIDAD_TIENDA", "FACTOR_CONVERSION", "RECEPCION_PESADA"]]);
+    const prods = [
+      [1, "FRU", "Fresa", "DOM 454 g", "kg", "SÍ", "dom", 0.454, "SÍ"],     // pesado, inventario en kg → directo
+      [2, "FRU", "Plátano", "PZA 180 g", "pza", "SÍ", "", "", "SÍ"],       // pesado, inventario en piezas → ÷ 0.18
+      [3, "DES", "Guantes", "CAJ 100 PZA", "pza", "SÍ", "caj", 100, ""],   // por presentación → × 100
+      [4, "FRU", "Limón", "PZA", "pza", "SÍ", "", "", "SÍ"]];               // pesado sin peso por unidad → no se puede
+    m.getRange(4, 1, prods.length, 9).setValues(prods);
+    ["KARDEX_BA", "KARDEX_BM"].forEach(k => {
+      const s = ss.insertSheet(k);
+      s.getRange("G4").setValue(monday);
+      s.getRange(7, 1, prods.length, 5).setValues(prods.map(p => p.slice(0, 5)));
+    });
+    sandbox._prepararHojaEntradas();
+    const sh = sandbox._hoja(ss, K.SHEET_ENTRADAS);
+    const uni = sh.getRange(K.ENTRADAS_START, 1, 4, 2).getValues().map(r => r[1]);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(uni)), ["kg", "kg", "caj", "kg"], "UNIDAD de captura: kg en pesados, caj por presentación");
+    const ent = 10 + dow * 3;
+    const inv = sandbox._hoja(ss, "📦 Inventario Andares");
+
+    // Un pesado sin peso por unidad bloquea todo el envío (todo o nada)
+    sh.getRange(K.ENTRADAS_START, 3, 4, 1).setValues([[4.2], [5], [3], [2]]);
+    sandbox.procesarEntradasKardex();
+    assert.ok(/No se puede convertir: Limón/.test(sh.getRange("A3").getValue()) && inv.getRange(7, ent).getValue() === "", "Limón sin peso por unidad: no se envía nada");
+
+    sh.getRange(K.ENTRADAS_START + 3, 3).setValue("");
+    sandbox.procesarEntradasKardex();
+    assert.strictEqual(inv.getRange(7, ent).getValue(), 4.2, "Fresa: 4.2 kg exactos (inventario en kg)");
+    assert.strictEqual(inv.getRange(8, ent).getValue(), 28, "Plátano: 5 kg ÷ 0.18 = 27.8 → 28 piezas");
+    assert.strictEqual(inv.getRange(9, ent).getValue(), 300, "Guantes: 3 cajas × 100 = 300 pz");
+    assert.ok(/Plátano 5 kg → 28 pza/.test(sh.getRange("A3").getValue()), "La fila 3 muestra las conversiones");
+    console.log("  ✓ Entradas con conversión: pesados en kg exactos (→ piezas por peso de la presentación), cajas × factor; sin peso por unidad bloquea");
   }
 
   // ── 2. Conversión: la tienda pide en su unidad, Bodega descuenta en la suya ─────────────

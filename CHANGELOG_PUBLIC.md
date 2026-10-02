@@ -23,6 +23,13 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.7a Altair — Recibir Mercancía sin Hacer Cuentas (Octubre 2026) [EN PRUEBAS]
+
+* 📥 **En Registrar entradas cada producto se escribe como llega**: bolsas, cajas o paquetes, y Mise calcula lo que suma al inventario.
+* ⚖️ **La fruta y lo que varía se registra con el peso exacto en kg**; si el inventario la cuenta por domos o piezas (plátano, pepino, limón…), Mise hace la conversión con el peso de cada uno.
+
+---
+
 ## Versión 1.7.6za Altair — Corrección en las Equivalencias (Octubre 2026) [PROD]
 
 * ⚖️ "Llenar factores desde la presentación" ya funciona en todos los productos (antes un "1" puesto de fábrica lo impedía).
