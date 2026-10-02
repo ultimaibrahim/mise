@@ -23,6 +23,12 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.7f Altair — Entradas Más Seguras (Octubre 2026)
+
+* 📥 **Después de un traspaso, Registrar entradas vuelve sola a modo Entrada** (y cada noche también). Antes se quedaba en traspaso y lo siguiente del proveedor se podía enviar como traspaso por error.
+
+---
+
 ## Versión 1.7.7e Altair — Revisión con un Día Simulado (Octubre 2026)
 
 * 🚦 **El semáforo de STOCK del Inventario vuelve a funcionar** después de reconstrucciones (altas, mantenimiento del domingo).

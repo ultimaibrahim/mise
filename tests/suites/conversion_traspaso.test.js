@@ -59,11 +59,19 @@ function runConversionTraspasoTests() {
       "Folio en 🔄 Traspasos con origen, destino, producto y cantidad");
     assert.deepStrictEqual([fila[6], fila[7], fila[8]], ["domo", 0.454, 0.908], "Folio: unidad de pedido, factor y cantidad en bodega");
     assert.ok(/^✅ 1 traspaso\(s\) Andares → Mercado/.test(sh.getRange("A3").getValue()), "Resultado claro en la fila 3");
-    assert.strictEqual(sh.getRange("A2").getValue(), "🔄 Andares → Mercado", "El modo se conserva tras enviar");
-    // Volver a Entrada: la unidad regresa a la de bodega
-    sh.getRange("A2").setValue("📥 Entrada");
-    sandbox._aplicarModoEntradas(sh, true);
+    // 1.7.7f: tras enviar vuelve sola a 📥 Entrada (antes se quedaba en traspaso y lo siguiente del proveedor
+    // se enviaba como traspaso)
+    assert.strictEqual(sh.getRange("A2").getValue(), "📥 Entrada", "Tras enviar un traspaso la hoja vuelve a Entrada");
+    assert.ok(/volvió a 📥 Entrada/.test(sh.getRange("A3").getValue()), "El mensaje lo dice");
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(sh.getRange(4, 3, 1, 2).getValues()[0])), ["ANDARES", "MERCADO"], "Encabezados de entrada de nuevo");
     assert.strictEqual(sh.getRange(K.ENTRADAS_START, 2).getValue(), "domo", "En entrada (1.7.7a) se captura en la unidad de pedido");
+    // Cierre nocturno: aunque alguien la deje en traspaso sin enviar, el día siguiente empieza en Entrada
+    sh.getRange("A2").setValue("🔄 Mercado → Andares");
+    sandbox.MiseSmartSync.ejecutarDescuento = () => ({});
+    sandbox._recolectarEstadoSistema = () => ({});
+    sandbox._autoVerificarYAvanzarSemanaSilencioso = () => 0;
+    sandbox.descontarSurtidoAutomatico(true);
+    assert.strictEqual(sh.getRange("A2").getValue(), "📥 Entrada", "El cierre de las 23:00 deja la hoja en Entrada");
     console.log("  ✓ Modo traspaso en unidad de pedido (2 domos → 0.908 kg): resta en origen, suma en destino, folio con factor");
   }
 

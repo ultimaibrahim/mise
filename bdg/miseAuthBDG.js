@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.7e Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.7f Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -272,6 +272,8 @@ function onOpen() {
       ui.createMenu("🧪 Mise DEV")
         .addItem("Preparar plantilla de recuperación semanal", "prepararPlantillaRecuperacionSemana")
         .addItem("Inyectar datos de recuperación a Inventario y logs", "procesarInyeccionRecuperacionKardex")
+        .addSeparator()
+        .addItem("🎬 Preparar datos para el video", "prepararDatosVideo")
         .addToUi();
     }
   } catch(e) {}
@@ -2019,7 +2021,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.7e";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7f";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "📥 Entradas en la unidad de cada producto (bolsa, caja…) y la fruta en kg exactos: Mise convierte",
@@ -5467,8 +5469,12 @@ function _procesarTraspasoEntradas(ss, sheet, rows, seleccionDia, tr) {
     nombres.map(n => `${n} ${items[n]} ${unidades[n]}${factor(n) !== 1 ? ` (= ${enKardex[n]} en bodega)` : ""}`).join(", "));
 
   _prepararHojaEntradas(false);
+  // 1.7.7f: de vuelta a 📥 Entrada. Si el modo se quedaba en traspaso, lo siguiente que llegara del proveedor se
+  // enviaba como traspaso (lo encontró la simulación por roles en DEV).
+  sheet.getRange("A2").setValue(ENTRADAS_MODOS[0]);
+  _aplicarModoEntradas(sheet, false);
   const hora = Utilities.formatDate(ahora, Session.getScriptTimeZone(), "HH:mm");
-  _estadoEntradas(sheet, `✅ ${nombres.length} traspaso(s) ${BODEGAS[tr.origen].nombre} → ${BODEGAS[tr.destino].nombre} (${DIAS[dia[tr.origen]]}) · ${hora} · folio ${base}`, "ok");
+  _estadoEntradas(sheet, `✅ ${nombres.length} traspaso(s) ${BODEGAS[tr.origen].nombre} → ${BODEGAS[tr.destino].nombre} (${DIAS[dia[tr.origen]]}) · ${hora} · folio ${base}. La hoja volvió a 📥 Entrada.`, "ok");
 }
 
 // ── ISSUES 7 & 8: DESCUENTO AUTOMÁTICO DE INVENTARIO DESDE LOGS Y SAFEGUARD DE SEMANA ──
@@ -5515,8 +5521,11 @@ function descontarSurtidoAutomatico(silent = true) {
     MiseLogger.warn("descontarSurtidoAutomatico", `Error en auto-avance: ${e.message}`);
   }
 
-  // 3. Hoja 📥 ENTRADAS: crearla si falta y re-sincronizarla con el catálogo vigente (conserva capturas)
+  // 3. Hoja 📥 ENTRADAS: crearla si falta y re-sincronizarla con el catálogo vigente (conserva capturas);
+  //    cada día empieza en modo 📥 Entrada aunque alguien la haya dejado en traspaso
   try {
+    const hojaEnt = _hoja(SpreadsheetApp.getActiveSpreadsheet(), SHEET_ENTRADAS);
+    if (hojaEnt) hojaEnt.getRange("A2").setValue(ENTRADAS_MODOS[0]);
     _prepararHojaEntradas(true);
   } catch(e) {
     MiseLogger.warn("descontarSurtidoAutomatico", `Error preparando 📥 ENTRADAS: ${e.message}`);

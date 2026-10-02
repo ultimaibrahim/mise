@@ -33,6 +33,11 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.7f Altair — Registrar Entradas Vuelve Sola a Modo Entrada (Octubre 2026) [PROD]
+* **🐛 Modo traspaso que se quedaba puesto** (`_procesarTraspasoEntradas`): después de enviar un traspaso, A2 seguía en "🔄 Andares → Mercado". Lo siguiente que llegara del proveedor se enviaba como traspaso: restaba de una bodega y sumaba a la otra en vez de sumar entrada. Lo encontró la simulación por roles en los libros DEV reales. Ahora la hoja vuelve a `📥 Entrada` al enviar (el mensaje lo dice) y `descontarSurtidoAutomatico` la deja en Entrada cada noche.
+* **🎬 `prepararDatosVideo`** (solo DEV, `MiseDevTools.js`, menú 🧪 Mise DEV): deja inventarios con saldos y movimientos creíbles (deterministas desde mín/máx del Catálogo), hoy en blanco, tiendas reiniciadas y Pepino/Limón como pesados, para grabar y practicar.
+* **Testing**: el traspaso deja la hoja en Entrada (encabezados y unidades) y el cierre nocturno también.
+
 ### Version 1.7.7e Altair — Simulación de un Día por Roles y 3 Correcciones que Encontró (Octubre 2026) [PROD]
 * **🐛 🚦 STOCK del Inventario vacío tras renombrar**: las 4 copias de la fórmula del semáforo (`_buildKardex`, `_ordenarYRenumerarTodo`) tenían `MAESTRO!` literal. Tras el renombrado a "📋 Catálogo", cada reconstrucción la dejaba en `#REF!` dentro de `IFERROR`, es decir, vacía y sin aviso. Las reconstrucciones son altas en Powerhouse, el mantenimiento del domingo y el diagnóstico. Ahora hay una sola fuente, `_formulaSemaforoKardex`, con `_refHoja(SHEET_MAESTRO)`. Mercado además comparaba contra su mínimo en lugar de su máximo.
 * **🐛 STOCK del Catálogo**: `_ordenarYRenumerarTodo` buscaba la columna 26 de `C:AD` (ENT del domingo) en lugar de la 28 (SLD al cierre), y la celda mostraba solo " (-n)". `_buildMaestro` ya usaba 28.

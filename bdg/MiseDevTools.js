@@ -339,3 +339,95 @@ function procesarInyeccionRecuperacionKardex() {
     lock.releaseLock();
   }
 }
+
+// ── 🎬 DATOS PARA EL VIDEO DE LANZAMIENTO (solo DEV) ──────────────────────────
+// Deja ambos inventarios en un estado creíble y repetible: saldo anterior y movimientos de lunes a ayer calculados
+// desde los mín/máx del Catálogo (algunos productos bajo mínimo para que se vea el semáforo), HOY y días siguientes
+// en blanco (ahí entran los flujos reales que se graban) y Pepino/Limón como "se reciben pesados".
+function prepararDatosVideo() {
+  const ui = SpreadsheetApp.getUi();
+  if (ui.alert("🎬 Preparar datos para el video",
+    "Solo DEV. Reescribe el saldo anterior y los movimientos de la semana de ambos inventarios (de lunes a ayer), " +
+    "deja HOY en blanco, reinicia el pedido y el Surtido de ambas tiendas y marca Pepino y Limón como 'se reciben pesados'.\n\n¿Continuar?", ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const maestro = _hoja(ss, SHEET_MAESTRO);
+  _asegurarColumnasQuioscoEnMaestro(maestro);
+  const map = _getMaestroHeaderMap(maestro);
+  const datos = maestro.getRange(MAESTRO_START, 1, maestro.getLastRow() - MAESTRO_START + 1, maestro.getLastColumn()).getValues();
+  const fila = {};
+  datos.forEach((r, i) => { fila[String(r[map["PRODUCTO"].index]).trim().toUpperCase()] = i; });
+
+  const pesados = { "PEPINO": "PZA 300 g", "LIMÓN": "PZA 60 g" };
+  Object.keys(pesados).forEach(n => {
+    const i = fila[n];
+    if (i === undefined) return;
+    if (!/\d\s*(g|kg)\b/i.test(String(datos[i][map["PRESENTACION"].index]))) maestro.getRange(MAESTRO_START + i, map["PRESENTACION"].col).setValue(pesados[n]);
+    maestro.getRange(MAESTRO_START + i, map["RECEPCION_PESADA"].col).setValue("SÍ");
+  });
+
+  const azar = (s) => { let x = 2166136261; for (let k = 0; k < s.length; k++) { x ^= s.charCodeAt(k); x = Math.imul(x, 16777619); } return (x >>> 0) / 4294967296; };
+  const redondear = (v, u) => /^(g|ml)$/.test(u) ? Math.round(v / 10) * 10 : /^(kg|lt|l)$/.test(u) ? Math.round(v * 2) / 2 : Math.round(v);
+  const dow = ((new Date()).getDay() || 7) - 1;
+  const resumen = [];
+  Object.keys(BODEGAS).forEach(key => {
+    const k = _hoja(ss, BODEGAS[key].kardex);
+    const n = k.getLastRow() - KARDEX_START + 1;
+    if (n < 1) return;
+    const prods = k.getRange(KARDEX_START, 3, n, 3).getValues();      // C producto · D presentación · E unidad
+    const ant = [], ent = Array.from({ length: 7 }, () => []), sal = Array.from({ length: 7 }, () => []);
+    let bajos = 0;
+    prods.forEach(([nombre, , unidad]) => {
+      const nom = String(nombre || "").trim(), u = String(unidad || "").trim().toLowerCase();
+      const i = fila[nom.toUpperCase()];
+      const mn = i !== undefined && map[`MÍN_${key}`] ? Number(datos[i][map[`MÍN_${key}`].index]) || 0 : 0;
+      const mx = i !== undefined && map[`MÁX_${key}`] ? Number(datos[i][map[`MÁX_${key}`].index]) || 0 : 0;
+      const base = mx > 0 ? mx : (/^(g|ml)$/.test(u) ? 800 : /^(kg|lt|l)$/.test(u) ? 4 : 12);
+      const bajo = nom && azar(key + nom + "bajo") < 0.2 && mn > 0;
+      let saldo = nom ? redondear(base * (bajo ? 0.25 : 0.55 + 0.35 * azar(key + nom)), u) : "";
+      ant.push([saldo]);
+      for (let d = 0; d < 7; d++) {
+        let e = "", s = "";
+        if (nom && d < dow) {
+          if (d === 0 || azar(key + nom + d + "e") < 0.25) {
+            const tope = mx > 0 ? mx * 0.95 - Number(saldo) : Infinity;   // nunca por encima del máximo
+            e = redondear(Math.min(base * (0.2 + 0.4 * azar(key + nom + d)), tope), u);
+            if (!(e > 0)) e = "";
+          }
+          s = redondear(base * (0.08 + 0.14 * azar(key + nom + d + "s")), u) || "";
+          if (bajo) e = "";
+          if (Number(saldo) + Number(e || 0) - Number(s || 0) < 0) s = "";
+          saldo = Number(saldo) + Number(e || 0) - Number(s || 0);
+        }
+        ent[d].push([e]); sal[d].push([s]);
+      }
+      if (bajo) bajos++;
+    });
+    k.getRange(KARDEX_START, 9, n, 1).setValues(ant);
+    for (let d = 0; d < 7; d++) {
+      k.getRange(KARDEX_START, 10 + d * 3, n, 1).setValues(ent[d]);
+      k.getRange(KARDEX_START, 11 + d * 3, n, 1).setValues(sal[d]);
+    }
+    resumen.push(`${BODEGAS[key].nombre}: ${n} productos (${bajos} bajo mínimo)`);
+  });
+  // Tiendas DEV en blanco, como después del reset de las 00:00 (pedido, recepción y Surtido)
+  const props = PropertiesService.getScriptProperties();
+  [["BA", "PDA_SPREADSHEET_ID", "BODEGA_ID_BA"], ["BM", "PDM_SPREADSHEET_ID", "BODEGA_ID_BM"]].forEach(([key, p1, p2]) => {
+    try {
+      const tienda = SpreadsheetApp.openById(props.getProperty(p1) || props.getProperty(p2));
+      const ped = tienda.getSheetByName("📋 PEDIDO DIARIO");
+      const n = ped.getLastRow() - 3;
+      const enc = ped.getRange(3, 1, 1, ped.getLastColumn()).getValues()[0].map(v => String(v).trim().toUpperCase());
+      const cPedir = enc.indexOf("CANT. A PEDIR") + 1;
+      if (n > 0 && cPedir > 0) [cPedir, cPedir + 2, cPedir + 3].forEach(c => ped.getRange(4, c, n, 1).clearContent());   // F · H recibida · I estado
+      ped.getRange(2, cPedir).setValue(false);
+      const sur = tienda.getSheetByName("🚚 SURTIDO RÁPIDO");
+      if (sur) tienda.deleteSheet(sur);
+      resumen.push(`${BODEGAS[key].nombre}: pedido y Surtido en blanco`);
+    } catch (e) { resumen.push(`${BODEGAS[key].nombre} (tienda): ${e.message}`); }
+  });
+  SpreadsheetApp.flush();
+  _buildVista("BA"); _buildVista("BM");
+  try { sincronizarRemotamenteTiendasPush(); } catch (e) { resumen.push("Tiendas: " + e.message); }
+  _prepararHojaEntradas(true);
+  ui.alert("🎬 Datos listos", resumen.join("\n") + "\n\nPepino y Limón: se reciben pesados.", ui.ButtonSet.OK);
+}

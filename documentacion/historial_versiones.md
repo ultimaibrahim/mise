@@ -5,6 +5,14 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.7f Altair (Entradas más seguras) — 2026-10-01 [PROD]
+
+### 🏬 Bodega (BDG)
+* Registrar entradas regresa a modo 📥 Entrada al enviar un traspaso y en el cierre nocturno.
+* DEV: herramienta para preparar datos de video/práctica.
+
+---
+
 ## ⚡ v1.7.7e Altair (Simulación por roles) — 2026-10-01 [PROD]
 
 ### 🏬 Bodega (BDG)
