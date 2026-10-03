@@ -626,6 +626,7 @@ function _resetearPedidoSilencioso(e) {
   try {
     const r = _resetearPedidoSilenciosoCore(e);
     props.setProperty("ULTIMO_RESET_TS", String(Date.now()));
+    props.setProperty("LAST_AUTO_RESET_DATE", _fmtDate(new Date())); // 1.7.7h: el respaldo y la apertura ya no repiten el reset
     props.setProperty("ULTIMO_RESET_ERROR", "");
     if (e && e.triggerUid) _sincronizarSiCambioCatalogo("reset 00:00");
     return r;
@@ -753,14 +754,29 @@ function _registrarLogSurtidoDiario(ss, sheet) {
   }
 }
 
+// Reinicio "de respaldo" (04:00 y al abrir). 1.7.7h: el de las 00:00 no marcaba LAST_AUTO_RESET_DATE; si el respaldo de
+// las 04:00 no corría, la primera APERTURA del día borraba el pedido ya capturado (pasó en Mercado PROD, 02/oct). Ahora:
+//  · si el reset de hoy ya ocurrió (00:00 o manual) → solo se marca la fecha;
+//  · al abrir, en horario de operación (06:00 en adelante) NUNCA se limpia: se deja aviso en el registro.
+const RESET_APERTURA_HASTA_HORA = 6;
 function _checkAutoResetNuevoDia(e) {
   try {
-    const todayStr = _fmtDate(new Date());
+    const ahora = new Date();
+    const todayStr = _fmtDate(ahora);
     const props = PropertiesService.getScriptProperties();
     const lastReset = props.getProperty("LAST_AUTO_RESET_DATE");
     if (lastReset !== todayStr) {
-      _resetearPedidoSilencioso();
-      props.setProperty("LAST_AUTO_RESET_DATE", todayStr);
+      const tsReset = parseInt(props.getProperty("ULTIMO_RESET_TS") || "0", 10);
+      const esActivador = !!(e && e.triggerUid);
+      if (tsReset && _fmtDate(new Date(tsReset)) === todayStr) {
+        props.setProperty("LAST_AUTO_RESET_DATE", todayStr);
+      } else if (esActivador || ahora.getHours() < RESET_APERTURA_HASTA_HORA) {
+        _resetearPedidoSilencioso();
+        props.setProperty("LAST_AUTO_RESET_DATE", todayStr);
+      } else if (props.getProperty("AVISO_SIN_RESET") !== todayStr) {
+        props.setProperty("AVISO_SIN_RESET", todayStr);
+        MiseLogger.warn("_checkAutoResetNuevoDia", "Hoy no corrió el reinicio de las 00:00 ni el de las 04:00. Por seguridad NO se limpió el pedido al abrir (puede tener capturas de hoy). Revisa los activadores (🛠 Técnico → 🚀 Configurar).");
+      }
     }
   } catch(err) {}
   // Respaldo de las 04:00: reintenta una actualización de estructura pendiente
@@ -1393,7 +1409,7 @@ function _aplicarFormatosCondicionales(sheet) {
   _estiloTactilPedido(sheet, count);
 }
 
-const MISE_VERSION = "1.7.7g";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7h";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "🚚 Surtido: el producto y lo pedido siempre a la vista, incluso en pantallas chicas",

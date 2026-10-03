@@ -33,6 +33,13 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.7h Altair — La Apertura Ya No Borra el Pedido del Día (Octubre 2026) [PROD]
+* **🐛 Pedido de Mercado borrado al abrir el libro** (PROD, 02/oct, sin pasar por el descuento).
+  - **Causa:** el activador de las 00:00 (`_resetearPedidoSilencioso`) registraba `ULTIMO_RESET_TS` pero no `LAST_AUTO_RESET_DATE`. Solo el respaldo de las 04:00 (`_checkAutoResetNuevoDia`) marcaba esa fecha, y además repetía el reset. Si el de las 04:00 no corría o fallaba, la fecha se quedaba en el día anterior y la **primera apertura** del día (`onOpenTiendaInstalable` u `onOpen` simple) volvía a resetear y vaciaba lo ya capturado.
+  - **Corrección:** `_resetearPedidoSilencioso` marca `LAST_AUTO_RESET_DATE` al terminar. `_checkAutoResetNuevoDia` solo marca la fecha si el reset de hoy ya ocurrió. Si no ocurrió, resetea solo desde el activador o al abrir antes de las 06:00 (`RESET_APERTURA_HASTA_HORA`). En horario de operación nunca limpia: deja un aviso diario en el registro (`AVISO_SIN_RESET`).
+  - Bodega sube a 1.7.7h sin cambios de código (la página de estado compara versiones entre libros).
+* **Testing:** `reset_apertura.test.js` con reloj controlado prueba cuatro casos: el de Mercado (00:00 sí, 04:00 no, apertura 10:30), respaldo sin repetir, respaldo cuando las 00:00 fallaron, y apertura sin reset antes y después de las 06:00. Con el código anterior falla en el primer caso.
+
 ### Version 1.7.7g Altair — Pedido por Nombre: un Alta Ya No Mueve Cantidades (Octubre 2026) [PROD]
 * **🐛 Cantidades que brincaban al producto vecino tras un alta** (caso real: alta de "Agua mineral (600ml) Canada Dry" junto a la presentación anterior).
   - **Causa:** en 📋 PEDIDO DIARIO, PRODUCTO/CATEGORÍA/UNIDAD/SALDO/MÍN|MÁX eran fórmulas `='_SYNC'!C{fila}` por número de fila, y la cantidad un valor fijo. Un alta recorre las filas de `_SYNC`. Si el `IMPORTRANGE` de la tienda se actualizaba antes que el escritor remoto de Bodega, este comparaba `_SYNC` (ya nuevo) contra la vista, veía "mismas posiciones" y no reordenaba. Los nombres se recorrían, las cantidades no, y el producto desplazado podía desaparecer del pedido (reproducido en la simulación: Plátano 10 → "Fresa (domo 1 kg)" 10).

@@ -5,6 +5,16 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.7h Altair (Apertura segura) — 2026-10-03 [PROD]
+
+### 🏪 Tiendas (PDA / PDM)
+* El reset de las 00:00 marca la fecha del día; el respaldo de las 04:00 y la apertura ya no lo repiten. Al abrir después de las 06:00 nunca se limpia el pedido (caso Mercado 02/oct).
+
+### 🏬 Bodega (BDG)
+* Sin cambios de código; versión alineada con las tiendas.
+
+---
+
 ## ⚡ v1.7.7g Altair (Pedido por nombre) — 2026-10-02 [PROD]
 
 ### 🏪 Tiendas (PDA / PDM)

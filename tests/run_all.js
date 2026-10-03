@@ -27,6 +27,7 @@ const { runBlindajeTests } = require('./suites/blindaje.test');
 const { runLogSurtidoTests } = require('./suites/log_surtido.test');
 const { runKardexVistaTests } = require('./suites/kardex_vista.test');
 const { runSimulacionTests } = require('./suites/simulacion.test');
+const { runResetAperturaTests } = require('./suites/reset_apertura.test');
 const { execSync } = require('child_process');
 require('../scripts/build-tienda').build(); // pda/ y pdm/ se generan desde tienda/
 
@@ -65,6 +66,7 @@ try {
   runLogSurtidoTests();
   runKardexVistaTests();
   runSimulacionTests();
+  runResetAperturaTests();
   runVersionTests();
   runDevEnvTests();
 

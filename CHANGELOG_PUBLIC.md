@@ -23,6 +23,12 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.7h Altair — Abrir el Pedido Ya No lo Borra (Octubre 2026)
+
+* 🛡️ **Abrir la hoja de Pedidos ya no puede borrar lo que se capturó en el día.** Si el reinicio de la madrugada no corrió, el sistema ya no limpia el pedido al abrirlo durante el horario de operación; solo deja un aviso para revisar.
+
+---
+
 ## Versión 1.7.7g Altair — Dar de Alta un Producto Ya No Mueve los Pedidos (Octubre 2026)
 
 * 🛡️ **Al dar de alta un producto (por ejemplo, una presentación nueva), las cantidades que ya se habían pedido se quedan en su producto.** Antes, una cantidad podía pasar al producto de al lado.
