@@ -5,6 +5,14 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.7o Altair (Categoría en segundos) — 2026-10-03 [PROD]
+
+### 🏬 Bodega (BDG)
+* Cambio de categoría: reubica solo el tramo de filas afectado (sin reconstruir ni borrar formato).
+* Duración de cada paso de Configurar y de la fase pesada de Powerhouse en el registro.
+
+---
+
 ## ⚡ v1.7.7n Altair (Formato del Inventario) — 2026-10-03 [PROD]
 
 ### 🏬 Bodega (BDG)

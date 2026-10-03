@@ -201,22 +201,51 @@ function runSimulacionTests() {
     B.powerhouseGuardarCatalogo("BA", { nuevos: [{ name: "Agua Epura", cat: "BEBIDAS", pres: "PAQ 12 PZA", unit: "pza" }], ediciones: [], eliminados: [], picking: [] });
     assert.strictEqual(celdaStk("Fresa", 2), antesFresa, "Tras una alta la fila de Fresa sigue mostrando Fresa");
     assert.strictEqual(String(stk.getRange(filaStk("Agua Epura"), 10).getValue()), "PEPSI", "La alta trae su proveedor inicial");
-    // 1.7.7n: un cambio de categoría reacomoda el Inventario y le devuelve su formato (antes quedaba sin reglas visuales)
+    // 1.7.7n: una alta reconstruye el Inventario y le devuelve su formato (antes quedaba sin reglas visuales)
     const reglasPuestas = [];
     ["BA", "BM"].forEach(b => { const h = inv(b); const orig = h.setConditionalFormatRules.bind(h);
       h.setConditionalFormatRules = (r) => { reglasPuestas.push([b, r.length]); return orig(r); }; });
-    B.powerhouseGuardarCatalogo("BA", { ediciones: [{ originalName: "Agua Epura", name: "Agua Epura", cat: "REFRESCOS" }],
-      picking: [{ name: "Agua Epura", rank: 1, cat: "BEBIDAS" }] });
-    assert.deepStrictEqual(reglasPuestas.map(x => x[0]).sort(), ["BA", "BM"], "Ambos Inventarios recuperan sus reglas visuales tras reacomodar");
+    B.powerhouseGuardarCatalogo("BA", { nuevos: [{ name: "Agua Perrier", cat: "BEBIDAS", pres: "PZA 330 ml", unit: "pza" }], ediciones: [], eliminados: [], picking: [] });
+    assert.deepStrictEqual(reglasPuestas.map(x => x[0]).sort(), ["BA", "BM"], "Ambos Inventarios recuperan sus reglas visuales tras reconstruir");
     assert.ok(reglasPuestas.every(x => x[1] >= 15), `Semáforo + negativos en rojo + día en curso (reglas: ${reglasPuestas.map(x => x[1])})`);
+
+    // 1.7.7o: un cambio de CATEGORÍA mueve solo el tramo afectado (sin reconstrucción) y con el payload real del diálogo
+    const saldoPorNombre = (b) => Object.fromEntries(inv(b).getRange(7, 3, inv(b).getLastRow() - 6, 1).getValues()
+      .map((r, i) => [r[0], Number(inv(b).getRange(7 + i, 30).getValue()) || 0]));
+    const antesBA = saldoPorNombre("BA"), antesBM = saldoPorNombre("BM");
+    let completas = 0;
+    const ordenarOriginal = B._ordenarYRenumerarTodo;
+    B._ordenarYRenumerarTodo = () => { completas++; return ordenarOriginal(); };
+    reglasPuestas.length = 0;
+    try {
+      B.powerhouseGuardarCatalogo("BA", { ediciones: [{ originalName: "Agua Epura", name: "Agua Epura", cat: "REFRESCOS" }],
+        picking: [{ name: "Agua Epura", rank: 1, cat: "BEBIDAS" }] });
+      B.powerhouseGuardarCatalogo("BA", { ediciones: [{ originalName: "Leche", name: "Leche", cat: "BEBIDAS" }],
+        picking: [{ name: "Leche", rank: 3, cat: "LÁCTEOS" }] });
+    } finally { B._ordenarYRenumerarTodo = ordenarOriginal; }
+    assert.strictEqual(completas, 0, "Cambiar la categoría ya no reconstruye todo (antes ~45 s)");
+    assert.strictEqual(reglasPuestas.length, 0, "Sin reconstrucción no se toca el formato");
     assert.strictEqual(String(cat.getRange(filaCat("Agua Epura"), mapa["CATEGORÍA"].col).getValue()), "REFRESCOS", "La categoría de la ficha se queda");
+    const ordenEsperado = (filas) => filas.slice().sort((x, y) => B._compararCatalogo(x[0], x[1], y[0], y[1]));
+    const catProd = (h, ini, cC, cP) => h.getRange(ini, 1, h.getLastRow() - ini + 1, Math.max(cC, cP)).getValues().map(r => [r[cC - 1], r[cP - 1]]);
+    const filasCat = catProd(cat, 4, mapa["CATEGORÍA"].col, mapa["PRODUCTO"].col);
+    assert.deepStrictEqual(filasCat, ordenEsperado(filasCat), "Catálogo queda en orden de categoría y producto");
+    ["BA", "BM"].forEach(b => {
+      const filasInv = catProd(inv(b), 7, 2, 3);
+      assert.deepStrictEqual(filasInv.map(r => r[1]), filasCat.map(r => r[1]), `Inventario ${b} en el mismo orden que el Catálogo`);
+      assert.deepStrictEqual(filasInv.map(r => r[0]), filasCat.map(r => r[0]), `Inventario ${b} con la categoría nueva`);
+      const formulas = inv(b).getRange(7, 12, filasInv.length, 1).getFormulas();
+      formulas.forEach((f, i) => assert.ok(new RegExp(`I${7 + i}\\b`).test(f[0]) || f[0] === "", `SLD de la fila ${7 + i} apunta a su propia fila: ${f[0]}`));
+    });
+    assert.deepStrictEqual(saldoPorNombre("BA"), antesBA, "Ningún saldo de Andares cambia al reubicar");
+    assert.deepStrictEqual(saldoPorNombre("BM"), antesBM, "Ningún saldo de Mercado cambia al reubicar");
 
     // Filtro por proveedor: oculta lo que no es de FRUTA
     const ocultas = [];
     stk.hideRows = (r, k) => { for (let i = 0; i < k; i++) ocultas.push(String(stk.getRange(r + i, 6).getValue())); };
     stk.getRange("A2").setValue("FRUTA");
     B._onEditBodega({ range: stk.getRange("A2"), value: "FRUTA", source: bdg });
-    assert.deepStrictEqual(ocultas.sort(), ["Agua Epura", "Guantes", "Leche", "Nutella"], "Filtro FRUTA deja solo las fresas y el plátano");
+    assert.deepStrictEqual(ocultas.sort(), ["Agua Epura", "Agua Perrier", "Guantes", "Leche", "Nutella"], "Filtro FRUTA deja solo las fresas y el plátano");
     console.log("  ✓ Encargada: 🔎 Stock de bodegas en dos lecturas (presentación e inventario), TOTAL, 🔴 bajo mínimo y filtro por proveedor");
   }
 }

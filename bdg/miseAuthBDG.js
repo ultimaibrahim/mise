@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.7n Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.7o Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -2028,7 +2028,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.7n";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7o";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "📥 Entradas en la unidad de cada producto (bolsa, caja…) y la fruta en kg exactos: Mise convierte",
@@ -2255,28 +2255,7 @@ function _ordenarYRenumerarTodo() {
   const cAct = map["ACTIVO"] ? map["ACTIVO"].index : 5;
 
   // 2. Ordenar estrictamente por CATEGORÍA (según CATEGORIAS_LISTA) y luego PRODUCTO
-  data.sort((a, b) => {
-    // 2.1. Categoría
-    const catA = String(a[cCat] || '').trim();
-    const catB = String(b[cCat] || '').trim();
-    const idxA = CATEGORIAS_LISTA.indexOf(catA);
-    const idxB = CATEGORIAS_LISTA.indexOf(catB);
-    
-    if (idxA !== -1 && idxB !== -1) {
-      if (idxA !== idxB) return idxA - idxB;
-    } else if (idxA !== -1) {
-      return -1;
-    } else if (idxB !== -1) {
-      return 1;
-    } else if (catA !== catB) {
-      return catA.localeCompare(catB);
-    }
-    
-    // 2.2. Producto
-    const prodA = String(a[cProd] || '').trim().toLowerCase();
-    const prodB = String(b[cProd] || '').trim().toLowerCase();
-    return prodA.localeCompare(prodB);
-  });
+  data.sort((a, b) => _compararCatalogo(a[cCat], a[cProd], b[cCat], b[cProd]));
   
   // 3. Re-numerar y limpiar selección
   for (let i = 0; i < data.length; i++) {
@@ -4150,6 +4129,7 @@ function _renombrarEnKardex(renombres) {
 
 function _guardarCatalogoPowerhouse(key, payload) {
   {
+    const tiempos = []; // 1.7.7o: duración de las fases pesadas, al registro
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const maestro = _hoja(ss, SHEET_MAESTRO);
     if (!maestro) throw new Error("No se encontró la hoja MAESTRO.");
@@ -4346,8 +4326,15 @@ function _guardarCatalogoPowerhouse(key, payload) {
     // Kardex: reconstrucción completa SOLO con altas (necesita filas nuevas). Renombres y cambios de
     // ACTIVO se aplican quirúrgicamente por nombre (antes cada guardado reconstruía ambos Kardex).
     const nRen = Object.keys(renombres).length, nAct = Object.keys(cambiosActivo).length;
-    if (prodsNuevos.length > 0 || cambiosCategoria > 0) {
-      _ordenarYRenumerarTodo();
+    const tK = Date.now();
+    let modo = "";
+    if (prodsNuevos.length > 0) {
+      _ordenarYRenumerarTodo(); modo = "reconstrucción (altas)";
+    } else if (cambiosCategoria > 0) {
+      // 1.7.7o: un cambio de categoría mueve SOLO el tramo de filas afectado (antes ~45 s reconstruyendo todo)
+      if (_reubicarPorCategoria()) modo = "reubicación por categoría";
+      else { _ordenarYRenumerarTodo(); modo = "reconstrucción (respaldo de la reubicación)"; }
+      if (nRen) _renombrarEnKardex(renombres);
     } else {
       if (nRen) _renombrarEnKardex(renombres);
       if (nAct) {
@@ -4362,7 +4349,9 @@ function _guardarCatalogoPowerhouse(key, payload) {
         });
       }
     }
-    return `${prodsNuevos.length} altas, ${ediciones.length} ediciones (${nRen} renombres, ${nAct} cambios de activo), picking ${key} guardado`;
+    if (modo) tiempos.push(`${modo} ${Date.now() - tK} ms`);
+    return `${prodsNuevos.length} altas, ${ediciones.length} ediciones (${nRen} renombres, ${nAct} cambios de activo), picking ${key} guardado` +
+      (tiempos.length ? ` · ${tiempos.join(" · ")}` : "");
   }
 }
 
@@ -5909,8 +5898,9 @@ function _configurarBDGCore(rep) {
   const pasos = [];
   const paso = (nombre, fn) => {
     rep.inicio(nombre);
-    try { const d = fn(); pasos.push(`✅ ${nombre}${d ? " — " + d : ""}`); rep.fin(nombre, true, d); }
-    catch (err) { pasos.push(`❌ ${nombre} — ${err.message}`); rep.fin(nombre, false, err.message); MiseLogger.error("configurarEsteLibroBDG", `${nombre}: ${err.message}`, err); }
+    const t0 = Date.now(); // 1.7.7o: cada paso deja su duración en el registro (para saber qué pesa)
+    try { const d = fn(); const ms = Date.now() - t0; pasos.push(`✅ ${nombre}${d ? " — " + d : ""} (${(ms / 1000).toFixed(1)} s)`); rep.fin(nombre, true, d); }
+    catch (err) { pasos.push(`❌ ${nombre} — ${err.message} (${((Date.now() - t0) / 1000).toFixed(1)} s)`); rep.fin(nombre, false, err.message); MiseLogger.error("configurarEsteLibroBDG", `${nombre}: ${err.message}`, err); }
   };
   paso("Nombres de pestañas", () => { const r = _renombrarHojasBDG(); return r.length ? `${r.length} renombradas` : "al día"; });
   paso("Activadores", () => { const r = _reiniciarActivadoresBDG(); return `${r.borrados.length} viejos borrados, ${r.creados.length} creados`; });
@@ -6085,5 +6075,98 @@ function _filtrarHojaStock(sheet) {
     const ocultar = i < n && String(prov[i][0]).trim().toUpperCase() !== filtro;
     if (ocultar && ini === -1) ini = i;
     if (!ocultar && ini !== -1) { sh.hideRows(STOCK_START + ini, i - ini); ini = -1; }
+  }
+}
+
+
+// ── ↕️ REUBICACIÓN POR CATEGORÍA (1.7.7o) ───────────────────────────────────────────────────────
+// Orden único del Catálogo y de los Inventarios: categoría (según CATEGORIAS_LISTA, luego alfabética) y producto.
+function _compararCatalogo(catA, prodA, catB, prodB) {
+  const a = String(catA || "").trim(), b = String(catB || "").trim();
+  const ia = CATEGORIAS_LISTA.indexOf(a), ib = CATEGORIAS_LISTA.indexOf(b);
+  if (ia !== -1 && ib !== -1) { if (ia !== ib) return ia - ib; }
+  else if (ia !== -1) return -1;
+  else if (ib !== -1) return 1;
+  else if (a !== b) return a.localeCompare(b);
+  return String(prodA || "").trim().toLowerCase().localeCompare(String(prodB || "").trim().toLowerCase());
+}
+
+// Lleva las referencias de UNA fila (C7, $G7, AD7…) a la fila nueva; las de columna completa (C:AD) no cambian
+function _moverFormulaDeFila(f, de, a) {
+  if (!f || de === a) return f;
+  return f.replace(new RegExp(`(^|[^A-Za-z0-9_$!'])(\\$?[A-Z]{1,3})${de}(?![0-9])`, "g"), `$1$2${a}`);
+}
+
+// Reacomoda una hoja ordenada por categoría reescribiendo SOLO el tramo de filas que cambia de lugar: valores y
+// fórmulas (llevadas a su fila nueva), sin clearFormat. Colores y formato condicional son de la posición y se
+// quedan. Devuelve false si la hoja no es la esperada (lo resuelve la reconstrucción completa).
+function _reubicarTramo(sheet, inicio, colNo, colCat, colProd, catDe, ocultarInactivos) {
+  const lr = sheet.getLastRow();
+  if (lr < inicio) return true;
+  const n = lr - inicio + 1;
+  const ancho = sheet.getLastColumn();
+  const llaves = sheet.getRange(inicio, 1, n, Math.max(colCat, colProd)).getValues();
+  const filas = llaves.map((r, i) => ({ i, prod: String(r[colProd - 1]).trim(), cat: catDe(String(r[colProd - 1]).trim(), r[colCat - 1]) }));
+  if (filas.some(f => !f.prod)) return false;
+  const destino = filas.slice().sort((x, y) => _compararCatalogo(x.cat, x.prod, y.cat, y.prod) || (x.i - y.i));
+  let lo = -1, hi = -1;
+  destino.forEach((f, j) => { if (f.i !== j) { if (lo === -1) lo = j; hi = j; } });
+  const catCambia = filas.some(f => String(llaves[f.i][colCat - 1]).trim().toUpperCase() !== String(f.cat).trim().toUpperCase());
+  if (lo === -1 && !catCambia) return true;
+  if (lo === -1) { lo = 0; hi = n - 1; }
+  const rng = sheet.getRange(inicio, 1, n, ancho);
+  const vals = rng.getValues(), forms = rng.getFormulas();
+  const salida = [];
+  for (let j = lo; j <= hi; j++) {
+    const src = destino[j].i, deFila = inicio + src, aFila = inicio + j;
+    const fila = vals[src].map((v, c) => forms[src][c] ? _moverFormulaDeFila(forms[src][c], deFila, aFila) : v);
+    if (colNo) fila[colNo - 1] = j + 1;
+    fila[colCat - 1] = destino[j].cat;
+    salida.push(fila);
+  }
+  sheet.getRange(inicio + lo, 1, salida.length, ancho).setValues(salida);
+  if (ocultarInactivos) {
+    const k = hi - lo + 1;
+    sheet.showRows(inicio + lo, k);
+    let ini = -1;
+    for (let j = lo; j <= hi + 1; j++) {
+      const oc = j <= hi && ocultarInactivos(destino[j].prod);
+      if (oc && ini === -1) ini = j;
+      if (!oc && ini !== -1) { sheet.hideRows(inicio + ini, j - ini); ini = -1; }
+    }
+  }
+  return true;
+}
+
+function _reubicarPorCategoria() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const maestro = _hoja(ss, SHEET_MAESTRO);
+  if (!maestro) return false;
+  const map = _getMaestroHeaderMap(maestro);
+  if (!map["PRODUCTO"] || !map["CATEGORÍA"]) return false;
+  try {
+    // 1. Catálogo (su propia categoría manda)
+    if (!_reubicarTramo(maestro, MAESTRO_START, map["NO"] ? map["NO"].col : 1, map["CATEGORÍA"].col, map["PRODUCTO"].col,
+      (p, cat) => String(cat).trim().toUpperCase(), null)) return false;
+    // 2. Inventarios: misma categoría que el Catálogo, mismos productos
+    const lr = maestro.getLastRow();
+    const filasM = maestro.getRange(MAESTRO_START, 1, lr - MAESTRO_START + 1, maestro.getLastColumn()).getValues();
+    const catDe = {}, inactivo = {};
+    filasM.forEach(r => {
+      const n = String(r[map["PRODUCTO"].index]).trim().toUpperCase();
+      catDe[n] = String(r[map["CATEGORÍA"].index]).trim().toUpperCase();
+      inactivo[n] = map["ACTIVO"] && String(r[map["ACTIVO"].index]).trim().toUpperCase() === "NO";
+    });
+    for (const b of Object.values(BODEGAS)) {
+      const k = _hoja(ss, b.kardex);
+      if (!k) continue;
+      const nombresK = k.getLastRow() >= KARDEX_START ? k.getRange(KARDEX_START, 3, k.getLastRow() - KARDEX_START + 1, 1).getValues().map(r => String(r[0]).trim().toUpperCase()) : [];
+      if (nombresK.length !== filasM.length || nombresK.some(n => !(n in catDe))) return false;
+      if (!_reubicarTramo(k, KARDEX_START, 1, 2, 3, (p) => catDe[p.toUpperCase()], (p) => inactivo[p.toUpperCase()])) return false;
+    }
+    return true;
+  } catch (e) {
+    MiseLogger.warn("_reubicarPorCategoria", `Se usará la reconstrucción completa: ${e.message}`);
+    return false;
   }
 }

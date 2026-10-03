@@ -23,6 +23,13 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.7o Altair — Cambiar Categorías Mucho Más Rápido (Octubre 2026)
+
+* ⚡ **Cambiar la categoría de un producto en Powerhouse tarda unos segundos** en lugar de casi un minuto: solo se mueven las filas necesarias.
+* ⏱️ "Configurar este libro" ahora muestra cuánto tardó cada paso, para seguir optimizando lo que más pesa.
+
+---
+
 ## Versión 1.7.7n Altair — El Inventario No Pierde sus Colores (Octubre 2026)
 
 * 🎨 **Después de agregar productos o cambiar categorías en Powerhouse, el Inventario conserva su formato**: los negativos en rojo, el día de hoy resaltado y los demás días en gris. Antes había que volver a correr "Configurar este libro".
