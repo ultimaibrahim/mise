@@ -23,6 +23,12 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.7m Altair — Cambiar la Categoría Ahora Sí Funciona (Octubre 2026)
+
+* 📋 **Corregir la categoría de un producto en Powerhouse ya se guarda** y el producto se mueve a su grupo. Antes regresaba a la categoría anterior.
+
+---
+
 ## Versión 1.7.7l Altair — Cambiar la Categoría Acomoda el Producto (Octubre 2026)
 
 * 📋 **Al corregir la categoría de un producto en Powerhouse, el producto se mueve a su grupo** en el Catálogo y en el Inventario de Bodega.

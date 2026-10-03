@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.7l Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.7m Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -2028,7 +2028,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.7l";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7m";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "📥 Entradas en la unidad de cada producto (bolsa, caja…) y la fruta en kg exactos: Mise convierte",
@@ -4217,6 +4217,7 @@ function _guardarCatalogoPowerhouse(key, payload) {
     const renombres = {};      // NOMBRE VIEJO (mayúsculas) → nombre nuevo
     const cambiosActivo = {};  // NOMBRE (mayúsculas) → "SÍ" | "NO"
     let cambiosCategoria = 0;  // 1.7.7l: un cambio REAL de categoría reacomoda Catálogo e Inventario
+    const catEditada = new Set(); // 1.7.7m: productos cuya categoría se cambió en la ficha (manda sobre la del picking)
     const ediciones = payload.ediciones || [];
     const eliminados = payload.eliminados || [];
     if (ediciones.length > 0 || eliminados.length > 0) {
@@ -4249,7 +4250,10 @@ function _guardarCatalogoPowerhouse(key, payload) {
         if (ed) {
           if (ed.cat !== undefined && map["CATEGORÍA"]) {
             const catNueva = String(ed.cat).trim().toUpperCase();
-            if (String(mData[i][map["CATEGORÍA"].index]).trim().toUpperCase() !== catNueva) cambiosCategoria++;
+            if (String(mData[i][map["CATEGORÍA"].index]).trim().toUpperCase() !== catNueva) {
+              cambiosCategoria++;
+              catEditada.add(String(ed.name !== undefined ? ed.name : mData[i][iProd]).trim().toUpperCase());
+            }
             mData[i][map["CATEGORÍA"].index] = catNueva;
           }
           if (ed.name !== undefined && map["PRODUCTO"])    mData[i][map["PRODUCTO"].index] = String(ed.name).trim();
@@ -4308,7 +4312,11 @@ function _guardarCatalogoPowerhouse(key, payload) {
         const rank = rankMap[pName] || parseInt(currentRanks[i][0]) || (i + 1); // sin dato: conserva su rank
         newColValues.push([rank]);
 
-        if (catMap[pName]) {
+        // 1.7.7m: el picking trae la categoría que el diálogo tenía al abrir; si la ficha la cambió, gana la ficha
+        // (antes el picking la regresaba a la anterior y el producto nunca cambiaba de grupo)
+        const catActual = currentCats[i] ? String(currentCats[i][0]).trim().toUpperCase() : "";
+        if (catMap[pName] && !catEditada.has(pName.toUpperCase())) {
+          if (catMap[pName] !== catActual) cambiosCategoria++; // movido de grupo desde la pestaña Orden
           newCatValues.push([catMap[pName]]);
         } else {
           newCatValues.push([currentCats[i] ? currentCats[i][0] : ""]);

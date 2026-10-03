@@ -73,6 +73,13 @@ function runPowerhouseTests() {
   assert.strictEqual(reconstrucciones, 2, "Cambiar la categoría reacomoda Catálogo e Inventario (antes se quedaba en su lugar)");
   sandbox.powerhouseGuardarCatalogo("BA", { ediciones: [{ originalName: "Azúcar", name: "Azúcar", cat: "bebidas" }], picking: [] });
   assert.strictEqual(reconstrucciones, 2, "La misma categoría (aunque venga en minúsculas) no reconstruye");
+  // 3c. Como lo manda el diálogo real (1.7.7m): la edición de la ficha + el picking con la categoría VIEJA
+  const filaAz = () => maestro.getRange(4, 3, maestro.getLastRow() - 3, 1).getValues().findIndex(r => r[0] === "Azúcar") + 4;
+  sandbox.powerhouseGuardarCatalogo("BA", {
+    ediciones: [{ originalName: "Azúcar", name: "Azúcar", cat: "ABARROTES" }],
+    picking: [{ name: "Azúcar", rank: 1, cat: "BEBIDAS" }] });
+  assert.strictEqual(maestro.getRange(filaAz(), 2).getValue(), "ABARROTES", "La categoría de la ficha gana sobre la que trae el picking (antes regresaba a BEBIDAS)");
+  assert.strictEqual(reconstrucciones, 3, "Y reacomoda");
   console.log("  ✓ Solo las altas y los cambios reales de categoría disparan la reconstrucción completa");
 
   // 4. Orden del Catálogo como picking por default (1.7.7b): solo la tienda elegida

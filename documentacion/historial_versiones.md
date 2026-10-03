@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.7m Altair (Categoría que sí se guarda) — 2026-10-03 [PROD]
+
+### 🏬 Bodega (BDG)
+* La categoría editada en la ficha de Powerhouse ya no la sobrescribe la que trae el picking.
+
+---
+
 ## ⚡ v1.7.7l Altair (Categoría que reacomoda) — 2026-10-03 [PROD]
 
 ### 🏬 Bodega (BDG)

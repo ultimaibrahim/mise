@@ -1433,7 +1433,7 @@ function _aplicarFormatosCondicionales(sheet) {
   _estiloTactilPedido(sheet, count);
 }
 
-const MISE_VERSION = "1.7.7l";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7m";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "🚚 Surtido: el producto y lo pedido siempre a la vista, incluso en pantallas chicas",

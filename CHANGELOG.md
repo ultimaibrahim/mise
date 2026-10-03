@@ -33,6 +33,12 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.7m Altair — La Categoría de la Ficha Ya No la Regresa el Picking (Octubre 2026) [PROD]
+* **🐛 La categoría regresaba a la anterior al guardar en Powerhouse** (PROD, Canada Dry 600 ml REFRIGERADOS → BEBIDAS; 45 s "haciendo cosas" sin cambiar nada). Al guardar, el diálogo manda la edición de la ficha **y** el picking completo (`rawItems.map(… cat: it.cat)`), que trae la categoría de cuando se abrió el diálogo. `_guardarCatalogoPowerhouse` escribía primero la edición y después el bloque de picking sobrescribía la columna CATEGORÍA con la vieja. La 1.7.7l además disparaba la reconstrucción completa para terminar igual.
+  - Ahora los productos con categoría cambiada en la ficha (`catEditada`) no toman la del picking. Un cambio de grupo hecho desde la pestaña Orden sí cuenta como cambio real y reacomoda.
+  - **Lección:** la 1.7.7l se probó mandando solo `ediciones`, y el diálogo real manda también `picking`. La prueba nueva usa el payload como lo arma el diálogo.
+* **Testing:** `powerhouse.test.js` manda edición con la categoría nueva y picking con la vieja; gana la ficha. Con la 1.7.7l falla.
+
 ### Version 1.7.7l Altair — Cambiar la Categoría en Powerhouse Reacomoda el Producto (Octubre 2026) [PROD]
 * **🐛 Categoría corregida que no movía el producto** (caso: Agua mineral (600ml) Canada Dry dada de alta en REFRIGERADOS). `_guardarCatalogoPowerhouse` escribía la categoría, pero desde la optimización de 1.7.7d solo las **altas** llamaban a `_ordenarYRenumerarTodo`. El producto seguía en su lugar hasta el mantenimiento semanal. Ahora un cambio **real** de categoría (en mayúsculas, distinto al actual) también reacomoda Catálogo e Inventario; repetir la misma categoría no reconstruye.
 * El orden del Pedido de cada tienda sigue mandado por su **picking** (pestaña Orden de Powerhouse), no por la categoría.
