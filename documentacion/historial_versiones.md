@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.7k Altair (Día en Registrar entradas) — 2026-10-03 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG)
+* B2 de 📥 Registrar entradas acepta el día aunque Google lo haya convertido en fecha (libros en español) y queda formateado como texto.
+
+---
+
 ## ⚡ v1.7.7j Altair (🔎 Stock de bodegas) — 2026-10-03 [EN PRUEBAS · DEV]
 
 ### 🏬 Bodega (BDG)

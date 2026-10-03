@@ -33,6 +33,12 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.7k Altair — Registrar Entradas con el Día Elegido en Libros en Español (Octubre 2026) [EN PRUEBAS · DEV]
+* **🐛 "Día no válido en B2"** al elegir un día de la lista (PROD, 03/oct, captura del conteo). Con la configuración regional en español, Google convierte "JUE 01/10" en **fecha**. `_resolverDiaEntradas` recibía un `Date`, tomaba `String(...).substring(0, 3)` ("Thu"/"jue") y lo rechazaba.
+  - Se acepta la fecha (`_diaEntradasDesdeFecha`) si cae en la semana activa de la bodega; si no, el mensaje lo dice. El texto se compara en mayúsculas.
+  - B2 se formatea como texto (`setNumberFormat("@")`) al preparar la hoja, para que deje de convertirse, y el día previo se reconoce aunque esté guardado como fecha.
+* **Testing:** `entradas.test.js` manda entradas con B2 como fecha del jueves (cae en JUE) y con una fecha fuera de la semana (se rechaza con mensaje claro). Con el código anterior falla con el mismo mensaje que vio Ibrahim.
+
 ### Version 1.7.7j Altair — 🔎 Stock de Bodegas y Apertura Ligera (Octubre 2026) [EN PRUEBAS · DEV]
 * **🔎 Stock de bodegas (Bodega, nueva hoja)**: consulta para quien hace los pedidos, pensada para celular (4 columnas, unos 390 px). Muestra PRODUCTO con su presentación, ANDARES, MERCADO y **TOTAL**. Cada celda trae dos lecturas: arriba la presentación (`exacto` 7.81 dom · `peso` ≈ 27 dom para lo que se recibe pesado · `resto` 3 caj + 40 pza) y abajo la unidad del inventario.
   - Saldo **en vivo y por nombre**: `INDEX/MATCH` sobre la columna AD de cada 📦 Inventario. 🔴 cuando el saldo queda bajo el mínimo de esa bodega (también por nombre, contra el Catálogo).

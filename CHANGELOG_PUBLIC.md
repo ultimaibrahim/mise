@@ -23,6 +23,12 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.7k Altair — Elegir el Día en Registrar Entradas (Octubre 2026) [EN PRUEBAS]
+
+* 📥 **Elegir un día de la lista en Registrar entradas (por ejemplo, JUE 01/10) ya no marca "Día no válido".**
+
+---
+
 ## Versión 1.7.7j Altair — Consulta de Stock de Bodegas (Octubre 2026) [EN PRUEBAS]
 
 * 🔎 **Nueva hoja "Stock de bodegas" en Bodega**: muestra cuánto hay de cada producto en Andares, en Mercado y en total, en dos formas fáciles de leer. Arriba va como se pide (por ejemplo, 27 domos de fresa) y abajo como se lleva el inventario (12.15 kg). Se puede filtrar por proveedor desde el celular.

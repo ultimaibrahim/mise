@@ -66,6 +66,20 @@ function runEntradasTests() {
   assert.strictEqual(sh.getRange("B2").getValue(), K.ENTRADAS_HOY, "Tras enviar, el selector vuelve a HOY");
   console.log("  ✓ Selector de día manual escribe en la columna ENT correcta y regresa a HOY");
 
+  // 3b. Hoja en español (1.7.7k): Google convierte "JUE 01/10" en FECHA al elegirlo. Se acepta y cae en su día.
+  sh.getRange("B2").setValue(new VMDate(monday.getFullYear(), monday.getMonth(), monday.getDate() + 3));
+  sh.getRange(K.ENTRADAS_START + 1, 3).setValue(7);
+  sandbox.procesarEntradasKardex();
+  assert.ok(String(sh.getRange("A3").getValue()).startsWith("✅"), `B2 como fecha se acepta (quedó: ${sh.getRange("A3").getValue()})`);
+  assert.strictEqual(ss.getSheetByName("KARDEX_BA").getRange(8, 10 + 3 * 3).getValue(), 7, "Leche Andares en JUE (B2 llegó como fecha)");
+  sh.getRange("B2").setValue(new VMDate(monday.getFullYear(), monday.getMonth(), monday.getDate() + 9));
+  sh.getRange(K.ENTRADAS_START + 1, 3).setValue(1);
+  sandbox.procesarEntradasKardex();
+  assert.ok(/no está en la semana activa/.test(String(sh.getRange("A3").getValue())), "Una fecha fuera de la semana se rechaza con un mensaje claro");
+  sh.getRange(K.ENTRADAS_START + 1, 3).clearContent();
+  sh.getRange("B2").setValue(K.ENTRADAS_HOY);
+  console.log("  ✓ B2 convertido en fecha por la configuración en español: se acepta si es de la semana activa");
+
   // 4. Todo o nada: una celda inválida bloquea el envío completo
   const antes = ss.getSheetByName("KARDEX_BA").getRange(7, entColHoy).getValue();
   sh.getRange(K.ENTRADAS_START, 3, 2, 1).setValues([[1], ["abc"]]);

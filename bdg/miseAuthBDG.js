@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.7j Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.7k Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -2028,7 +2028,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.7j";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7k";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "📥 Entradas en la unidad de cada producto (bolsa, caja…) y la fruta en kg exactos: Mise convierte",
@@ -5262,8 +5262,9 @@ function _prepararHojaEntradas(keepQty = false) {
   // Selector de día (se refresca siempre para reflejar las fechas de la semana activa)
   const opts = _opcionesDiaEntradas(_lunesSemanaActivaKardex(ss));
   const dayCell = sheet.getRange("B2");
-  const prevDay = String(dayCell.getValue() || "");
-  const prevIdx = DIAS.indexOf(prevDay.substring(0, 3));
+  const prevVal = dayCell.getValue();
+  const prevIdx = prevVal instanceof Date ? (prevVal.getDay() + 6) % 7 : DIAS.indexOf(String(prevVal || "").trim().toUpperCase().substring(0, 3));
+  dayCell.setNumberFormat("@"); // 1.7.7k: texto, para que Google no convierta "JUE 01/10" en fecha
   dayCell.setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(opts, true).setAllowInvalid(false).build())
     .setValue(keepQty && prevIdx !== -1 ? opts[prevIdx + 1] : ENTRADAS_HOY);
 
@@ -5295,10 +5296,26 @@ function _estadoEntradas(sheet, msg, tipo) {
 // Resuelve el índice de día (0 = LUN) para UNA bodega a partir del selector.
 // HOY: valida que hoy caiga en la semana activa de ESA bodega. Día elegido: exige que esa bodega esté en la
 // misma semana que muestra el selector (la de Andares), para no escribir en la semana equivocada.
+// 1.7.7k: con la hoja en español, Google convierte "JUE 01/10" en FECHA al elegirlo (llegaba un Date y se rechazaba).
+// Se acepta la fecha: debe caer dentro de la semana activa.
+function _diaEntradasDesdeFecha(ss, fecha, key) {
+  const lunes = _lunesSemanaActivaKardex(ss, key);
+  const f = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+  const diff = Math.round((f.getTime() - lunes.getTime()) / 86400000);
+  if (diff < 0 || diff > 6) throw new Error(`La fecha de B2 no está en la semana activa de ${BODEGAS[key].nombre}. Elige un día de la lista.`);
+  return diff;
+}
+
 function _resolverDiaEntradas(ss, seleccion, key = "BA") {
   const nombre = BODEGAS[key].nombre;
+  if (seleccion instanceof Date && !isNaN(seleccion.getTime())) {
+    if (_lunesSemanaActivaKardex(ss, key).getTime() !== _lunesSemanaActivaKardex(ss, "BA").getTime()) {
+      throw new Error(`${nombre} está en otra semana que Andares. Avanza su semana antes de enviar.`);
+    }
+    return _diaEntradasDesdeFecha(ss, seleccion, key);
+  }
   if (seleccion && seleccion !== ENTRADAS_HOY) {
-    const idx = DIAS.indexOf(String(seleccion).substring(0, 3));
+    const idx = DIAS.indexOf(String(seleccion).trim().toUpperCase().substring(0, 3));
     if (idx === -1) throw new Error("Día no válido en B2. Elige uno de la lista.");
     if (_lunesSemanaActivaKardex(ss, key).getTime() !== _lunesSemanaActivaKardex(ss, "BA").getTime()) {
       throw new Error(`${nombre} está en otra semana que Andares. Avanza su semana antes de enviar.`);
