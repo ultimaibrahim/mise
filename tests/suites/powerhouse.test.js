@@ -68,7 +68,12 @@ function runPowerhouseTests() {
   // 3. Altas sí reconstruyen (necesitan filas nuevas en Kardex)
   sandbox.powerhouseGuardarCatalogo("BA", { nuevos: [{ name: "Azúcar", cat: "ABARROTES", unit: "kg" }], picking: [] });
   assert.strictEqual(reconstrucciones, 1, "Altas reconstruyen");
-  console.log("  ✓ Solo las altas disparan la reconstrucción completa");
+  // 3b. Cambio REAL de categoría (1.7.7l): reacomoda; repetir la misma categoría no
+  sandbox.powerhouseGuardarCatalogo("BA", { ediciones: [{ originalName: "Azúcar", name: "Azúcar", cat: "BEBIDAS" }], picking: [] });
+  assert.strictEqual(reconstrucciones, 2, "Cambiar la categoría reacomoda Catálogo e Inventario (antes se quedaba en su lugar)");
+  sandbox.powerhouseGuardarCatalogo("BA", { ediciones: [{ originalName: "Azúcar", name: "Azúcar", cat: "bebidas" }], picking: [] });
+  assert.strictEqual(reconstrucciones, 2, "La misma categoría (aunque venga en minúsculas) no reconstruye");
+  console.log("  ✓ Solo las altas y los cambios reales de categoría disparan la reconstrucción completa");
 
   // 4. Orden del Catálogo como picking por default (1.7.7b): solo la tienda elegida
   const filas = maestro.getLastRow() - 3;                 // incluye el alta del paso 3

@@ -5,14 +5,21 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
-## ⚡ v1.7.7k Altair (Día en Registrar entradas) — 2026-10-03 [EN PRUEBAS · DEV]
+## ⚡ v1.7.7l Altair (Categoría que reacomoda) — 2026-10-03 [PROD]
+
+### 🏬 Bodega (BDG)
+* Un cambio real de categoría en Powerhouse reacomoda Catálogo e Inventario (antes solo las altas).
+
+---
+
+## ⚡ v1.7.7k Altair (Día en Registrar entradas) — 2026-10-03 [PROD]
 
 ### 🏬 Bodega (BDG)
 * B2 de 📥 Registrar entradas acepta el día aunque Google lo haya convertido en fecha (libros en español) y queda formateado como texto.
 
 ---
 
-## ⚡ v1.7.7j Altair (🔎 Stock de bodegas) — 2026-10-03 [EN PRUEBAS · DEV]
+## ⚡ v1.7.7j Altair (🔎 Stock de bodegas) — 2026-10-03 [PROD]
 
 ### 🏬 Bodega (BDG)
 * Hoja 🔎 Stock de bodegas: saldo por bodega y TOTAL en presentación + unidad de inventario, en vivo por nombre, filtro por proveedor.

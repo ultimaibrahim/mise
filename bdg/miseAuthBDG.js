@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.7k Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.7l Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -2028,7 +2028,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.7k";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7l";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "📥 Entradas en la unidad de cada producto (bolsa, caja…) y la fruta en kg exactos: Mise convierte",
@@ -4216,6 +4216,7 @@ function _guardarCatalogoPowerhouse(key, payload) {
     //    el producto completo en cada edición, incluido ACTIVO aunque no se haya tocado)
     const renombres = {};      // NOMBRE VIEJO (mayúsculas) → nombre nuevo
     const cambiosActivo = {};  // NOMBRE (mayúsculas) → "SÍ" | "NO"
+    let cambiosCategoria = 0;  // 1.7.7l: un cambio REAL de categoría reacomoda Catálogo e Inventario
     const ediciones = payload.ediciones || [];
     const eliminados = payload.eliminados || [];
     if (ediciones.length > 0 || eliminados.length > 0) {
@@ -4246,7 +4247,11 @@ function _guardarCatalogoPowerhouse(key, payload) {
 
         const ed = editMap[prodName];
         if (ed) {
-          if (ed.cat !== undefined && map["CATEGORÍA"])    mData[i][map["CATEGORÍA"].index] = String(ed.cat).trim().toUpperCase();
+          if (ed.cat !== undefined && map["CATEGORÍA"]) {
+            const catNueva = String(ed.cat).trim().toUpperCase();
+            if (String(mData[i][map["CATEGORÍA"].index]).trim().toUpperCase() !== catNueva) cambiosCategoria++;
+            mData[i][map["CATEGORÍA"].index] = catNueva;
+          }
           if (ed.name !== undefined && map["PRODUCTO"])    mData[i][map["PRODUCTO"].index] = String(ed.name).trim();
           if (ed.pres !== undefined && map["PRESENTACION"]) mData[i][map["PRESENTACION"].index] = String(ed.pres).trim();
           if (ed.unit !== undefined && map["UNIDAD"])       mData[i][map["UNIDAD"].index] = String(ed.unit).trim().toLowerCase();
@@ -4320,7 +4325,7 @@ function _guardarCatalogoPowerhouse(key, payload) {
     // Kardex: reconstrucción completa SOLO con altas (necesita filas nuevas). Renombres y cambios de
     // ACTIVO se aplican quirúrgicamente por nombre (antes cada guardado reconstruía ambos Kardex).
     const nRen = Object.keys(renombres).length, nAct = Object.keys(cambiosActivo).length;
-    if (prodsNuevos.length > 0) {
+    if (prodsNuevos.length > 0 || cambiosCategoria > 0) {
       _ordenarYRenumerarTodo();
     } else {
       if (nRen) _renombrarEnKardex(renombres);
