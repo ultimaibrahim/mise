@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.7m Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.7n Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -2028,7 +2028,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.7m";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7n";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "📥 Entradas en la unidad de cada producto (bolsa, caja…) y la fruta en kg exactos: Mise convierte",
@@ -2467,6 +2467,7 @@ function _ordenarYRenumerarTodo() {
     const kRangeBatch = kSheet.getRange(KARDEX_START, 1, kLen, KARDEX_TOTAL_COLS);
     kRangeBatch.setValues(fullKValues);
     kRangeBatch.setBackgrounds(fullKBgs);
+    kSheet.getRange(KARDEX_START, 9, kLen, 22).setNumberFormat("0.####"); // 1.7.7n: clearFormat() lo había quitado
 
     // Limpiar cualquier fila residual sobrante abajo en KARDEX
     const totalMaxKRows = kSheet.getMaxRows();
@@ -2517,6 +2518,11 @@ function _ordenarYRenumerarTodo() {
       }
       kSheet.getRange(6, 1, kLen + 1, KARDEX_TOTAL_COLS).createFilter();
     } catch(e) {}
+
+    // 1.7.7n: el clearFormat() de arriba borra también las reglas visuales (negativos en rojo, hoy en negritas, días
+    // en gris, semáforo). Se reaplican como en 🚀 Configurar; antes el Inventario quedaba "sin formato" tras una alta
+    // o un cambio de categoría en Powerhouse, hasta volver a configurar.
+    try { _simplificarVistaKardex(kSheet); } catch (e) { MiseLogger.warn("_ordenarYRenumerarTodo", `Formato de ${b.kardex}: ${e.message}`); }
   });
 
   try {
@@ -3185,9 +3191,16 @@ function _mezclarConBlanco(hex, f) {
 function _reglasVisualesInventario(sheet) {
   const lr = Math.max(sheet.getLastRow(), KARDEX_START);
   const n = lr - KARDEX_START + 1;
+  // Se conservan las reglas propias de A:I salvo el semáforo (H), que se rehace aquí para todas las filas actuales
   const previas = (sheet.getConditionalFormatRules() || []).filter(r => {
-    try { return r.getRanges().every(rg => rg.getColumn() < 10); } catch (e) { return true; }
+    try { return r.getRanges().every(rg => rg.getColumn() < 10 && rg.getColumn() !== 8); } catch (e) { return true; }
   });
+  const cfH = sheet.getRange(KARDEX_START, 8, n, 1);
+  const semaforo = [
+    SpreadsheetApp.newConditionalFormatRule().whenTextStartsWith("🔴").setBackground("#FFCDD2").setFontColor("#B71C1C").setBold(true).setRanges([cfH]).build(),
+    SpreadsheetApp.newConditionalFormatRule().whenTextStartsWith("🔵").setBackground("#B3E5FC").setFontColor("#0D47A1").setBold(true).setRanges([cfH]).build(),
+    SpreadsheetApp.newConditionalFormatRule().whenTextStartsWith("🟢").setBackground("#C8E6C9").setFontColor("#1B5E20").setRanges([cfH]).build()
+  ];
   const semana = "$G$4<=TODAY(), TODAY()<$G$4+7";
   const dia = "INT((COLUMN()-10)/3)";
   const fHoy = `=AND(${semana}, ${dia}=WEEKDAY(TODAY(),2)-1)`;
@@ -3215,7 +3228,7 @@ function _reglasVisualesInventario(sheet) {
     R(fOtro).setBackground(_mezclarConBlanco(C.salBg, 0.5)).setFontColor("#BDBDBD").setRanges(rangos(6, 1, 1)).build(),
     R(fOtro).setBackground(_mezclarConBlanco(C.dkGreen, 0.55)).setFontColor("#FFFFFF").setRanges(rangos(6, 1, 2)).build()
   ];
-  sheet.setConditionalFormatRules(previas.concat(reglas));
+  sheet.setConditionalFormatRules(previas.concat(reglas, semaforo)); // semáforo (col H) al final: no compite con los días
 }
 
 

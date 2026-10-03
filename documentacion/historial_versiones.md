@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.7n Altair (Formato del Inventario) — 2026-10-03 [PROD]
+
+### 🏬 Bodega (BDG)
+* Reacomodar Catálogo e Inventario (altas, categorías, mantenimiento) reaplica el formato y las reglas visuales del Inventario.
+
+---
+
 ## ⚡ v1.7.7m Altair (Categoría que sí se guarda) — 2026-10-03 [PROD]
 
 ### 🏬 Bodega (BDG)

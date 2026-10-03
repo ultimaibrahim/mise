@@ -23,6 +23,12 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.7n Altair — El Inventario No Pierde sus Colores (Octubre 2026)
+
+* 🎨 **Después de agregar productos o cambiar categorías en Powerhouse, el Inventario conserva su formato**: los negativos en rojo, el día de hoy resaltado y los demás días en gris. Antes había que volver a correr "Configurar este libro".
+
+---
+
 ## Versión 1.7.7m Altair — Cambiar la Categoría Ahora Sí Funciona (Octubre 2026)
 
 * 📋 **Corregir la categoría de un producto en Powerhouse ya se guarda** y el producto se mueve a su grupo. Antes regresaba a la categoría anterior.

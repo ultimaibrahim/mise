@@ -33,6 +33,12 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.7n Altair — El Inventario Conserva su Formato al Reacomodar (Octubre 2026) [PROD]
+* **🐛 Inventario "sin formato" después de guardar en Powerhouse** (PROD, tras corregir categorías y presentaciones). `_ordenarYRenumerarTodo` hace `kRange.clearContent().clearFormat()` sobre los datos del Inventario y los reescribe, pero no reaplicaba nada visual: se perdían los negativos en rojo, el día en curso en negritas, los demás días en gris, el semáforo y el formato `0.####`. Solo quedaban los encabezados de las filas 5–6, que no se limpian, y por eso se seguía viendo saturado el día en curso. 🚀 Configurar lo devolvía con `_simplificarVistaKardex`.
+  - Ahora `_ordenarYRenumerarTodo` reaplica `0.####` (I:AD) y llama `_simplificarVistaKardex` en cada Inventario. Corre en altas, cambios de categoría, mantenimiento y reconstrucciones.
+  - `_reglasVisualesInventario` rehace también el semáforo de H para todas las filas actuales; antes solo lo ponía `_buildKardex`.
+* **Testing:** en la simulación, un cambio de categoría desde Powerhouse (con el payload real) reaplica 15+ reglas en ambos Inventarios y la categoría se queda. Con el código anterior falla.
+
 ### Version 1.7.7m Altair — La Categoría de la Ficha Ya No la Regresa el Picking (Octubre 2026) [PROD]
 * **🐛 La categoría regresaba a la anterior al guardar en Powerhouse** (PROD, Canada Dry 600 ml REFRIGERADOS → BEBIDAS; 45 s "haciendo cosas" sin cambiar nada). Al guardar, el diálogo manda la edición de la ficha **y** el picking completo (`rawItems.map(… cat: it.cat)`), que trae la categoría de cuando se abrió el diálogo. `_guardarCatalogoPowerhouse` escribía primero la edición y después el bloque de picking sobrescribía la columna CATEGORÍA con la vieja. La 1.7.7l además disparaba la reconstrucción completa para terminar igual.
   - Ahora los productos con categoría cambiada en la ficha (`catEditada`) no toman la del picking. Un cambio de grupo hecho desde la pestaña Orden sí cuenta como cambio real y reacomoda.

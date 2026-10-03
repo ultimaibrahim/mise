@@ -201,6 +201,16 @@ function runSimulacionTests() {
     B.powerhouseGuardarCatalogo("BA", { nuevos: [{ name: "Agua Epura", cat: "BEBIDAS", pres: "PAQ 12 PZA", unit: "pza" }], ediciones: [], eliminados: [], picking: [] });
     assert.strictEqual(celdaStk("Fresa", 2), antesFresa, "Tras una alta la fila de Fresa sigue mostrando Fresa");
     assert.strictEqual(String(stk.getRange(filaStk("Agua Epura"), 10).getValue()), "PEPSI", "La alta trae su proveedor inicial");
+    // 1.7.7n: un cambio de categoría reacomoda el Inventario y le devuelve su formato (antes quedaba sin reglas visuales)
+    const reglasPuestas = [];
+    ["BA", "BM"].forEach(b => { const h = inv(b); const orig = h.setConditionalFormatRules.bind(h);
+      h.setConditionalFormatRules = (r) => { reglasPuestas.push([b, r.length]); return orig(r); }; });
+    B.powerhouseGuardarCatalogo("BA", { ediciones: [{ originalName: "Agua Epura", name: "Agua Epura", cat: "REFRESCOS" }],
+      picking: [{ name: "Agua Epura", rank: 1, cat: "BEBIDAS" }] });
+    assert.deepStrictEqual(reglasPuestas.map(x => x[0]).sort(), ["BA", "BM"], "Ambos Inventarios recuperan sus reglas visuales tras reacomodar");
+    assert.ok(reglasPuestas.every(x => x[1] >= 15), `Semáforo + negativos en rojo + día en curso (reglas: ${reglasPuestas.map(x => x[1])})`);
+    assert.strictEqual(String(cat.getRange(filaCat("Agua Epura"), mapa["CATEGORÍA"].col).getValue()), "REFRESCOS", "La categoría de la ficha se queda");
+
     // Filtro por proveedor: oculta lo que no es de FRUTA
     const ocultas = [];
     stk.hideRows = (r, k) => { for (let i = 0; i < k; i++) ocultas.push(String(stk.getRange(r + i, 6).getValue())); };
