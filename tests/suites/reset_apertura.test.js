@@ -107,6 +107,36 @@ function _pruebaAperturaConEnlaceCargando() {
   T._actualizarAvisoPedido();
   assert.deepStrictEqual(cantidades(), [5, "", 6, 1], "Ya cargado, las cantidades siguen en su lugar");
   console.log("  ✓ Abrir con el enlace a Bodega cargando (estructura vieja) no reconstruye ni borra el pedido");
+
+  // 1.7.7j: reordenar con el orden ya correcto no reescribe nada (ni protecciones)
+  const logger = vm.runInContext("MiseLogger", T);
+  const infos = [];
+  const infoOriginal = logger.info;
+  logger.info = (f, msg) => { infos.push(`${f}: ${msg}`); };
+  let blindajes = 0;
+  const protegerOriginal = T.protegerPedidoSeguro;
+  T.protegerPedidoSeguro = () => { blindajes++; };
+  try {
+    T.ordenarPedido();                                   // primera vez: deja el orden de picking
+    const despues1 = blindajes;
+    T.ordenarPedido();                                   // segunda: ya está en orden
+    assert.strictEqual(blindajes, despues1, "Con el orden correcto no se rehacen las protecciones");
+    assert.ok(infos.some(x => /Orden ya correcto/.test(x)), "Registra que no hubo que reordenar");
+    assert.deepStrictEqual(cantidades(), [5, "", 6, 1], "Las cantidades siguen en su lugar");
+  } finally {
+    logger.info = infoOriginal;
+    T.protegerPedidoSeguro = protegerOriginal;
+  }
+
+  // 1.7.7j: el blindaje del Pedido se reconoce cuando ya es exactamente el esperado
+  const prot = (desc, libres) => ({ getDescription: () => desc, getUnprotectedRanges: () => libres.map(a => ({ getA1Notation: () => a })) });
+  const hojaCon = (hoja, rangos = []) => ({ getProtections: (t) => String(t).includes("RANGE") ? rangos : hoja });
+  const fin = 3 + ped.getLastRow() - 3;
+  assert.strictEqual(T._blindajePedidoAlDia(hojaCon([prot("Blindaje Total — 📋 PEDIDO DIARIO", ["F2", `F4:F${fin}`])])), true, "Blindaje al día: no se toca");
+  assert.strictEqual(T._blindajePedidoAlDia(hojaCon([prot("Blindaje Total — 📋 PEDIDO DIARIO", ["F2", "F4:F9"])])), false, "Rango libre distinto (productos nuevos): se rehace");
+  assert.strictEqual(T._blindajePedidoAlDia(hojaCon([])), false, "Sin protección: se rehace");
+  assert.strictEqual(T._blindajePedidoAlDia(hojaCon([prot("otra", ["F2", `F4:F${fin}`])], [{}])), false, "Protecciones de rango de más: se rehace");
+  console.log("  ✓ Reordenar con el orden ya correcto no reescribe el pedido ni rehace protecciones (antes ~12 s al abrir)");
 }
 
 module.exports = { runResetAperturaTests: () => { runResetAperturaTests(); _pruebaAperturaConEnlaceCargando(); } };

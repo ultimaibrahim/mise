@@ -5,6 +5,17 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.7j Altair (🔎 Stock de bodegas) — 2026-10-03 [EN PRUEBAS · DEV]
+
+### 🏬 Bodega (BDG)
+* Hoja 🔎 Stock de bodegas: saldo por bodega y TOTAL en presentación + unidad de inventario, en vivo por nombre, filtro por proveedor.
+* Columna PROVEEDOR en el Catálogo (valor inicial automático) y en la ficha de Powerhouse.
+
+### 🏪 Tiendas (PDA / PDM)
+* `ordenarPedido` y el blindaje no reescriben si ya están al día (apertura ligera).
+
+---
+
 ## ⚡ v1.7.7i Altair (Pedido protegido al abrir) — 2026-10-03 [PROD]
 
 ### 🏪 Tiendas (PDA / PDM)

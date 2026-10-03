@@ -505,6 +505,18 @@ function ordenarPedido() {
       return numA - numB;
     });
 
+    // 1.7.7j: si el orden ya es el correcto, no se reescribe nada (antes: ~12 s reescribiendo pedido, formatos y
+    // protecciones en cada apertura tras un cambio del Catálogo, mientras alguien cargaba la hoja en el celular).
+    // Solo se aplican activos/inactivos, que no mueven filas.
+    if (_layoutPedido(sheet).esquema !== 2 && items.every((it, i) => String(it.vals[2] || "").trim() === String(values[i][2] || "").trim())) {
+      _actualizarVisibilidadInactivos(sheet);
+      const durSin = MiseLogger.timeEnd(tId);
+      MiseLogger.info("ordenarPedido", `Orden ya correcto (${count} productos): solo activos/inactivos.`, durSin);
+      PropertiesService.getScriptProperties().setProperty("IS_ORDER_SORTED", "true");
+      try { SpreadsheetApp.getActive().toast("El pedido ya estaba en orden de picking ✓", "⚙️ Ordenar", 3); } catch (e) {}
+      return;
+    }
+
     const bgs = [];
     const cleanFonts = [];
     const outputData = [];
@@ -1421,7 +1433,7 @@ function _aplicarFormatosCondicionales(sheet) {
   _estiloTactilPedido(sheet, count);
 }
 
-const MISE_VERSION = "1.7.7i";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7j";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "🚚 Surtido: el producto y lo pedido siempre a la vista, incluso en pantallas chicas",
@@ -1858,6 +1870,7 @@ function protegerPedidoSeguro() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_PEDIDO);
   if (!sheet) return;
+  if (_blindajePedidoAlDia(sheet)) return; // 1.7.7j: no quitar y volver a poner lo que ya está bien
 
   // 1. Remover protecciones previas
   const sheetProtections = sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
@@ -1891,6 +1904,22 @@ function protegerPedidoSeguro() {
 
   prot.setUnprotectedRanges([unprotCheckboxFila2, unprotCantPedir]);
   MiseLogger.info("protegerPedidoSeguro", `${SHEET_PEDIDO} blindado: Únicamente F2 (Surtido Rápido) y Col F (CANT. A PEDIR) quedan editables.`);
+}
+
+// ¿El blindaje del Pedido ya es exactamente el esperado? (una protección de hoja, sin protecciones de rango y
+// libres solo F2 + F4:F{fin}). Ante cualquier duda (o API no disponible) responde false y se rehace.
+function _blindajePedidoAlDia(sheet) {
+  try {
+    const hoja = sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
+    if (hoja.length !== 1 || sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE).length) return false;
+    if (hoja[0].getDescription() !== `Blindaje Total — ${SHEET_PEDIDO}`) return false;
+    const fin = DATA_START_ROW + Math.max(1, _getProductCount()) - 1;
+    const esperado = ["F2", `F${DATA_START_ROW}:F${fin}`].join("|");
+    const libres = hoja[0].getUnprotectedRanges().map(r => r.getA1Notation()).sort().join("|");
+    return libres === esperado;
+  } catch (e) {
+    return false;
+  }
 }
 
 // Protege una hoja completa: solo el dueño edita; `libres` = rangos de captura para los usuarios

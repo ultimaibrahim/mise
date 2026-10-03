@@ -1,5 +1,5 @@
 /**
- * MISE — Bodegas Script v1.7.7i Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
+ * MISE — Bodegas Script v1.7.7j Altair (Configuración en un Clic · Enlace por Producto · Sin Descuento Fantasma · CANT. FINAL en Descuento · Auto-Avance Semanal Confiable · Hoja de Entradas Móvil · Conversión de Unidades, Traspasos Inter-Tiendas & Surtido Numérico)
  * Suite Atelier · La Crêpe Parisienne · Grupo MYT
  *
  * INSTALAR EN: Bodegas (Google Sheets)
@@ -143,6 +143,7 @@ function _getMaestroHeaderMap(sheet) {
     { canonical: "MÁX_BM", aliases: ["MAX_BM"] },
     { canonical: "UNIDAD_TIENDA", aliases: ["UNIDAD_TIENDA", "UNIDAD TIENDA", "UNIDAD_PEDIDO", "UNIDAD PEDIDO", "UNIDAD_SUCURSAL"] },
     { canonical: "RECEPCION_PESADA", aliases: ["RECEPCION_PESADA", "RECEPCIÓN_PESADA", "SE_RECIBE_PESADO", "PESADO"] },
+    { canonical: "PROVEEDOR", aliases: ["PROVEEDOR", "PROVEEDORES", "SUPPLIER"] },
     { canonical: "FACTOR_CONVERSION", aliases: ["FACTOR_CONVERSION", "FACTOR_CONVERSIÓN", "FACTOR", "FACTOR CONVERSION", "FACTOR CONVERSIÓN", "CONVERSION"] }
   ];
 
@@ -424,6 +425,12 @@ function _onEditBodega(e) {
         procesarEdicionMasiva();
       }
     }
+    return;
+  }
+
+  // 1.6 🔎 Stock de bodegas: filtro por proveedor (A2)
+  if (name === SHEET_STOCK) {
+    if (row === 2 && col === 1) _filtrarHojaStock(sheet);
     return;
   }
 
@@ -2021,7 +2028,7 @@ function _catalogo() {
   ];
 }
 
-const MISE_VERSION = "1.7.7i";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7j";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "📥 Entradas en la unidad de cada producto (bolsa, caja…) y la fruta en kg exactos: Mise convierte",
@@ -3232,7 +3239,7 @@ function _simplificarVistaKardex(sheet) {
 // Orden y color de pestañas por uso: captura → consulta → sistema
 function _organizarPestanasBDG() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const orden = [[SHEET_ENTRADAS, "#F9A825"], [BODEGAS.BA.kardex, C.sage], [BODEGAS.BM.kardex, C.sage],
+  const orden = [[SHEET_ENTRADAS, "#F9A825"], [SHEET_STOCK, "#7A9E8A"], [BODEGAS.BA.kardex, C.sage], [BODEGAS.BM.kardex, C.sage],
                  [SHEET_MAESTRO, C.mdGreen], [BODEGAS.BA.historial, "#B0BEC5"], [BODEGAS.BM.historial, "#B0BEC5"], [SHEET_TRASPASOS, "#B0BEC5"], [SHEET_LOG, "#B0BEC5"]];
   let pos = 1;
   orden.forEach(([n, color]) => {
@@ -3303,6 +3310,9 @@ function _blindarHojasTecnicasBDG() {
     const filas = Math.max(ent.getMaxRows() - ENTRADAS_START + 1, 1);
     _blindarHoja(ent, "Blindaje — 📥 ENTRADAS", [ent.getRange(ENTRADAS_START, 3, filas, 2), ent.getRange("A2"), ent.getRange("B2:C2"), ent.getRange("D2")]);
   }
+  // 🔎 STOCK: solo el filtro de proveedor
+  const stk = _hoja(ss, SHEET_STOCK);
+  if (stk) _blindarHoja(stk, "Blindaje — 🔎 Stock de bodegas", [stk.getRange("A2")]);
 }
 
 // 🔐 Auditoría: qué protege cada hoja, quién edita y qué queda libre
@@ -3337,7 +3347,7 @@ function protegerTodasLasHojasSeguras() {
 // Fila 2 = etiquetas claras por columna (con nota de ayuda); fila 3 = nombres técnicos que usa el código (no cambian).
 const CATALOGO_EDITABLES = ["ACTIVO", "MÍN_BA", "MÁX_BA", "MÍN_Q_BA", "MÁX_Q_BA", "MÍN_BM", "MÁX_BM", "MÍN_Q_BM", "MÁX_Q_BM"];
 // Visibles (1.7.6q): sin CATEGORÍA (la agrupa el Powerhouse) y con PRESENTACIÓN, de donde se sugiere el factor
-const CATALOGO_VISIBLES = ["PRODUCTO", "PRESENTACION", "UNIDAD", ...CATALOGO_EDITABLES, "UNIDAD_TIENDA", "FACTOR_CONVERSION", "RECEPCION_PESADA"];
+const CATALOGO_VISIBLES = ["PRODUCTO", "PRESENTACION", "UNIDAD", ...CATALOGO_EDITABLES, "UNIDAD_TIENDA", "FACTOR_CONVERSION", "RECEPCION_PESADA", "PROVEEDOR"];
 const CATALOGO_PARES = [["MÍN_BA", "MÁX_BA"], ["MÍN_Q_BA", "MÁX_Q_BA"], ["MÍN_BM", "MÁX_BM"], ["MÍN_Q_BM", "MÁX_Q_BM"]];
 const CATALOGO_ETIQUETAS = {
   "CATEGORÍA": ["Categoría"], "PRODUCTO": ["Producto"], "UNIDAD": ["Unidad\nde bodega"],
@@ -3353,6 +3363,7 @@ const CATALOGO_ETIQUETAS = {
   "MÁX_Q_BM": ["Mercado\ntienda · máx.", "Máximo que ve la tienda Mercado en su Pedido Diario."],
   "UNIDAD_TIENDA": ["Unidad de pedido\n(tienda) 🔒", "Cómo pide la tienda: domo, caja, paquete… Vacío = la tienda pide en la misma unidad que bodega. Solo lo cambia el administrador."],
   "RECEPCION_PESADA": ["Se recibe\npesado (kg) 🔒", "SÍ = en 📥 Registrar entradas se escribe el PESO EXACTO en kg (fruta, verdura, lo que varía). Si el inventario cuenta en domos o piezas, Mise divide entre el peso de cada uno según la presentación (ej. PZA 180 g). Solo lo cambia el administrador."],
+  "PROVEEDOR": ["Proveedor 🔒", "Quién surte el producto (CDK, FRUTA, LALA…). Sirve para filtrar 🔎 Stock de bodegas. Se cambia en ⚡ Powerhouse (ficha del producto)."],
   "FACTOR_CONVERSION": ["1 de pedido =\n¿cuánto en bodega? 🔒", "Ejemplos: 1 domo de fresa = 0.454 kg → 0.454 · 1 caja de guantes = 100 pz → 100 · 1 paquete de conos = 50 pz → 50. Vacío = 1. Bodega descuenta pedido × este número. Solo lo cambia el administrador."]
 };
 const CATALOGO_COLOR = { BA: "#DCEFE3", BM: "#E3E8F5", base: "#F5EFE6" };
@@ -3522,6 +3533,10 @@ function _prepararCatalogoAmigable(maestro) {
     maestro.setColumnWidth(map["FACTOR_CONVERSION"].col, 110);
   }
   if (map["UNIDAD_TIENDA"]) maestro.setColumnWidth(map["UNIDAD_TIENDA"].col, 110);
+  if (map["PROVEEDOR"]) {
+    maestro.getRange(MAESTRO_START, map["PROVEEDOR"].col, n, 1).setDataValidation(SpreadsheetApp.newDataValidation()
+      .requireValueInList(PROVEEDORES_BASE, true).setAllowInvalid(true).setHelpText("Proveedor que surte el producto. Puedes escribir uno nuevo.").build());
+  }
   if (map["RECEPCION_PESADA"]) {
     maestro.getRange(MAESTRO_START, map["RECEPCION_PESADA"].col, n, 1).setDataValidation(SpreadsheetApp.newDataValidation()
       .requireValueInList(["SÍ", ""], true).setAllowInvalid(false).setHelpText("SÍ = se recibe pesado (kg exactos). Vacío = por presentación.").build());
@@ -4031,6 +4046,7 @@ function obtenerDatosPowerhouse(key = "BA") {
       unitTienda: map["UNIDAD_TIENDA"] ? String(r[map["UNIDAD_TIENDA"].index] || "").trim() : "",
       factor: map["FACTOR_CONVERSION"] ? (parseFloat(String(r[map["FACTOR_CONVERSION"].index]).replace(",", ".")) || "") : "",
       pesado: map["RECEPCION_PESADA"] ? /^S[IÍ]$/i.test(String(r[map["RECEPCION_PESADA"].index] || "").trim()) : false,
+      proveedor: map["PROVEEDOR"] ? String(r[map["PROVEEDOR"].index] || "").trim() : "",
       activo: activo,
       minBa: minBa,
       maxBa: maxBa,
@@ -4079,6 +4095,7 @@ function powerhouseGuardarCatalogo(key, payload) {
   if (!lock.tryLock(45000)) throw new Error("El archivo de Bodega está ocupado. Intenta de nuevo en unos segundos.");
   try {
     const resumen = _guardarCatalogoPowerhouse(key, payload);
+    try { _prepararHojaStock(); } catch (e) { MiseLogger.warn("powerhouseGuardarCatalogo", `🔎 Stock de bodegas: ${e.message}`); }
     const ms = Date.now() - t0;
     MiseLogger.info("powerhouseGuardarCatalogo", `${key}: ${resumen}`, ms);
     return { ms, resumen };
@@ -4181,6 +4198,7 @@ function _guardarCatalogoPowerhouse(key, payload) {
         if (map["SELECCIONAR"])  rowM[map["SELECCIONAR"].index]  = false;
         if (map["PICKING_BA"])   rowM[map["PICKING_BA"].index]   = newNo;
         if (map["PICKING_BM"])   rowM[map["PICKING_BM"].index]   = newNo;
+        if (map["PROVEEDOR"])    rowM[map["PROVEEDOR"].index]    = String(np.proveedor || "").trim().toUpperCase() || _proveedorInicial(prod);
 
         maestroNewRows.push(rowM);
         const rowColor = (newNo % 2 === 1) ? C.rowA : C.rowB;
@@ -4238,6 +4256,7 @@ function _guardarCatalogoPowerhouse(key, payload) {
             mData[i][map["FACTOR_CONVERSION"].index] = f > 0 ? f : ""; // vacío o inválido → sin conversión
           }
           if (ed.pesado !== undefined && map["RECEPCION_PESADA"]) mData[i][map["RECEPCION_PESADA"].index] = ed.pesado ? "SÍ" : "";
+          if (ed.proveedor !== undefined && map["PROVEEDOR"]) mData[i][map["PROVEEDOR"].index] = String(ed.proveedor).trim().toUpperCase();
           if (ed.minBa !== undefined && map["MÍN_BA"])     mData[i][map["MÍN_BA"].index] = parseFloat(ed.minBa) || 0;
           if (ed.maxBa !== undefined && map["MÁX_BA"])     mData[i][map["MÁX_BA"].index] = parseFloat(ed.maxBa) || 0;
           if (ed.minBm !== undefined && map["MÍN_BM"])     mData[i][map["MÍN_BM"].index] = parseFloat(ed.minBm) || 0;
@@ -4626,7 +4645,8 @@ function _asegurarColumnasQuioscoEnMaestro(maestroSheet) {
     { key: "PICKING_BM", width: 90, isStock: false },
     { key: "UNIDAD_TIENDA", width: 100, isStock: false, defaultVal: "" },
     { key: "FACTOR_CONVERSION", width: 110, isStock: false, defaultVal: "", numberFormat: "0.####" }, // vacío = sin conversión
-    { key: "RECEPCION_PESADA", width: 100, isStock: false, defaultVal: "" } // "SÍ" = en Entradas se escribe el peso exacto en kg
+    { key: "RECEPCION_PESADA", width: 100, isStock: false, defaultVal: "" }, // "SÍ" = en Entradas se escribe el peso exacto en kg
+    { key: "PROVEEDOR", width: 110, isStock: false, defaultVal: "" }          // 1.7.7j: filtro de 🔎 Stock de bodegas
   ];
 
   const lr = sheet.getLastRow();
@@ -4672,6 +4692,16 @@ function _asegurarColumnasQuioscoEnMaestro(maestroSheet) {
       map[colDef.key] = { col: newCol, letter: _colToLetter(newCol), index: newCol - 1 };
     }
   });
+
+  // PROVEEDOR recién creado (1.7.7j): valor inicial por producto, solo en celdas vacías
+  if (numRows > 0 && map["PROVEEDOR"] && map["PRODUCTO"]) {
+    const rngProv = sheet.getRange(MAESTRO_START, map["PROVEEDOR"].col, numRows, 1);
+    const prov = rngProv.getValues();
+    if (prov.every(r => String(r[0]).trim() === "")) {
+      const nombres = sheet.getRange(MAESTRO_START, map["PRODUCTO"].col, numRows, 1).getValues();
+      rngProv.setValues(nombres.map(r => [String(r[0]).trim() ? _proveedorInicial(r[0]) : ""]));
+    }
+  }
 
   // Solo si cambió la estructura (1.7.7d): antes descombinaba, aplicaba y recombinaba la fila 1 en CADA apertura de Powerhouse
   if (agregadas) _asegurarFormatoHeadersMaestro(sheet);
@@ -5545,6 +5575,7 @@ function descontarSurtidoAutomatico(silent = true) {
   } catch(e) {
     MiseLogger.warn("descontarSurtidoAutomatico", `Error preparando 📥 ENTRADAS: ${e.message}`);
   }
+  try { _prepararHojaStock(); } catch (e) { MiseLogger.warn("descontarSurtidoAutomatico", `🔎 Stock de bodegas: ${e.message}`); }
 
   // 4. 🩺 Resumen de salud (lee el latido de las tiendas) para la página de estado
   try {
@@ -5844,6 +5875,7 @@ function _configurarBDGCore(rep) {
   // (1.7.6z) Configurar YA NO llena factores en masa: cambiar la unidad de pedido de muchos productos a la vez cambia lo
   // que ven las tiendas y cómo se descuenta. Se hace a propósito: al escribir una presentación o desde el menú.
   paso("Hoja 📥 Registrar entradas", () => { _prepararHojaEntradas(true); return "lista"; });
+  paso("Hoja 🔎 Stock de bodegas", () => { const n = _prepararHojaStock(); return `${n} productos`; });
   paso("Vistas móviles", () => { _buildVista("BA"); _buildVista("BM"); return "BA y BM reconstruidas"; });
   paso("Tiendas actualizadas", () => { sincronizarRemotamenteTiendasPush(); return "catálogo, picking y activos enviados"; });
   paso("Kardex simplificado", () => { Object.values(BODEGAS).forEach(b => _simplificarVistaKardex(_hoja(SpreadsheetApp.getActiveSpreadsheet(), b.kardex))); return "solo producto, unidad, saldo anterior y días"; });
@@ -5860,4 +5892,155 @@ function _configurarBDGCore(rep) {
   MiseLogger.info("configurarEsteLibroBDG", pasos.join(" | "));
   return rep.cerrar(ok, ok ? "🚀 Bodega lista" : "🚀 Bodega configurada con observaciones",
     conexiones.lineas.length ? `🔗 ${conexiones.lineas.join(" · ")}` : "");
+}
+
+// ── 🔎 STOCK DE BODEGAS (1.7.7j) ──────────────────────────────────────────────────────────────
+// Consulta para quien hace los pedidos (celular): saldo de cada producto en Andares, Mercado y TOTAL, en dos
+// lecturas: la presentación fácil (domos, cajas…) y la unidad del inventario (kg, pza…). Solo lectura.
+//  · Saldo EN VIVO por NOMBRE (INDEX/MATCH sobre la columna AD del Inventario): un alta o un picking no lo mueve.
+//  · Lo estático (presentación, factor, tipo, proveedor) se rehace al guardar en Powerhouse, en el cierre y en 🚀 Configurar.
+//  · A2 filtra por proveedor (oculta filas; "Todos" las muestra).
+// Columnas: A producto + presentación · B Andares · C Mercado · D TOTAL · F:J auxiliares ocultas.
+const SHEET_STOCK = "🔎 Stock de bodegas";
+const STOCK_START = 4;
+const STOCK_TODOS = "Todos los proveedores";
+const PROVEEDORES_BASE = ["CDK", "FRUTA", "LALA", "PEPSI", "SIGMA", "ABARROTES RAÚL"];
+
+// Proveedor inicial (solo para llenar la columna nueva y las altas sin proveedor); después manda el Catálogo
+function _proveedorInicial(nombre) {
+  const n = String(nombre || "").trim();
+  if (/^(fresa|frambuesa|zarzamora|tomate cherry|pl[aá]tano|lim[oó]n|pepino|champi[ñn]on|espinaca|huevo|mix lechugas)/i.test(n)) return "FRUTA";
+  if (/^leche (entera|light|deslactosada)/i.test(n)) return "LALA";
+  if (/epura|canada dry/i.test(n)) return "PEPSI";
+  if (/^nutella/i.test(n)) return "SIGMA";
+  if (/^perrier/i.test(n)) return "ABARROTES RAÚL";
+  return "CDK";
+}
+
+// Cómo se muestra cada producto: peso (≈ en su presentación) · resto (cajas + piezas) · exacto · simple (una unidad)
+function _tipoStock(u) {
+  const f = u.factor;
+  if (!u.pedido || f === 1 && u.pedido.toLowerCase() === u.kardex.toLowerCase()) return "simple";
+  if (u.pesado) return "peso";
+  if (f >= 2 && Number.isInteger(f) && !/^(kg|lt|l|g|ml)$/i.test(u.kardex)) return "resto";
+  return "exacto";
+}
+
+// Fórmula de una celda de saldo. `s` = expresión del saldo en unidad de inventario; fila r (auxiliares G:I)
+function _formulaCeldaStock(tipo, r, s, minExpr) {
+  const f = `$G${r}`, up = `$H${r}`, uk = `$I${r}`;
+  const alerta = minExpr ? `IF(AND(${minExpr}>0, s<${minExpr}), "🔴 ", "")` : `""`;
+  const abajo = `ROUND(s, 3) & " " & ${uk}`;
+  const cuerpo = {
+    simple: `${alerta} & ${abajo}`,
+    exacto: `${alerta} & ROUND(s/${f}, 2) & " " & ${up} & CHAR(10) & ${abajo}`,
+    peso:   `${alerta} & "≈ " & ROUND(s/${f}, 0) & " " & ${up} & CHAR(10) & ${abajo}`,
+    resto:  `${alerta} & IF(s<=0, ${abajo}, INT(s/${f}) & " " & ${up} & IF(MOD(s, ${f})>0, " + " & ROUND(MOD(s, ${f}), 2) & " " & ${uk}, "") & CHAR(10) & ${abajo})`
+  }[tipo];
+  return `=IFERROR(LET(s, ${s}, ${cuerpo}), "—")`;
+}
+
+function _prepararHojaStock() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const kBA = _hoja(ss, BODEGAS.BA.kardex);
+  const maestro = _hoja(ss, SHEET_MAESTRO);
+  if (!kBA || !maestro || maestro.getLastRow() < MAESTRO_START) return 0;
+  let sheet = _hoja(ss, SHEET_STOCK);
+  if (!sheet) sheet = ss.insertSheet(SHEET_STOCK, 1);
+  const filtroPrevio = String(sheet.getRange("A2").getValue() || "").trim();
+
+  // Catálogo: unidades, proveedor y activos por nombre
+  const map = _getMaestroHeaderMap(maestro);
+  const mData = maestro.getRange(MAESTRO_START, 1, maestro.getLastRow() - MAESTRO_START + 1, maestro.getLastColumn()).getValues();
+  const uni = _unidadesCatalogo(ss);
+  const info = {};
+  mData.forEach(r => {
+    const n = String(r[map["PRODUCTO"].index] || "").trim();
+    if (!n) return;
+    info[n.toUpperCase()] = {
+      activo: !map["ACTIVO"] || String(r[map["ACTIVO"].index]).trim().toUpperCase() !== "NO",
+      proveedor: map["PROVEEDOR"] ? String(r[map["PROVEEDOR"].index] || "").trim().toUpperCase() : ""
+    };
+  });
+
+  // Productos activos en el orden del Inventario (como 📥 Registrar entradas)
+  const klr = kBA.getLastRow();
+  const kData = klr >= KARDEX_START ? kBA.getRange(KARDEX_START, 1, klr - KARDEX_START + 1, 5).getValues() : [];
+  const prods = kData.filter(r => r[0] !== "").map(r => String(r[2]).trim())
+    .filter(n => n && info[n.toUpperCase()] && info[n.toUpperCase()].activo);
+
+  // Encabezado
+  const cols = Math.max(sheet.getMaxColumns(), 10);
+  if (sheet.getMaxColumns() < 10) sheet.insertColumnsAfter(sheet.getMaxColumns(), 10 - sheet.getMaxColumns());
+  try { _separarCombinaciones(sheet.getRange(1, 1, 2, cols)); SpreadsheetApp.flush(); } catch (e) {}
+  sheet.getRange("A1:D1").merge().setValue("🔎 STOCK DE BODEGAS")
+    .setBackground(C.dark).setFontColor("#FFFFFF").setFontWeight("bold").setFontSize(11)
+    .setHorizontalAlignment("center").setVerticalAlignment("middle");
+  sheet.setRowHeight(1, 32);
+  const proveedores = [STOCK_TODOS, ...[...new Set([...PROVEEDORES_BASE, ...Object.values(info).map(x => x.proveedor).filter(Boolean)])]];
+  sheet.getRange("A2").setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(proveedores, true).setAllowInvalid(false).build())
+    .setValue(proveedores.indexOf(filtroPrevio) !== -1 ? filtroPrevio : STOCK_TODOS)
+    .setBackground(C.yellow).setFontWeight("bold").setHorizontalAlignment("center").setVerticalAlignment("middle");
+  sheet.getRange("B2:D2").merge().setValue("◀ filtra por proveedor · arriba: presentación · abajo: inventario")
+    .setBackground(C.cream).setFontSize(8).setFontColor("#546E7A").setWrap(true).setVerticalAlignment("middle");
+  sheet.setRowHeight(2, 36);
+  sheet.getRange(3, 1, 1, 10).setValues([["PRODUCTO", "ANDARES", "MERCADO", "TOTAL", "", "_PRODUCTO", "_FACTOR", "_U_PEDIDO", "_U_INV", "_PROVEEDOR"]])
+    .setBackground(C.sage).setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center");
+  sheet.setFrozenRows(3);
+  [[1, 150], [2, 80], [3, 80], [4, 80]].forEach(([c, w]) => sheet.setColumnWidth(c, w));
+
+  // Datos
+  const maxRows = sheet.getMaxRows();
+  if (maxRows >= STOCK_START) {
+    try { sheet.showRows(STOCK_START, maxRows - STOCK_START + 1); } catch (e) {}
+    sheet.getRange(STOCK_START, 1, maxRows - STOCK_START + 1, 10).clearContent().setBackground(null);
+  }
+  const needed = STOCK_START + prods.length;
+  if (maxRows < needed) sheet.insertRowsAfter(maxRows, needed - maxRows);
+  if (prods.length) {
+    const invA = _refHoja(BODEGAS.BA.kardex), invM = _refHoja(BODEGAS.BM.kardex), cat = _refHoja(SHEET_MAESTRO);
+    const saldo = (inv, r) => `IFERROR(INDEX(${inv}!$AD$${KARDEX_START}:$AD, MATCH($F${r}, ${inv}!$C$${KARDEX_START}:$C, 0))*1, 0)`;
+    const minDe = (k, r) => map[k] ? `IFERROR(INDEX(${cat}!$${map[k].letter}$${MAESTRO_START}:$${map[k].letter}, MATCH($F${r}, ${cat}!$${map["PRODUCTO"].letter}$${MAESTRO_START}:$${map["PRODUCTO"].letter}, 0))*1, 0)` : "";
+    const filas = prods.map((n, i) => {
+      const r = STOCK_START + i;
+      const u = uni[n.toUpperCase()] || { kardex: "", pedido: "", factor: 1, pres: "", pesado: false };
+      const tipo = _tipoStock(u);
+      return [
+        u.pres ? `${n}\n${u.pres}` : n,
+        _formulaCeldaStock(tipo, r, saldo(invA, r), minDe("MÍN_BA", r)),
+        _formulaCeldaStock(tipo, r, saldo(invM, r), minDe("MÍN_BM", r)),
+        _formulaCeldaStock(tipo, r, `${saldo(invA, r)} + ${saldo(invM, r)}`, ""),
+        "", n, u.factor || 1, u.pedido || u.kardex, u.kardex, info[n.toUpperCase()].proveedor
+      ];
+    });
+    const rng = sheet.getRange(STOCK_START, 1, filas.length, 10);
+    rng.setValues(filas); // setValues: "=…" queda como fórmula y el texto no se vuelve #NAME?
+    rng.setBackgrounds(filas.map((_, i) => { const b = i % 2 === 0 ? C.rowA : C.rowB; return [b, b, b, "#EEF3EF", b, b, b, b, b, b]; }));
+    sheet.getRange(STOCK_START, 1, filas.length, 4).setWrap(true).setVerticalAlignment("middle");
+    sheet.getRange(STOCK_START, 1, filas.length, 1).setFontSize(10);
+    sheet.getRange(STOCK_START, 2, filas.length, 3).setFontSize(10).setHorizontalAlignment("center");
+    sheet.setRowHeights(STOCK_START, filas.length, 44);
+  }
+  try { sheet.hideColumns(5, 6); } catch (e) {}
+  _filtrarHojaStock(sheet);
+  return prods.length;
+}
+
+// Muestra solo los productos del proveedor elegido en A2 (o todos)
+function _filtrarHojaStock(sheet) {
+  const sh = sheet || _hoja(SpreadsheetApp.getActiveSpreadsheet(), SHEET_STOCK);
+  if (!sh) return;
+  const n = sh.getLastRow() - STOCK_START + 1;
+  if (n < 1) return;
+  const filtro = String(sh.getRange("A2").getValue() || "").trim().toUpperCase();
+  sh.showRows(STOCK_START, n);
+  if (!filtro || filtro === STOCK_TODOS.toUpperCase()) return;
+  const prov = sh.getRange(STOCK_START, 10, n, 1).getValues();
+  // Ocultar en bloques contiguos (menos llamadas que fila por fila)
+  let ini = -1;
+  for (let i = 0; i <= n; i++) {
+    const ocultar = i < n && String(prov[i][0]).trim().toUpperCase() !== filtro;
+    if (ocultar && ini === -1) ini = i;
+    if (!ocultar && ini !== -1) { sh.hideRows(STOCK_START + ini, i - ini); ini = -1; }
+  }
 }

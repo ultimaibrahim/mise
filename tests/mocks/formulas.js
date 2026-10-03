@@ -1,6 +1,6 @@
 /**
  * Evaluador de fórmulas para el emulador (solo lo que usa Mise): referencias ('Hoja'!$C4, rangos C:AD),
- * & + - * / comparaciones, IF · AND · OR · NOT · IFERROR · VLOOKUP · ROUND · N · LEN · SUM · SUMPRODUCT · INDIRECT.
+ * & + - * / comparaciones, IF · AND · OR · NOT · IFERROR · VLOOKUP · ROUND · N · LEN · CHAR · INT · MOD · SUM · SUMPRODUCT · INDIRECT.
  * Como Google: getValues devuelve el RESULTADO; una hoja inexistente es #REF!; una función desconocida es #NAME?.
  */
 // Celda vacía (distinta del texto ""): vale 0 frente a números y "" frente a texto, como en Sheets
@@ -131,6 +131,9 @@ function crearEvaluador(version = () => 0, importRange = () => null) {
         IFERROR: (args) => { try { const v = valor(args[0]()); return v; } catch (e) { if (e instanceof ErrorHoja) return args[1] ? args[1]() : ""; throw e; } },
         ROUND: (args) => { const f = Math.pow(10, args[1] ? num(valor(args[1]())) : 0); return Math.round(num(valor(args[0]())) * f) / f; },
         N: (args) => { const v = valor(args[0]()); return typeof v === "number" ? v : v === true ? 1 : 0; },
+        CHAR: (args) => String.fromCharCode(num(valor(args[0]()))),
+        INT: (args) => Math.floor(num(valor(args[0]()))),
+        MOD: (args) => { const a = num(valor(args[0]())), b = num(valor(args[1]())); if (b === 0) throw new ErrorHoja("#DIV/0!"); return a - b * Math.floor(a / b); },
         LEN: (args) => txt(valor(args[0]())).length,
         SUM: (args) => args.reduce((s, a) => { const v = a(); return s + (v instanceof Rango ? v.matriz().flat().reduce((x, y) => x + (typeof y === "number" ? y : 0), 0) : num(valor(v))); }, 0),
         VLOOKUP: (args) => {

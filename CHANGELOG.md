@@ -33,6 +33,15 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.7j Altair — 🔎 Stock de Bodegas y Apertura Ligera (Octubre 2026) [EN PRUEBAS · DEV]
+* **🔎 Stock de bodegas (Bodega, nueva hoja)**: consulta para quien hace los pedidos, pensada para celular (4 columnas, unos 390 px). Muestra PRODUCTO con su presentación, ANDARES, MERCADO y **TOTAL**. Cada celda trae dos lecturas: arriba la presentación (`exacto` 7.81 dom · `peso` ≈ 27 dom para lo que se recibe pesado · `resto` 3 caj + 40 pza) y abajo la unidad del inventario.
+  - Saldo **en vivo y por nombre**: `INDEX/MATCH` sobre la columna AD de cada 📦 Inventario. 🔴 cuando el saldo queda bajo el mínimo de esa bodega (también por nombre, contra el Catálogo).
+  - `_prepararHojaStock` rehace lo estático (presentación, factor, tipo, proveedor, orden) al guardar en ⚡ Powerhouse, en el cierre de las 23:00 y en 🚀 Configurar (paso nuevo). A2 filtra por proveedor (`_filtrarHojaStock`, oculta filas en bloques). Hoja blindada salvo A2.
+* **Columna PROVEEDOR en el 📋 Catálogo** (`_asegurarColumnasQuioscoEnMaestro`): al crearse se llena una sola vez con `_proveedorInicial` (FRUTA, LALA, PEPSI, SIGMA, ABARROTES RAÚL; el resto CDK). Validación con lista sugerida que acepta valores nuevos. Campo **Proveedor** en la ficha de Powerhouse; las altas sin proveedor toman el inicial.
+* **Tiendas: apertura ligera.** `ordenarPedido` ya no reescribe nada si el orden de picking es el correcto: solo aplica activos e inactivos (antes ~12 s reescribiendo pedido, formatos y protecciones en la primera apertura tras cada cambio del Catálogo). `protegerPedidoSeguro` se salta si el blindaje ya es el esperado (`_blindajePedidoAlDia`).
+* **Emulador:** `CHAR`, `INT` y `MOD`.
+* **Testing:** la simulación por roles revisa las dos lecturas de la hoja, el TOTAL, el 🔴, la identidad por nombre tras una alta, el proveedor inicial y el filtro. `reset_apertura` prueba el atajo de `ordenarPedido` y el reconocimiento del blindaje.
+
 ### Version 1.7.7i Altair — Abrir con el Enlace Cargando Ya No Reconstruye el Pedido (Octubre 2026) [PROD]
 * **🐛 Causa real del pedido de Mercado borrado (02/oct, 17:05).** La 1.7.7h cerró un hueco real del reset, pero no fue este. Reproducido en el emulador con la estructura que Mercado tenía esa tarde (esquema 3, PRODUCTO = `='_SYNC_BM'!C{fila}`, antes de su migración nocturna):
   - Al abrir con el `IMPORTRANGE` todavía en "Loading…", `_actualizarAvisoPedido` lo tomaba como enlace activo (solo descartaba `""` y `#…`). Leía C4 vacío y hacía el **armado inicial**: `clearContent()` de todo el pedido y filas sin cantidades, **sin registro**.

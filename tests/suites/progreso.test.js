@@ -16,7 +16,7 @@ function runProgresoTests() {
 
   // 1. Servidor: Configurar reporta cada paso (aunque falle por el entorno de prueba, nunca se queda colgado)
   const final = JSON.parse(sandbox.ejecutarConMonitor("configurar", "r1"));
-  assert.strictEqual(final.pasos.length, 10, "Configurar reporta sus 10 pasos (sin llenado masivo de factores)");
+  assert.strictEqual(final.pasos.length, 11, "Configurar reporta sus 11 pasos (incluye 🔎 Stock de bodegas; sin llenado masivo de factores)");
   assert.ok(!final.pasos.some(p => /Factores/.test(p.nombre)), "Configurar NO llena factores en masa");
   assert.ok(final.pasos.every(p => (p.estado === "ok" || p.estado === "falla") && typeof p.ms === "number"), "Cada paso termina con estado y duración");
   assert.ok(final.fin === true && typeof final.titulo === "string", "Cierre con título");

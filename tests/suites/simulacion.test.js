@@ -178,6 +178,37 @@ function runSimulacionTests() {
   assert.deepStrictEqual(est.bodega.bajoMinimo.BA.productos.map(p => p.producto).sort(), ["Nutella", "Plátano"],
     "Bajo mínimo = saldo de Bodega contra el mínimo de Bodega (no el de quiosco)");
   console.log("  ✓ Administrador: Powerhouse (alta + mínimo), mantenimiento semanal y página de estado coherentes");
+
+  {
+    // ── Encargada de pedidos: 🔎 Stock de bodegas (1.7.7j) ──
+    const nStk = B._prepararHojaStock();
+    const stk = bdg.getSheetByName("🔎 Stock de bodegas");
+    assert.ok(stk && nStk === 6, `Hoja creada con los 6 productos activos (quedaron ${nStk})`);
+    const filaStk = (x) => stk.getRange(4, 6, stk.getLastRow() - 3, 1).getValues().findIndex(r => r[0] === x) + 4;
+    const sld = (b, x) => Number(inv(b).getRange(filaInv(b, x), 30).getValue()) || 0;     // AD = saldo vigente
+    const r3 = (x) => Math.round(x * 1000) / 1000, r2 = (x) => Math.round(x * 100) / 100;
+    const celdaStk = (x, c) => String(stk.getRange(filaStk(x), c).getValue());
+    assert.strictEqual(celdaStk("Fresa", 1), "Fresa\nDOM 454 g", "Producto con su presentación debajo");
+    assert.strictEqual(celdaStk("Fresa", 2).replace(/^🔴 /, ""), `${r2(sld("BA", "Fresa") / 0.454)} dom\n${r3(sld("BA", "Fresa"))} kg`,
+      "Fresa en domos (exacto) y en kg del inventario");
+    const g = sld("BM", "Guantes");
+    assert.strictEqual(celdaStk("Guantes", 3).replace(/^🔴 /, ""), `${Math.floor(g / 100)} caj${g % 100 ? ` + ${g % 100} pza` : ""}\n${g} pza`,
+      "Guantes en cajas + piezas sueltas y en piezas");
+    assert.strictEqual(celdaStk("Leche", 4), `${r3(sld("BA", "Leche") + sld("BM", "Leche"))} lt`, "TOTAL = Andares + Mercado, una sola unidad si no hay presentación");
+    assert.strictEqual(celdaStk("Plátano", 2).startsWith("🔴 "), sld("BA", "Plátano") < 60, "🔴 cuando está bajo el mínimo de la bodega (en vivo)");
+    // Identidad por nombre: una alta reordena el Inventario y la celda sigue mostrando el mismo producto
+    const antesFresa = celdaStk("Fresa", 2);
+    B.powerhouseGuardarCatalogo("BA", { nuevos: [{ name: "Agua Epura", cat: "BEBIDAS", pres: "PAQ 12 PZA", unit: "pza" }], ediciones: [], eliminados: [], picking: [] });
+    assert.strictEqual(celdaStk("Fresa", 2), antesFresa, "Tras una alta la fila de Fresa sigue mostrando Fresa");
+    assert.strictEqual(String(stk.getRange(filaStk("Agua Epura"), 10).getValue()), "PEPSI", "La alta trae su proveedor inicial");
+    // Filtro por proveedor: oculta lo que no es de FRUTA
+    const ocultas = [];
+    stk.hideRows = (r, k) => { for (let i = 0; i < k; i++) ocultas.push(String(stk.getRange(r + i, 6).getValue())); };
+    stk.getRange("A2").setValue("FRUTA");
+    B._onEditBodega({ range: stk.getRange("A2"), value: "FRUTA", source: bdg });
+    assert.deepStrictEqual(ocultas.sort(), ["Agua Epura", "Guantes", "Leche", "Nutella"], "Filtro FRUTA deja solo las fresas y el plátano");
+    console.log("  ✓ Encargada: 🔎 Stock de bodegas en dos lecturas (presentación e inventario), TOTAL, 🔴 bajo mínimo y filtro por proveedor");
+  }
 }
 
 module.exports = { runSimulacionTests };

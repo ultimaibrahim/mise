@@ -23,6 +23,14 @@ Este documento contiene el historial de actualizaciones y mejoras de la platafor
 
 ---
 
+## Versión 1.7.7j Altair — Consulta de Stock de Bodegas (Octubre 2026) [EN PRUEBAS]
+
+* 🔎 **Nueva hoja "Stock de bodegas" en Bodega**: muestra cuánto hay de cada producto en Andares, en Mercado y en total, en dos formas fáciles de leer. Arriba va como se pide (por ejemplo, 27 domos de fresa) y abajo como se lleva el inventario (12.15 kg). Se puede filtrar por proveedor desde el celular.
+* 🔴 Marca en rojo lo que está por debajo del mínimo de cada bodega.
+* ⚡ **Las hojas de pedidos de tienda abren más ligeras** después de un cambio en el catálogo.
+
+---
+
 ## Versión 1.7.7i Altair — Pedido Protegido al Abrir (Octubre 2026)
 
 * 🛡️ **Abrir Pedidos mientras la conexión con Bodega todavía está cargando ya no borra el pedido capturado.** Esta era la causa de que el pedido de Mercado se borrara solo el 2 de octubre.

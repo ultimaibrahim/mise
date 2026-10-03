@@ -1037,6 +1037,8 @@
           <div class="campo"><label>Categoría</label><select onchange="campoFicha('cat', this.value)">
             ${categoriasLista.map(c => `<option value="${esc(c)}" ${c === ed.cat ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
           <div class="campo"><label>Presentación</label><input type="text" value="${esc(ed.pres)}" placeholder="DOM 454 g" onchange="campoFicha('pres', this.value)"></div>
+          <div class="campo"><label>Proveedor</label><input type="text" list="dlProveedores" value="${esc(ed.proveedor || "")}" placeholder="CDK" onchange="campoFicha('proveedor', this.value.toUpperCase())">
+            <datalist id="dlProveedores">${[...new Set(catalogItems.map(it => it.proveedor).filter(Boolean))].sort().map(p => `<option value="${esc(p)}">`).join("")}</datalist></div>
         </div>
         <div class="linea-switch">
           <label class="switch-toggle"><input type="checkbox" ${activo ? "checked" : ""} onchange="solicitarCambioEstado(fichaSel, this.checked)"><span class="slider"></span></label>
