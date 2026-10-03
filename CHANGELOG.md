@@ -33,6 +33,13 @@ Representa la generación de soporte estructural, robustez y arquitectura desaco
 
 Representa la era fundacional y de optimizaciones sub-segundo del motor sobre Google Sheets y Google Apps Script V8, culminando en la suite desacoplada de picking, concurrencia, reconciliación inteligente y logística peer-to-peer.
 
+### Version 1.7.7i Altair — Abrir con el Enlace Cargando Ya No Reconstruye el Pedido (Octubre 2026) [PROD]
+* **🐛 Causa real del pedido de Mercado borrado (02/oct, 17:05).** La 1.7.7h cerró un hueco real del reset, pero no fue este. Reproducido en el emulador con la estructura que Mercado tenía esa tarde (esquema 3, PRODUCTO = `='_SYNC_BM'!C{fila}`, antes de su migración nocturna):
+  - Al abrir con el `IMPORTRANGE` todavía en "Loading…", `_actualizarAvisoPedido` lo tomaba como enlace activo (solo descartaba `""` y `#…`). Leía C4 vacío y hacía el **armado inicial**: `clearContent()` de todo el pedido y filas sin cantidades, **sin registro**.
+  - Con una alta en medio y la estructura vieja, `ordenarPedido` además recorría cantidades al vecino (la clase de bug de 1.7.7g). El esquema 4 lo evita, y el emulador confirma ambos casos ya resueltos con el esquema 4.
+* **Corrección:** "Loading…/Cargando…" ya no cuenta como enlace listo (`_syncListo`). El armado inicial solo corre si el pedido no tiene **ninguna** captura en F–I; si hay capturas deja un aviso (`warn`) y no toca nada. El armado inicial ahora deja registro (`info`).
+* **Testing:** `reset_apertura.test.js` (emulador con fórmulas) prueba un pedido de estructura vieja con cantidades que se abre con el enlace cargando. Las cantidades se conservan; con la 1.7.7h el pedido quedaba vacío.
+
 ### Version 1.7.7h Altair — La Apertura Ya No Borra el Pedido del Día (Octubre 2026) [PROD]
 * **🐛 Pedido de Mercado borrado al abrir el libro** (PROD, 02/oct, sin pasar por el descuento).
   - **Causa:** el activador de las 00:00 (`_resetearPedidoSilencioso`) registraba `ULTIMO_RESET_TS` pero no `LAST_AUTO_RESET_DATE`. Solo el respaldo de las 04:00 (`_checkAutoResetNuevoDia`) marcaba esa fecha, y además repetía el reset. Si el de las 04:00 no corría o fallaba, la fecha se quedaba en el día anterior y la **primera apertura** del día (`onOpenTiendaInstalable` u `onOpen` simple) volvía a resetear y vaciaba lo ya capturado.

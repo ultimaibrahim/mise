@@ -127,9 +127,9 @@ function _actualizarAvisoPedido() {
   let sync      = ss.getSheetByName(SHEET_SYNC);
   if (!pedido) return;
   
-  let syncActivo = sync && sync.getLastRow() > 3 &&
-    sync.getRange(4, 1).getValue() !== "" &&
-    String(sync.getRange(4, 1).getValue()).indexOf("#") !== 0;
+  // 1.7.7i: "Loading…/Cargando…" del IMPORTRANGE NO es un enlace listo (antes contaba como activo)
+  const _syncListo = (h) => h && h.getLastRow() > 3 && !/^(#|loading|cargando|$)/i.test(String(h.getRange(4, 1).getValue()).trim());
+  let syncActivo = _syncListo(sync);
 
   // Autoconexión inicial desde Propiedades del Script
   if (!syncActivo) {
@@ -140,9 +140,7 @@ function _actualizarAvisoPedido() {
       try {
         _setupSync(url);
         sync = ss.getSheetByName(SHEET_SYNC);
-        syncActivo = sync && sync.getLastRow() > 3 &&
-          sync.getRange(4, 1).getValue() !== "" &&
-          String(sync.getRange(4, 1).getValue()).indexOf("#") !== 0;
+        syncActivo = _syncListo(sync);
       } catch(err) {}
     }
   }
@@ -172,6 +170,20 @@ function _actualizarAvisoPedido() {
     _aplicarOcultamientoColumnas(pedido);
     return;
   }
+
+  // 1.7.7i: el armado inicial es SOLO para un pedido vacío. Con la estructura vieja (PRODUCTO por fila de _SYNC), abrir
+  // mientras el IMPORTRANGE cargaba dejaba C4 en blanco y aquí se reconstruía el pedido sin cantidades, sin dejar registro
+  // (Mercado PROD, 02/oct). Si hay cualquier captura, no se toca.
+  const filasPed = pedido.getLastRow() - DR + 1;
+  if (filasPed > 0) {
+    const capt = pedido.getRange(DR, COL_CANT_PEDIR, filasPed, COL_RECIBIDA - COL_CANT_PEDIR + 2).getValues()
+      .some(r => r.some(v => v !== "" && v !== null));
+    if (capt) {
+      MiseLogger.warn("_actualizarAvisoPedido", "PRODUCTO de la primera fila vacío con capturas en el pedido: no se reconstruyó (¿el enlace con Bodega seguía cargando?).");
+      return;
+    }
+  }
+  MiseLogger.info("_actualizarAvisoPedido", `Pedido vacío: armado inicial con ${count} productos.`);
 
   const outputGrid = [];
   const bgs = [];
@@ -1409,7 +1421,7 @@ function _aplicarFormatosCondicionales(sheet) {
   _estiloTactilPedido(sheet, count);
 }
 
-const MISE_VERSION = "1.7.7h";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
+const MISE_VERSION = "1.7.7i";   // debe coincidir con la cabecera (línea 2); lo verifica tests/suites/version.test.js
 const MISE_EPOCA   = "Altair";
 const MISE_NOVEDADES = [
   "🚚 Surtido: el producto y lo pedido siempre a la vista, incluso en pantallas chicas",

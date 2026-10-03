@@ -77,4 +77,36 @@ function runResetAperturaTests() {
   }
 }
 
-module.exports = { runResetAperturaTests };
+// Caso 2 (1.7.7i): abrir con la estructura vieja del Pedido (PRODUCTO = fila de _SYNC) mientras el IMPORTRANGE carga.
+// C4 se ve vacío y el armado inicial reconstruía el pedido SIN cantidades y sin registro.
+function _pruebaAperturaConEnlaceCargando() {
+  const { cargarEmuladorAislado } = require("../mocks/aislado");
+  const E = cargarEmuladorAislado({ formulas: true });
+  const { ss, sandbox: T } = E.crearContextoTienda("pdm", "miseAuthPDM.js",
+    { BODEGA_KEY: "BM", BODEGA_URL_BM: "https://docs.google.com/spreadsheets/d/BODEGAPRUEBA1234567890/edit" });
+  const props = T.PropertiesService.getScriptProperties();
+  ["CATALOGO_HUELLA", "LAST_AUTO_RESET_DATE", "ULTIMO_RESET_TS"].forEach(k => props.setProperty(k, ""));
+  const sync = ss.insertSheet("_SYNC_BM");
+  const prods = ["Fresa", "Plátano", "Leche", "Guantes"];
+  const llenarSync = () => sync.getRange(4, 1, prods.length, 12).setValues(prods.map((n, i) => [i + 1, "CAT", n, "pza", 10, "", 0, 0, "SÍ", 0, 0, i + 1]));
+  ss.insertSheet("📋 PEDIDO DIARIO");
+  T._reconstruirPedidoDiarioCore({});
+  llenarSync();
+  const ped = ss.getSheetByName("📋 PEDIDO DIARIO");
+  prods.forEach((_, i) => { ped.getRange(4 + i, 2).setFormula(`='_SYNC_BM'!B${4 + i}`); ped.getRange(4 + i, 3).setFormula(`='_SYNC_BM'!C${4 + i}`); });
+  [[0, 5], [2, 6], [3, 1]].forEach(([i, q]) => ped.getRange(4 + i, 6).setValue(q));
+  props.setProperty("CATALOGO_HUELLA", T._huellaCatalogo(sync.getRange(4, 1, prods.length, 12).getValues()));
+  const cantidades = () => ped.getRange(4, 6, prods.length, 1).getValues().map(r => r[0]);
+  assert.deepStrictEqual(cantidades(), [5, "", 6, 1], "Pedido capturado (estructura vieja)");
+
+  sync.getRange(4, 1, prods.length, 12).clearContent();
+  sync.getRange(4, 1).setValue("Loading...");          // el IMPORTRANGE todavía carga al abrir
+  T.onOpenTiendaInstalable({});
+  assert.deepStrictEqual(cantidades(), [5, "", 6, 1], "Abrir con el enlace cargando no borra el pedido (antes quedaba vacío)");
+  llenarSync();
+  T._actualizarAvisoPedido();
+  assert.deepStrictEqual(cantidades(), [5, "", 6, 1], "Ya cargado, las cantidades siguen en su lugar");
+  console.log("  ✓ Abrir con el enlace a Bodega cargando (estructura vieja) no reconstruye ni borra el pedido");
+}
+
+module.exports = { runResetAperturaTests: () => { runResetAperturaTests(); _pruebaAperturaConEnlaceCargando(); } };

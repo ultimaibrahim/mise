@@ -5,6 +5,13 @@ Este documento recopila el versionamiento técnico y operativo del sistema de in
 
 ---
 
+## ⚡ v1.7.7i Altair (Pedido protegido al abrir) — 2026-10-03 [PROD]
+
+### 🏪 Tiendas (PDA / PDM)
+* Abrir con el IMPORTRANGE cargando ya no dispara el armado inicial; el armado solo corre con el pedido sin capturas (causa real del caso Mercado 02/oct).
+
+---
+
 ## ⚡ v1.7.7h Altair (Apertura segura) — 2026-10-03 [PROD]
 
 ### 🏪 Tiendas (PDA / PDM)
